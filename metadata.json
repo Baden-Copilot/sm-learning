@@ -1,0 +1,7 @@
+{
+  "name": "E-Learning Safety Education POLRI",
+  "description": "Portal Katalog Materi Edukasi Keselamatan POLRI untuk TK/PAUD, SD, SMP, dan SMA dengan modul interaktif, video edukasi, dan kuis evaluasi.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
