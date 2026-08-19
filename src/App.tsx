@@ -10,6 +10,7 @@ import { LearnModal } from './components/Modals/LearnModal';
 import { Toast, ToastMessage } from './components/Toast';
 import { INITIAL_MATERIALS } from './data/materials';
 import { EducationLevel, MaterialItem, MaterialType } from './types';
+import { AskAiWidget } from './components/AskAiWidget';
 
 export default function App() {
   const [materials, setMaterials] = useState<MaterialItem[]>(INITIAL_MATERIALS);
@@ -181,10 +182,10 @@ export default function App() {
   // Group displayed items into featured, standard, and compact to maintain layout harmony
   const featuredItem = displayedMaterials.find(m => m.size === 'featured') || (displayedMaterials.length > 0 ? displayedMaterials[0] : null);
   const remainingItems = displayedMaterials.filter(m => m.id !== featuredItem?.id);
-  
+
   // Standard cards (e.g. Cyberbullying & Narkoba)
   const standardItems = remainingItems.filter(m => m.size === 'standard' || m.type === 'infografis' || m.type === 'modul');
-  
+
   // Compact cards (bottom horizontal cards)
   const compactItems = remainingItems.filter(m => !standardItems.some(s => s.id === m.id));
 
@@ -379,7 +380,7 @@ export default function App() {
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="font-headline text-lg font-bold text-slate-900">Pusat Bantuan & Layanan POLRI</h3>
-              <button 
+              <button
                 onClick={() => setShowHelpModal(false)}
                 className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
               >
@@ -418,7 +419,7 @@ export default function App() {
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="font-headline text-lg font-bold text-slate-900">Tentang E-Learning Safety Education</h3>
-              <button 
+              <button
                 onClick={() => setShowAboutModal(false)}
                 className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
               >
@@ -449,6 +450,9 @@ export default function App() {
 
       {/* Real-time Toast Notifications */}
       <Toast toasts={toasts} onDismiss={removeToast} />
+
+      {/* Ask AI Floating Widget */}
+      <AskAiWidget />
     </div>
   );
 }

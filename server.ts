@@ -149,6 +149,38 @@ async function startServer() {
     res.json({ success: true, data: notificationsStore });
   });
 
+  app.post('/api/ask-ai', async (req, res) => {
+    const { messages } = req.body;
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.ANTHROPIC_API_KEY!,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 500,
+          system: `Kamu adalah Alesha AI, asisten AI untuk platform "E-Learning Dikmas Lantas" — Portal Katalog Materi Edukasi Keselamatan POLRI untuk jenjang TK/PAUD, SD, SMP, dan SMA, berisi modul interaktif, video edukasi, dan kuis evaluasi.
+
+  Tugas kamu:
+  - Jawab pertanyaan seputar KONTEN materi yang ada di platform ini: keselamatan berlalu lintas, rambu-rambu, etika berkendara, keamanan digital/cyberbullying, bahaya narkoba, dan topik terkait lain yang relevan untuk edukasi pelajar TK sampai SMA.
+  - Bantu pengguna menemukan modul yang relevan di katalog (misal arahkan ke kategori jenjang atau jenis materi yang sesuai).
+  - Jawab dengan bahasa yang ramah, singkat, jelas, dan sesuai usia pelajar (hindari istilah terlalu teknis/berat).
+  - Kalau ditanya hal di luar topik keselamatan lalu lintas, keamanan digital, atau materi edukasi POLRI, arahkan sopan kembali ke topik platform ini — jangan menjawab topik yang sama sekali tidak berkaitan (misal: coding, gosip, politik, dsb).
+  - Kamu TIDAK memberikan saran hukum resmi atau keputusan administratif (misal status SIM/tilang individu) — untuk itu arahkan ke layanan resmi POLRI (110 atau kantor Satlantas terdekat).`,
+          messages: messages.map((m: any) => ({ role: m.role, content: m.content })),
+        }),
+      });
+      const data = await response.json();
+      const reply = data.content?.[0]?.text ?? 'Maaf, tidak ada jawaban.';
+      res.json({ reply });
+    } catch (err) {
+      res.status(500).json({ reply: 'Terjadi kesalahan server.' });
+    }
+  });
+
   // Vite development middleware vs production static files
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
