@@ -82,7 +82,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 E-LEARNING
               </h1>
               <p className="text-[11px] font-semibold tracking-wider text-slate-300/90 mt-1 uppercase">
-                SAFETY EDUCATION POLRI
+                Dikmas Lantas
               </p>
             </div>
           </div>

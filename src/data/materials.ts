@@ -1,6 +1,6 @@
 import { MaterialItem } from '../types';
 
-export const POLRI_LOGO_URL = 'https://lh3.googleusercontent.com/aida-public/AB6AXuAcSXSz4YxUZMh7d3NrwpNi5qkb0mfyGjeer_Uz3l2rBckm737bwvkoAXOhuRSngAgg7XunA31flBK74xBTwywGWvPDOx_AJrXaVda0TjgcxPaPe056kWCVFIFBmR2o0pfzfoHdgH0pi-MXe-1z8EO4gvfwIlAlMgSK1oJ0au5x0WqFKnUfh1w7r3NNKUqYaFXhPyeEEPbu5f6EHZp5-AOhR_1ZoRqODkahl16uD9SElAN9yqPx8s8';
+export const POLRI_LOGO_URL = 'korlantas-logo.png';
 
 export const ADMIN_AVATAR_URL = 'https://lh3.googleusercontent.com/aida-public/AB6AXuC7rjB1os0twCM_ciYLrpI4Joy1znDrSFkakR4fWTh2PGv57_tHCXfDxNLkKkcN8ibh-Cog3Yv1B4sJaIOKHjFVjBOEDrkoYNoRRQQlqvfcgipdP-9zFUD_NlUOfDA4jfSruc0cnpFrivbPPtN_930tmo_xFSv4yLcSB-csMeWCo5nQUp7qVhpOuZenyXMjsSJrW5pjSv9D4Hd3rD8v_W2o20EwU3nPqJepu7K940ZEHpOtUWWYcKA';
 
