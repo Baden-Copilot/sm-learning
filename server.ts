@@ -10,7 +10,7 @@ let notificationsStore = [...MOCK_NOTIFICATIONS];
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = 4003;
 
   app.use(express.json());
 
