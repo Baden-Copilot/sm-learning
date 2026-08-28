@@ -123,7 +123,8 @@ export interface Role {
 export interface UserAccount {
   id: string;
   username: string;
-  password: string;
+  /** Only ever set on the way in (create / reset). The API never sends it back. */
+  password?: string;
   fullName: string;
   roleId: string;
   isActive: boolean;
@@ -211,11 +212,15 @@ export const DEFAULT_ROLES: Role[] = [
   },
 ];
 
+/**
+ * Display-only seed for the account table before the API answers. Credentials are
+ * deliberately absent: this array is compiled into the browser bundle, so any
+ * password here would be readable by every visitor.
+ */
 export const DEFAULT_USERS: UserAccount[] = [
   {
     id: 'user-1',
     username: 'superuser',
-    password: '123456',
     fullName: 'AKBP Hendra Wijaya, S.I.K.',
     roleId: 'role-admin',
     isActive: true,
@@ -224,7 +229,6 @@ export const DEFAULT_USERS: UserAccount[] = [
   {
     id: 'user-2',
     username: 'trainer1',
-    password: '123456',
     fullName: 'Kompol Budi Santoso, S.H.',
     roleId: 'role-trainer',
     isActive: true,
@@ -233,7 +237,6 @@ export const DEFAULT_USERS: UserAccount[] = [
   {
     id: 'user-3',
     username: 'executive',
-    password: '123456',
     fullName: 'Irjen Pol. Drs. Ahmad Fauzi, M.Si. (Kapolda)',
     roleId: 'role-executive',
     isActive: true,

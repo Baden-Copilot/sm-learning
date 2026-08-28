@@ -32,11 +32,11 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 }) => {
   // Determine the 4th contextual tab for mobile depending on user role
   const getContextTab = () => {
-    if (isTrainer) {
-      return { id: 'trainer-outreach', label: 'Lapangan', icon: Layers };
-    }
     if (isExecutive) {
       return { id: 'executive', label: 'Eksekutif', icon: BarChart3 };
+    }
+    if (isTrainer) {
+      return { id: 'trainer-outreach', label: 'Lapangan', icon: Layers };
     }
     if (canAccessContentManagement) {
       return { id: 'content-management', label: 'Kelola', icon: Layers };

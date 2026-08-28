@@ -136,6 +136,21 @@ materialsStore = materialsStore.map(m => ({
   publishStatus: m.publishStatus || 'published'
 }));
 
+/**
+ * Resolves the caller to a real, active account. Every personal record —
+ * progress, favourites, history, profile — is keyed by this id, so defaulting a
+ * missing header to a fixed user would let an anonymous request read and write
+ * whichever account that default happens to be.
+ */
+function resolveCaller(req: any): { id: string; user: any } | null {
+  const userId = req.headers['x-user-id'] as string;
+  if (!userId) return null;
+  const data = readUserData();
+  const user = data.users.find((u: any) => u.id === userId);
+  if (!user || !user.isActive) return null;
+  return { id: userId, user };
+}
+
 function readLearningRecords() {
   try {
     if (fs.existsSync(LEARNING_RECORDS_PATH)) {
@@ -700,23 +715,25 @@ function writeUserData(data: any) {
 function verifyAuthAndRole(menuId: string, requiredAction: 'view' | 'add' | 'edit' | 'delete') {
   return (req: express.Request, res: express.Response, next: express.NextFunction) => {
     const userId = req.headers['x-user-id'] as string;
-    const roleId = req.headers['x-role-id'] as string;
 
     const userData = readUserData();
     const user = userData.users.find((u: any) => u.id === userId);
 
-    // If user is provided, verify active state
-    if (userId && (!user || !user.isActive)) {
+    // Identity must come from a real, active account. Trusting the x-role-id
+    // header on its own would let any caller claim "role-admin" and walk
+    // straight past every permission check below.
+    if (!userId || !user || !user.isActive) {
       return res.status(403).json({
         success: false,
         message: 'Akses ditolak. Akun pengguna tidak ditemukan atau dinonaktifkan.'
       });
     }
 
-    const effectiveRoleId = roleId || user?.roleId;
+    // The account's stored role is authoritative; the header is only a hint and
+    // is ignored when it disagrees.
+    const effectiveRoleId = user.roleId;
     const role = userData.roles.find((r: any) => r.id === effectiveRoleId);
 
-    // Fallback for default admin operations if role is admin
     if (effectiveRoleId === 'role-admin') {
       return next();
     }
@@ -862,15 +879,27 @@ async function startServer() {
       records = readLearningRecords();
     }
 
+    // Progress, favourites and lesson ticks belong to the caller, not to the
+    // catalog. Anything read off materialsStore here would be one person's
+    // state shown to everyone, so the per-user record always overrides it.
     let enriched = filtered.map(item => {
-      if (!userId || !records) return item;
-      const userProg = records.userProgress?.find((p: any) => p.userId === userId && p.materialId === item.id);
-      const isBookmarked = records.userBookmarks?.some((b: any) => b.userId === userId && b.materialId === item.id);
+      const userProg = userId && records
+        ? records.userProgress?.find((p: any) => p.userId === userId && p.materialId === item.id)
+        : null;
+      const isBookmarked = userId && records
+        ? records.userBookmarks?.some((b: any) => b.userId === userId && b.materialId === item.id)
+        : false;
+      const doneLessons = new Set<string>(userProg?.completedLessonIds || []);
       return {
         ...item,
         progressPercent: userProg ? userProg.progressPercent : 0,
         status: userProg ? userProg.status : 'not_started',
-        isBookmarked: !!isBookmarked
+        bookmarked: !!isBookmarked,
+        isBookmarked: !!isBookmarked,
+        modules: item.modules?.map(mod => ({
+          ...mod,
+          lessons: mod.lessons.map(les => ({ ...les, isCompleted: doneLessons.has(les.id) }))
+        }))
       };
     });
 
@@ -980,15 +1009,30 @@ async function startServer() {
   });
 
   // Toggle bookmark
+  // A favourite belongs to one account. Toggling a flag on materialsStore would
+  // publish it to every visitor, so the toggle is stored per user instead.
   app.post('/api/materials/:id/bookmark', (req, res) => {
     const { id } = req.params;
-    const index = materialsStore.findIndex(item => item.id === id);
-    if (index !== -1) {
-      materialsStore[index].bookmarked = !materialsStore[index].bookmarked;
-      writeMaterialsData(materialsStore);
-      return res.json({ success: true, bookmarked: materialsStore[index].bookmarked });
+    const userId = req.headers['x-user-id'] as string;
+    if (!materialsStore.some(item => item.id === id)) {
+      return res.status(404).json({ success: false, message: 'Material not found' });
     }
-    return res.status(404).json({ success: false, message: 'Material not found' });
+    if (!userId) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak. Silakan login untuk menyimpan favorit.' });
+    }
+
+    const records = readLearningRecords();
+    const existingIndex = records.userBookmarks.findIndex((b: any) => b.userId === userId && b.materialId === id);
+    let bookmarked: boolean;
+    if (existingIndex !== -1) {
+      records.userBookmarks.splice(existingIndex, 1);
+      bookmarked = false;
+    } else {
+      records.userBookmarks.push({ userId, materialId: id, createdAt: new Date().toISOString() });
+      bookmarked = true;
+    }
+    writeLearningRecords(records);
+    return res.json({ success: true, bookmarked });
   });
 
   // Update learning progress & lesson completion
@@ -1000,23 +1044,62 @@ async function startServer() {
       return res.status(404).json({ success: false, message: 'Material not found' });
     }
 
-    if (typeof progressPercent === 'number') {
-      materialsStore[index].progressPercent = Math.min(100, Math.max(0, progressPercent));
-    }
-    if (status) {
-      materialsStore[index].status = status;
-    }
-
-    // Mark lesson completed inside modules if provided
-    if (completedLessonId && materialsStore[index].modules) {
-      materialsStore[index].modules = materialsStore[index].modules!.map(mod => ({
-        ...mod,
-        lessons: mod.lessons.map(les => les.id === completedLessonId ? { ...les, isCompleted: true } : les)
-      }));
+    // Progress is per learner. Writing it onto materialsStore would make one
+    // person's completed lessons show up as everybody's, so it goes into that
+    // account's own record and is merged back only for the caller.
+    const userId = req.headers['x-user-id'] as string;
+    if (!userId) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak. Silakan login untuk menyimpan progres belajar.' });
     }
 
-    writeMaterialsData(materialsStore);
-    return res.json({ success: true, data: materialsStore[index] });
+    const records = readLearningRecords();
+    const pIndex = records.userProgress.findIndex((p: any) => p.userId === userId && p.materialId === id);
+    const nowIso = new Date().toISOString();
+    const clamped = typeof progressPercent === 'number'
+      ? Math.min(100, Math.max(0, progressPercent))
+      : undefined;
+
+    if (pIndex === -1) {
+      records.userProgress.push({
+        userId,
+        materialId: id,
+        progressPercent: clamped ?? 0,
+        status: status || 'in_progress',
+        completedLessonIds: completedLessonId ? [completedLessonId] : [],
+        lastAccessedAt: nowIso
+      });
+    } else {
+      const prev = records.userProgress[pIndex];
+      const lessons = new Set<string>(prev.completedLessonIds || []);
+      if (completedLessonId) lessons.add(completedLessonId);
+      records.userProgress[pIndex] = {
+        ...prev,
+        progressPercent: clamped ?? prev.progressPercent,
+        status: status || prev.status,
+        completedLessonIds: Array.from(lessons),
+        lastAccessedAt: nowIso
+      };
+    }
+    writeLearningRecords(records);
+
+    const saved = records.userProgress.find((p: any) => p.userId === userId && p.materialId === id);
+    const doneLessons = new Set<string>(saved?.completedLessonIds || []);
+    const bookmarked = records.userBookmarks?.some((b: any) => b.userId === userId && b.materialId === id);
+
+    return res.json({
+      success: true,
+      data: {
+        ...materialsStore[index],
+        progressPercent: saved?.progressPercent ?? 0,
+        status: saved?.status ?? 'not_started',
+        bookmarked: !!bookmarked,
+        isBookmarked: !!bookmarked,
+        modules: materialsStore[index].modules?.map(mod => ({
+          ...mod,
+          lessons: mod.lessons.map(les => ({ ...les, isCompleted: doneLessons.has(les.id) }))
+        }))
+      }
+    });
   });
 
   // Stats summary
@@ -1073,6 +1156,26 @@ async function startServer() {
     // Return safe user data (without password)
     const { password: _, ...safeUser } = user;
     res.json({ success: true, data: { user: safeUser, role } });
+  });
+
+  // Role definitions only, for any signed-in account. The client needs live
+  // permissions to render its menus; without this a trainer or executive would
+  // fall back to the hardcoded defaults and never see an admin's edits.
+  app.get('/api/user-access/my-permissions', (req, res) => {
+    const userId = req.headers['x-user-id'] as string;
+    const data = readUserData();
+    const user = data.users.find((u: any) => u.id === userId);
+
+    if (!userId || !user || !user.isActive) {
+      return res.status(403).json({
+        success: false,
+        message: 'Akses ditolak. Akun pengguna tidak ditemukan atau dinonaktifkan.'
+      });
+    }
+
+    const role = data.roles.find((r: any) => r.id === user.roleId) || null;
+    const { password: _pw, ...safeUser } = user;
+    return res.json({ success: true, data: { user: safeUser, role, roles: data.roles } });
   });
 
   // Get all users & roles (Requires view permission on user-akses or role-admin)
@@ -1145,7 +1248,11 @@ async function startServer() {
 
   // Get learning records for active user
   app.get('/api/learning-records', (req, res) => {
-    const userId = (req.headers['x-user-id'] as string) || 'user-1';
+    const caller = resolveCaller(req);
+    if (!caller) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak. Silakan login terlebih dahulu.' });
+    }
+    const userId = caller.id;
     const records = readLearningRecords();
 
     // Filter data specifically for calling user
@@ -1172,11 +1279,22 @@ async function startServer() {
 
   // Submit Quiz & Issue Certificate
   app.post('/api/quiz/submit', (req, res) => {
-    const userId = (req.headers['x-user-id'] as string) || 'user-1';
-    const roleId = (req.headers['x-role-id'] as string) || 'role-admin';
+    const userId = req.headers['x-user-id'] as string;
+
+    // A certificate carries a person's name, so the identity behind it has to be
+    // a real signed-in account — not a default that would file an anonymous
+    // attempt under someone else's record.
+    const submitterData = readUserData();
+    const submitter = submitterData.users.find((u: any) => u.id === userId);
+    if (!userId || !submitter || !submitter.isActive) {
+      return res.status(403).json({
+        success: false,
+        message: 'Akses ditolak. Silakan login terlebih dahulu untuk mengikuti evaluasi kelulusan.'
+      });
+    }
 
     // Executives inspect materials in review mode — they do not submit learner evaluations
-    if (roleId === 'role-executive') {
+    if (submitter.roleId === 'role-executive') {
       return res.status(403).json({
         success: false,
         message: 'Akun pimpinan/eksekutif hanya memiliki akses peninjauan materi, bukan pengisian evaluasi kelulusan.'
@@ -1213,9 +1331,7 @@ async function startServer() {
     const nowIso = new Date().toISOString();
 
     const records = readLearningRecords();
-    const userData = readUserData();
-    const user = userData.users.find((u: any) => u.id === userId);
-    const recipientName = user?.fullName || 'Peserta Dikmas Lantas POLRI';
+    const recipientName = submitter.fullName || 'Peserta Dikmas Lantas POLRI';
 
     // Record quiz attempt
     const newAttempt = {
@@ -1310,7 +1426,11 @@ async function startServer() {
 
   // Save Learning Progress
   app.post('/api/learning-records/progress', (req, res) => {
-    const userId = (req.headers['x-user-id'] as string) || 'user-1';
+    const caller = resolveCaller(req);
+    if (!caller) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak. Silakan login terlebih dahulu.' });
+    }
+    const userId = caller.id;
     const { materialId, progressPercent, status, completedLessonId } = req.body;
 
     if (!materialId) {
@@ -1371,7 +1491,11 @@ async function startServer() {
 
   // Toggle user bookmark
   app.post('/api/learning-records/bookmark', (req, res) => {
-    const userId = (req.headers['x-user-id'] as string) || 'user-1';
+    const caller = resolveCaller(req);
+    if (!caller) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak. Silakan login terlebih dahulu.' });
+    }
+    const userId = caller.id;
     const { materialId } = req.body;
 
     if (!materialId) {
@@ -1400,7 +1524,11 @@ async function startServer() {
 
   // Track User View History
   app.post('/api/learning-records/history', (req, res) => {
-    const userId = (req.headers['x-user-id'] as string) || 'user-1';
+    const caller = resolveCaller(req);
+    if (!caller) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak. Silakan login terlebih dahulu.' });
+    }
+    const userId = caller.id;
     const { materialId } = req.body;
 
     if (!materialId) return res.status(400).json({ success: false });
@@ -1419,13 +1547,12 @@ async function startServer() {
 
   // Get current user profile
   app.get('/api/profile', (req, res) => {
-    const userId = (req.headers['x-user-id'] as string) || 'user-1';
-    const data = readUserData();
-    const user = data.users.find((u: any) => u.id === userId);
-
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User tidak ditemukan.' });
+    const caller = resolveCaller(req);
+    if (!caller) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak. Silakan login terlebih dahulu.' });
     }
+    const data = readUserData();
+    const user = caller.user;
 
     const { password: _, ...safeUser } = user;
     const role = data.roles.find((r: any) => r.id === user.roleId);
@@ -1434,7 +1561,11 @@ async function startServer() {
 
   // Update current user profile / kedinasan
   app.put('/api/profile', (req, res) => {
-    const userId = (req.headers['x-user-id'] as string) || 'user-1';
+    const caller = resolveCaller(req);
+    if (!caller) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak. Silakan login terlebih dahulu.' });
+    }
+    const userId = caller.id;
     const { fullName, position, unit, polda, polres } = req.body;
 
     const data = readUserData();
@@ -1461,7 +1592,11 @@ async function startServer() {
 
   // Change password
   app.put('/api/profile/password', (req, res) => {
-    const userId = (req.headers['x-user-id'] as string) || 'user-1';
+    const caller = resolveCaller(req);
+    if (!caller) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak. Silakan login terlebih dahulu.' });
+    }
+    const userId = caller.id;
     const { currentPassword, newPassword } = req.body;
 
     if (!currentPassword || !newPassword) {
@@ -1579,6 +1714,13 @@ async function startServer() {
 
   // List all outreach sessions (with optional trainer/status filter)
   app.get('/api/outreach/sessions', (req, res) => {
+    // Session records carry the trainer's identity, unit, and the live access
+    // code for the room. Anonymous audiences reach a session through
+    // /api/public/session/join with a code they were given, never through this
+    // list.
+    if (!resolveCaller(req)) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak. Silakan login terlebih dahulu.' });
+    }
     const { trainerId, status } = req.query;
     let sessions = readOutreachSessions();
 
@@ -2299,6 +2441,10 @@ ${CERTIFICATE_SHARED_CSS}
 
   // Get All Outreach Reports (Executive / Trainer / Admin)
   app.get('/api/outreach/reports', (req, res) => {
+    // Field activity reports are internal reporting material, not public data.
+    if (!resolveCaller(req)) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak. Silakan login terlebih dahulu.' });
+    }
     const { polda, polres, trainerId, materialId } = req.query;
     let reports = readOutreachReports();
 
@@ -2323,8 +2469,14 @@ ${CERTIFICATE_SHARED_CSS}
   // disagree about what happened in a session.
   app.get('/api/outreach/activity-detail/:sessionId', (req, res) => {
     const { sessionId } = req.params;
-    const roleId = (req.headers['x-role-id'] as string) || '';
-    const userId = (req.headers['x-user-id'] as string) || '';
+    const caller = resolveCaller(req);
+    if (!caller) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak. Silakan login terlebih dahulu.' });
+    }
+    // The account's stored role decides what may be seen. Reading x-role-id here
+    // would let a trainer send role-admin and open anyone's activity.
+    const roleId = caller.user.roleId;
+    const userId = caller.id;
 
     const session = readOutreachSessions().find((s: any) => s.id === sessionId);
     if (!session) {
@@ -2522,8 +2674,10 @@ ${CERTIFICATE_SHARED_CSS}
     const reportedParticipants = reports.reduce((sum: number, r: any) => sum + (r.totalParticipants || 0), 0);
     const totalParticipants = Math.max(distinctParticipantCount, reportedParticipants);
 
-    const totalPublicViews = publicEvents.filter((e: any) => e.eventType === 'material_view').length +
-      materials.reduce((sum, m) => sum + (m.views || 0), 0);
+    // Count events only. materialsStore.views is incremented by the same
+    // /learning-events/track call that writes these events, so adding both
+    // double-counts every visit.
+    const totalPublicViews = publicEvents.filter((e: any) => e.eventType === 'material_view').length;
 
     const totalSessionViews = sessionEvents.filter((e: any) => e.eventType === 'material_view' || e.eventType === 'join_session').length;
 
@@ -2551,7 +2705,7 @@ ${CERTIFICATE_SHARED_CSS}
       const matSessionIds = new Set(matSessions.map((s: any) => s.id));
       const matParticipants = participants.filter((p: any) => matSessionIds.has(p.sessionId)).length;
       const matSessionViews = events.filter((e: any) => matSessionIds.has(e.sessionId) && e.eventType === 'material_view').length;
-      const matPublicViews = events.filter((e: any) => !e.sessionId && e.materialId === m.id && e.eventType === 'material_view').length + (m.views || 0);
+      const matPublicViews = events.filter((e: any) => !e.sessionId && e.materialId === m.id && e.eventType === 'material_view').length;
       const matQuizAttempts = (records.quizAttempts || []).filter((q: any) => q.materialId === m.id).length;
 
       return {

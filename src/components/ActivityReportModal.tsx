@@ -112,11 +112,10 @@ export function ActivityReportModal({
 
     fetch(`/api/outreach/sessions/${session.id}/report`, {
       method: 'POST',
-      headers: authHeaders || {
-        'Content-Type': 'application/json',
-        'x-user-id': session.trainerId,
-        'x-role-id': 'role-trainer'
-      },
+      // The signed-in trainer's own headers are the only identity accepted here.
+      // Falling back to the session's trainerId would let whoever has the modal
+      // open file a report as that trainer.
+      headers: authHeaders || { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         notes,
         evidenceImages,

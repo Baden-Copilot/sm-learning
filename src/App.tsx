@@ -121,10 +121,14 @@ export default function App() {
     }
   });
 
-  // Active Role Permissions Resolver
+  // Active Role Permissions Resolver. An unknown or deleted roleId must resolve
+  // to no permissions — defaulting to the first entry would silently hand out
+  // admin, since that is index 0.
+  const EMPTY_ROLE: Role = { id: 'role-none', name: 'Tanpa Akses', description: 'Role tidak dikenali', permissions: [] };
   const activeRole = useMemo(() => {
-    const roleId = currentUser?.user?.roleId || currentUser?.roleId || 'role-admin';
-    return userRoles.find(r => r.id === roleId) || userRoles[0] || DEFAULT_ROLES[0];
+    const roleId = currentUser?.user?.roleId || currentUser?.roleId;
+    if (!roleId) return EMPTY_ROLE;
+    return userRoles.find(r => r.id === roleId) || DEFAULT_ROLES.find(r => r.id === roleId) || EMPTY_ROLE;
   }, [currentUser, userRoles]);
 
   // Check if current role has action permission on a menu
@@ -138,12 +142,17 @@ export default function App() {
   const isExecutive = activeRole.id === 'role-executive';
   /** Where "back to home" lands. A pimpinan has no Beranda — their home is the dashboard. */
   const homeTab = isExecutive ? 'executive' : 'beranda';
-  const canAddMaterial = hasPermission('katalog', 'add') || hasPermission('content-management', 'add') || activeRole.id === 'role-admin' || activeRole.id === 'role-trainer';
-  const canEditMaterial = hasPermission('katalog', 'edit') || hasPermission('content-management', 'edit') || activeRole.id === 'role-admin' || activeRole.id === 'role-trainer';
-  const canDeleteMaterial = hasPermission('katalog', 'delete') || hasPermission('content-management', 'delete') || activeRole.id === 'role-admin';
-  const canAccessUserAkses = hasPermission('user-akses', 'view') || activeRole.id === 'role-admin';
-  const canAccessContentManagement = canEditMaterial || canAddMaterial || activeRole.id === 'role-admin' || activeRole.id === 'role-trainer';
-  const canAccessReports = hasPermission('reports', 'view') || activeRole.id === 'role-admin' || activeRole.id === 'role-trainer' || activeRole.id === 'role-executive';
+  // Every gate below is derived from the role's actual permissions. Hardcoding
+  // role ids here would make revoking a permission in User Akses cosmetic: the
+  // button would still render and the API would then reject the click.
+  const canAddMaterial = hasPermission('katalog', 'add') || hasPermission('content-management', 'add');
+  const canEditMaterial = hasPermission('katalog', 'edit') || hasPermission('content-management', 'edit');
+  const canDeleteMaterial = hasPermission('katalog', 'delete') || hasPermission('content-management', 'delete');
+  const canAccessUserAkses = hasPermission('user-akses', 'view');
+  const canAccessContentManagement = hasPermission('content-management', 'view') || canEditMaterial || canAddMaterial;
+  const canAccessReports = hasPermission('reports', 'view');
+  const canAccessTrainerOutreach = hasPermission('trainer-outreach', 'view');
+  const canAccessExecutiveDashboard = hasPermission('executive', 'view');
 
   // Filtered materials for learner-facing portal views (Only published content for learners)
   const learnerMaterials = useMemo(() => {
@@ -153,14 +162,18 @@ export default function App() {
     return materials.filter(m => (m.publishStatus || 'published') === 'published');
   }, [materials, canAccessContentManagement]);
 
-  // Helper to build authenticated headers
-  const getAuthHeaders = () => {
-    const userId = currentUser?.user?.id || currentUser?.id || 'usr-1';
-    const roleId = activeRole?.id || 'role-admin';
+  // Helper to build authenticated headers. No signed-in user means no identity
+  // headers at all — falling back to a hardcoded id would hand an anonymous
+  // visitor whatever permissions that account happens to hold.
+  const getAuthHeaders = (): Record<string, string> => {
+    const userId = currentUser?.user?.id || currentUser?.id;
+    if (!userId) {
+      return { 'Content-Type': 'application/json' };
+    }
     return {
       'Content-Type': 'application/json',
       'x-user-id': userId,
-      'x-role-id': roleId,
+      'x-role-id': currentUser?.user?.roleId || currentUser?.role?.id || activeRole.id,
     };
   };
 
@@ -177,6 +190,21 @@ export default function App() {
       })
       .catch(() => {});
 
+    // Live role definitions for every signed-in account. Without this the menus
+    // would render against the hardcoded defaults and drift from what the
+    // server actually enforces.
+    fetch('/api/user-access/my-permissions', { headers: getAuthHeaders() })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && Array.isArray(data.data?.roles) && data.data.roles.length > 0) {
+          setUserRoles(data.data.roles);
+        }
+      })
+      .catch(() => {});
+
+    // The full account list is only for those who manage it.
+    if (!canAccessUserAkses) return;
+
     fetch('/api/user-access/data', { headers: getAuthHeaders() })
       .then(res => res.json())
       .then(data => {
@@ -190,7 +218,7 @@ export default function App() {
         }
       })
       .catch(() => {});
-  }, [isLoggedIn]);
+  }, [isLoggedIn, canAccessUserAkses]);
 
   // Toast Notification Manager
   const addToast = (type: 'success' | 'info' | 'warning', title: string, message: string) => {
@@ -234,7 +262,11 @@ export default function App() {
       })
     );
 
-    // Sync to Express Backend / JSON DB
+    // Sync to Express Backend / JSON DB. Guests have no server-side record —
+    // their progress lives in localStorage via guestProgress — so the calls are
+    // skipped rather than sent to be rejected.
+    if (!isLoggedIn) return;
+
     fetch(`/api/materials/${materialId}/progress`, {
       method: 'POST',
       headers: getAuthHeaders(),
@@ -420,8 +452,12 @@ export default function App() {
       });
     });
 
-    // Notify backend
-    fetch(`/api/materials/${id}/bookmark`, { method: 'POST' }).catch(() => {});
+    // Notify backend. The favourite is filed against the signed-in account, so
+    // the identity headers have to ride along; an anonymous portal visitor has
+    // no record to file it in and keeps the toggle in-page only.
+    if (isLoggedIn) {
+      fetch(`/api/materials/${id}/bookmark`, { method: 'POST', headers: getAuthHeaders() }).catch(() => {});
+    }
   };
 
   // Open Course Detail (Learning Journey step)
@@ -430,9 +466,21 @@ export default function App() {
     setSelectedCourseDetail(material);
     setViewHistory(prev => Array.from(new Set([material.id, ...prev])));
 
-    // Update view count
+    // Update view count. Logged-in personnel and anonymous public visitors both
+    // land here, so the event carries userId only when a session is actually
+    // authenticated — that split is what lets the executive dashboard tell
+    // portal traffic apart from trainer-session traffic.
     setMaterials(prev => prev.map(m => m.id === material.id ? { ...m, views: m.views + 1 } : m));
-    fetch(`/api/materials/${material.id}/view`, { method: 'POST' }).catch(() => {});
+    fetch('/api/learning-events/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: currentUser?.user?.id || currentUser?.id || null,
+        materialId: material.id,
+        eventType: 'material_view',
+        details: { source: isPublicPortalMode ? 'public_portal' : 'internal_catalog' }
+      })
+    }).catch(() => {});
   };
 
   // Open Authoring Mode (Add / Edit)
@@ -554,7 +602,7 @@ export default function App() {
               }
               setPublicSessionCode(code || '');
             }}
-            onOpenCourseDetail={(mat) => setSelectedCourseDetail(mat)}
+            onOpenCourseDetail={(mat) => handleOpenCourseDetail(mat)}
           />
 
           {selectedCourseDetail && (
@@ -567,7 +615,7 @@ export default function App() {
                   onStartLearning={(mat) => setActiveFocusMaterial(mat)}
                   onToggleBookmark={handleToggleBookmark}
                   onDownload={handleDownload}
-                  onOpenRelatedCourse={(rel) => setSelectedCourseDetail(rel)}
+                  onOpenRelatedCourse={(rel) => handleOpenCourseDetail(rel)}
                   canEdit={false}
                   canDelete={false}
                   guestProgressOverride={readGuestMaterialProgress(selectedCourseDetail.id)}
@@ -632,8 +680,8 @@ export default function App() {
         canAccessContentManagement={canAccessContentManagement}
         canAccessReports={canAccessReports}
         isExecutive={isExecutive}
-        canAccessExecutive={isExecutive || activeRole.id === 'role-admin'}
-        isTrainer={activeRole.id === 'role-trainer' || activeRole.id === 'role-admin'}
+        canAccessExecutive={canAccessExecutiveDashboard}
+        isTrainer={canAccessTrainerOutreach}
       />
 
       {/* Main Content Wrapper */}
@@ -740,7 +788,7 @@ export default function App() {
             />
           ) : currentTab === 'trainer-outreach' ? (
             /* TRAINER OUTREACH FIELD SESSIONS */
-            (activeRole.id === 'role-trainer' || activeRole.id === 'role-admin') ? (
+            canAccessTrainerOutreach ? (
               <TrainerOutreachPage
                 currentUser={currentUser}
                 currentRole={activeRole}
@@ -760,7 +808,7 @@ export default function App() {
             )
           ) : currentTab === 'presentation-room' && activePresentationSession ? (
             /* PRESENTATION ROOM */
-            (activeRole.id === 'role-trainer' || activeRole.id === 'role-admin') ? (
+            canAccessTrainerOutreach ? (
               <PresentationRoom
                 session={activePresentationSession}
                 onBack={() => {
@@ -808,7 +856,7 @@ export default function App() {
             />
           ) : currentTab === 'executive' ? (
             /* 7. EKSEKUTIF DASHBOARD */
-            (isExecutive || activeRole.id === 'role-admin') ? (
+            canAccessExecutiveDashboard ? (
               <ExecutiveDashboardPage
                 materials={materials}
                 authHeaders={getAuthHeaders()}
@@ -1103,7 +1151,7 @@ export default function App() {
         canAccessContentManagement={canAccessContentManagement}
         canAccessReports={canAccessReports}
         isExecutive={isExecutive}
-        isTrainer={activeRole.id === 'role-trainer' || activeRole.id === 'role-admin'}
+        isTrainer={canAccessTrainerOutreach}
       />
 
       {/* TOAST SYSTEM */}

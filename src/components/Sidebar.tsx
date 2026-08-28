@@ -164,7 +164,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 Manajemen & Operasional
               </span>
               <div className="space-y-1">
-                {(isTrainer || canAccessContentManagement) && (
+                {isTrainer && (
                   <button
                     id="sidebar-nav-trainer-outreach"
                     onClick={() => handleNavClick('trainer-outreach')}
