@@ -1,0 +1,139 @@
+================================================================================
+          PANDUAN PENGGUNAAN & LAPORAN OPERASIONAL SISTEM SM-LEARNING
+                    DIKMAS LANTAS POLRI (SAFETY EDUCATION)
+================================================================================
+Domain Resmi   : https://sm-learning.djalu.co.id
+Rute Publik    : https://sm-learning.djalu.co.id/umum
+Pengembang     : Tim IT E-Learning Korlantas POLRI
+Tanggal Rilis  : Agustus 2026
+
+--------------------------------------------------------------------------------
+1. RINGKASAN EKSEKUTIF APLIKASI
+--------------------------------------------------------------------------------
+SM-Learning DIKMAS POLRI adalah platform digital terpadu pendidikan keselamatan
+berlalu lintas dan kesadaran hukum masyarakat. Sistem ini menggabungkan:
+1. Pembelajaran mandiri berbasis modul interaktif, video, infografis, dan kuis.
+2. Fasilitas kegiatan sosialisasi lapangan (Trainer Outreach) oleh instruktur POLRI.
+3. Penerbitan dan verifikasi QR-Code sertifikat digital kelulusan otomatis.
+4. Portal pembelajaran terbuka bagi masyarakat dan pelajar tanpa wajib login.
+5. Dashboard analitik eksekutif untuk pimpinan (Kapolda / Kapolres / Kakorlantas).
+
+--------------------------------------------------------------------------------
+2. STRUKTUR HAK AKSES DAN PENGGUNA (ROLE-BASED ACCESS CONTROL)
+--------------------------------------------------------------------------------
+
+A. ROLE 1: ADMIN / SUPERUSER (AKBP Hendra Wijaya, S.I.K.)
+   Kredensial Default:
+   - Username : superuser
+   - Password : 123456
+
+   Tanggung Jawab & Fitur:
+   1. Manajemen Pengguna (User Akses):
+      - Menambah, mengubah status aktif/non-aktif, dan mereset akun personel.
+      - Mengatur matriks perizinan (CRUD: View, Add, Edit, Delete) per role.
+   2. Manajemen Konten Pembelajaran:
+      - Menambah dan mempublikasikan modul pembelajaran baru (TK, SD, SMP, SMA).
+      - Mengatur status akses materi (Publik Terbuka / Khusus Internal).
+      - Membuat dan menyusun bank soal kuis serta bobot kelulusan.
+   3. Monitoring & Audit Trail:
+      - Memantau seluruh log aktivitas transaksi, pembelajaran, dan kegiatan lapangan.
+      - Mengakses seluruh modul laporan dan ekspor rekapitulasi data.
+
+--------------------------------------------------------------------------------
+
+B. ROLE 2: TRAINER / INSTRUKTUR (Kompol Budi Santoso, S.H. - Kanit Dikyasa)
+   Kredensial Default:
+   - Username : trainer1
+   - Password : 123456
+
+   Tanggung Jawab & Fitur:
+   1. Sertifikasi Kompetensi Trainer:
+      - Trainer wajib menyelesaikan modul dan lulus kuis internal terlebih dahulu
+        sebelum membuka sesi sosialisasi materi terkait kepada masyarakat.
+   2. Penyelenggaraan Kegiatan Sosialisasi Lapangan (Trainer Outreach):
+      - Membuka Sesi Sosialisasi Baru: Sistem menghasilkan Kode Sesi unik (cth: POL-3FN1)
+        dan QR-Code interaktif untuk di-scan oleh audiens/siswa di lokasi acara.
+      - Mode Presentasi Interaktif: Memaparkan slide modul dengan dukungan tampilan
+        layar lebar (Wide), Fullscreen native, dan fitur buka/tutup sidebar materi.
+      - Pemantauan Kehadiran Realtime: Melihat daftar peserta yang bergabung, nilai kuis,
+        dan status kelulusan peserta secara langsung di dashboard trainer.
+   3. Pelaporan Kegiatan & Cetak Sertifikat Massal:
+      - Menutup sesi dan mengunggah dokumen/foto bukti kegiatan (geotag & absensi).
+      - Mencetak seluruh sertifikat peserta yang telah lulus secara batch/massal
+        dengan format resmi stempel & tanda tangan digital Korlantas POLRI.
+
+--------------------------------------------------------------------------------
+
+C. ROLE 3: EKSEKUTIF / PIMPINAN (Irjen Pol. Drs. Ahmad Fauzi, M.Si. - Kapolda)
+   Kredensial Default:
+   - Username : executive
+   - Password : 123456
+
+   Tanggung Jawab & Fitur:
+   1. Dashboard Eksekutif Nasional & Kewilayahan:
+      - Memantau metrik pencapaian sosialisasi (Total Sesi, Total Audiens Terjangkau,
+        Persentase Kelulusan Uji Pemahaman).
+      - Filter analitik performa berdasarkan jajaran Polda, Polres, hingga Satlantas.
+   2. Evaluasi Efektivitas Edukasi:
+      - Melihat grafik retensi belajar, tingkat pemahaman materi tersulit, dan
+        distribusi jenjang pendidikan target (TK/PAUD, SD, SMP, SMA/Umum).
+   3. Laporan & Ekspor Resmi:
+      - Mengunduh rekapitulasi laporan kegiatan lapangan dan capaian edukasi masyarakat
+        untuk bahan evaluasi pimpinan dan laporan berkala Mabes POLRI.
+
+--------------------------------------------------------------------------------
+
+D. ROLE 4: MASYARAKAT UMUM / PELAJAR (GUEST PORTAL TANPA LOGIN)
+   Akses Langsung: https://sm-learning.djalu.co.id/umum
+
+   Alur Penggunaan:
+   1. Pembelajaran Mandiri (Self-Paced Learning):
+      - Mengakses seluruh materi publik yang telah diverifikasi Korlantas POLRI.
+      - Progres membaca tercatat secara aman di peramban (browser) masing-masing.
+   2. Mengikuti Sosialisasi Instruktur di Lapangan:
+      - Menuju ke /umum lalu memasukkan Kode Sesi (misal: POL-3FN1) atau melakukan
+        scan QR-Code yang ditampilkan di layar proyektor instruktur.
+      - Mengisi Nama dan Asal Sekolah/Instansi.
+      - Membaca materi pendamping di smartphone masing-masing.
+      - Mengikuti Kuis Evaluasi di akhir sesi untuk memperoleh Sertifikat Digital resmi.
+   3. Verifikasi Keaslian Sertifikat:
+      - Scan QR-Code yang tertera pada sertifikat fisik/PDF untuk memverifikasi
+        nomor registrasi dan status kelulusan pada basis data resmi Korlantas POLRI.
+
+--------------------------------------------------------------------------------
+3. TATA CARA OPERASIONAL PENTING (SOP)
+--------------------------------------------------------------------------------
+
+SOP 1: MEMULAI SESI SOSIALISASI LAPANGAN OLEH TRAINER
+1. Login dengan akun Trainer di https://sm-learning.djalu.co.id.
+2. Buka menu "Kegiatan Lapangan (Trainer)" pada sidebar kiri.
+3. Klik tombol "Buka Sesi Sosialisasi Baru".
+4. Pilih materi edukasi yang akan disosialisasikan, isi target peserta & lokasi.
+5. Klik "Buka Sesi". Layar akan menampilkan Kode Sesi dan QR-Code.
+6. Tampilkan QR-Code di proyektor agar peserta melakukan scan melalui smartphone.
+7. Gunakan tombol "Buka Mode Presentasi" untuk memaparkan materi ke layar proyektor.
+8. Setelah kegiatan selesai, klik "Tutup Sesi & Buat Laporan", unggah foto dokumentasi,
+   dan unduh/cetak sertifikat peserta.
+
+SOP 2: MENAMBAH MATERI PEMBELAJARAN BARU OLEH ADMIN/TRAINER
+1. Masuk ke menu "Manajemen Konten".
+2. Klik tombol "Tambah Materi Baru".
+3. Lengkapi formulir: Judul, Jenjang (SD/SMP/SMA), Format (Video/Modul/Infografis/Kuis),
+   estimasi durasi, dan hak akses (Publik / Khusus Internal).
+4. Susun struktur Modul & Pelajaran (Lessons), serta input butir soal kuis evaluasi.
+5. Klik "Simpan & Publikasikan". Materi langsung tayang di katalog sistem.
+
+SOP 3: CARA VERIFIKASI KEABSAHAN SERTIFIKAT
+1. Setiap lembar sertifikat memiliki QR-Code resmi di bagian pojok kanan bawah.
+2. Arahkan kamera HP ke QR-Code tersebut (URL: /verify/[ID-SERTIFIKAT]).
+3. Sistem akan membuka halaman validasi resmi dengan rincian:
+   - Nama Penerima
+   - Instansi / Sekolah
+   - Materi Kelulusan & Nilai Evaluasi
+   - Pejabat Penandatangan & Tanggal Penerbitan
+   - Status: Terverifikasi Sah di Basis Data Korlantas POLRI.
+
+================================================================================
+                      DIKMAS LANTAS KORLANTAS POLRI
+             "Menuju Indonesia Tertib, Selamat, dan Berkeselamatan"
+================================================================================
