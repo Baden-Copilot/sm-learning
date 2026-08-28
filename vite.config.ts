@@ -16,7 +16,15 @@ export default defineConfig(() => {
       // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      // `data/**` and `public/uploads/**` are runtime JSON/asset stores written by the
+      // Express API on every progress/quiz/session save. Watching them makes Vite fire a
+      // full-reload on each save, which resets the learner back to the first lesson.
+      watch: process.env.DISABLE_HMR === 'true' ? null : {
+        ignored: [
+          '**/data/**',
+          '**/public/uploads/**',
+        ],
+      },
       allowedHosts: ['sm-learning.djalu.co.id'],
     },
   };

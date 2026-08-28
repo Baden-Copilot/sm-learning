@@ -1,15 +1,23 @@
 import React from 'react';
-import { Play, Clock, HelpCircle, BookOpen } from 'lucide-react';
+import { Play, Clock, HelpCircle, BookOpen, Pencil, Trash2 } from 'lucide-react';
 import { MaterialItem } from '../types';
 
 interface MaterialCardCompactProps {
   material: MaterialItem;
   onOpen: (material: MaterialItem) => void;
+  canEdit?: boolean;
+  canDelete?: boolean;
+  onEdit?: (material: MaterialItem) => void;
+  onDelete?: (id: string) => void;
 }
 
 export const MaterialCardCompact: React.FC<MaterialCardCompactProps> = ({
   material,
   onOpen,
+  canEdit,
+  canDelete,
+  onEdit,
+  onDelete,
 }) => {
   const getBadgeStyle = (level: string) => {
     switch (level) {
@@ -76,9 +84,34 @@ export const MaterialCardCompact: React.FC<MaterialCardCompactProps> = ({
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <span className={`inline-block px-2 py-0.5 ${getBadgeStyle(material.level)} text-[11px] font-extrabold rounded-xs mb-1 uppercase tracking-wide`}>
-          {material.badgeTag || material.level}
-        </span>
+        <div className="flex items-center justify-between">
+          <span className={`inline-block px-2 py-0.5 ${getBadgeStyle(material.level)} text-[11px] font-extrabold rounded-xs mb-1 uppercase tracking-wide`}>
+            {material.badgeTag || material.level}
+          </span>
+
+          {(canEdit || canDelete) && (
+            <div className="flex items-center space-x-1" onClick={(e) => e.stopPropagation()}>
+              {canEdit && (
+                <button
+                  onClick={() => onEdit?.(material)}
+                  className="p-1 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                  title="Edit Materi"
+                >
+                  <Pencil className="w-3 h-3" />
+                </button>
+              )}
+              {canDelete && (
+                <button
+                  onClick={() => onDelete?.(material.id)}
+                  className="p-1 rounded-md text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                  title="Hapus Materi"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
         <h4 className="font-semibold text-sm text-[#0a1d37] group-hover:text-blue-600 transition-colors line-clamp-2 leading-snug">
           {material.title}
         </h4>

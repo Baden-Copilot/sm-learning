@@ -1,48 +1,198 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { RefreshCw, BookOpen, SearchX, ShieldAlert, Sparkles, Filter } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { TopHeader } from './components/TopHeader';
-import { FilterBar } from './components/FilterBar';
-import { MaterialCardFeatured } from './components/MaterialCardFeatured';
-import { MaterialCardStandard } from './components/MaterialCardStandard';
-import { MaterialCardCompact } from './components/MaterialCardCompact';
-import { LearnModal } from './components/Modals/LearnModal';
 import { Toast, ToastMessage } from './components/Toast';
 import { INITIAL_MATERIALS } from './data/materials';
-import { EducationLevel, MaterialItem, MaterialType } from './types';
+import {
+  EducationLevel,
+  MaterialItem,
+  MaterialType,
+  UserAccount,
+  Role,
+  LearningStatus,
+  DEFAULT_USERS,
+  DEFAULT_ROLES,
+} from './types';
+import { LoginPage } from './components/LoginPage';
+import { UserAccessPage } from './components/UserAccessPage';
+import { BerandaPage } from './components/BerandaPage';
+import { LearningPage } from './components/LearningPage';
+import { MyLearningPage } from './components/MyLearningPage';
+import { CourseDetailPage } from './components/CourseDetailPage';
+import { LearningFocusMode } from './components/LearningFocusMode';
+import { QuizExperience } from './components/QuizExperience';
+import { ProgressPage } from './components/ProgressPage';
+import { ExecutiveDashboardPage } from './components/ExecutiveDashboardPage';
+import { TrainerOutreachPage } from './components/TrainerOutreachPage';
+import { PresentationRoom } from './components/PresentationRoom';
+import { ActivityReportModal } from './components/ActivityReportModal';
+import { PublicLearningPortal } from './components/PublicLearningPortal';
+import { PublicSessionView } from './components/PublicSessionView';
+import { ContentManagementPage } from './components/ContentManagementPage';
+import { ContentAuthoringPage } from './components/ContentAuthoringPage';
+import { ProfilePage } from './components/ProfilePage';
+import { ReportsPage } from './components/ReportsPage';
+import { BottomNav } from './components/BottomNav';
 import { AskAiWidget } from './components/AskAiWidget';
+import { NotFoundPage } from './components/NotFoundPage';
+import { ForbiddenPage } from './components/ForbiddenPage';
+import { readGuestMaterialProgress, saveGuestLessonProgress } from './utils/guestProgress';
 
 export default function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+    return sessionStorage.getItem('isLoggedIn') === 'true';
+  });
+
   const [materials, setMaterials] = useState<MaterialItem[]>(INITIAL_MATERIALS);
   const [selectedLevel, setSelectedLevel] = useState<EducationLevel>('ALL');
   const [selectedType, setSelectedType] = useState<MaterialType>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortBy, setSortBy] = useState<'latest' | 'popular' | 'downloads' | 'az'>('latest');
-  const [currentTab, setCurrentTab] = useState<string>('katalog');
+  const [currentTab, setCurrentTab] = useState<string>(() => {
+    try {
+      const saved = sessionStorage.getItem('currentUser');
+      if (saved) {
+        const u = JSON.parse(saved);
+        const roleId = u?.user?.roleId || u?.roleId || u?.role?.id;
+        if (roleId === 'role-executive') return 'executive';
+      }
+    } catch {}
+    return 'beranda';
+  });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
-  const [activeMaterial, setActiveMaterial] = useState<MaterialItem | null>(null);
-  const [visibleCount, setVisibleCount] = useState<number>(6);
-  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [viewHistory, setViewHistory] = useState<string[]>([]);
+
+  // Navigation & Learning Journey State
+  const [selectedCourseDetail, setSelectedCourseDetail] = useState<MaterialItem | null>(null);
+  const [activeFocusMaterial, setActiveFocusMaterial] = useState<MaterialItem | null>(null);
+  const [activeQuizMaterial, setActiveQuizMaterial] = useState<MaterialItem | null>(null);
+
+  // Outreach & Public Sesi State
+  const [activePresentationSession, setActivePresentationSession] = useState<any>(null);
+  const [activeReportSession, setActiveReportSession] = useState<any>(null);
+
+  const [isInvalidRoute, setIsInvalidRoute] = useState<boolean>(() => {
+    const path = window.location.pathname;
+    if (path === '/' || path === '' || path === '/login' || path === '/umum' || path === '/public') {
+      return false;
+    }
+    if (path.startsWith('/umum/session/') || path.startsWith('/public/session/')) {
+      const codePart = path.replace(/^\/(umum|public)\/session\//, '').trim();
+      return !codePart || codePart.includes('/');
+    }
+    return true;
+  });
+
+  const [publicSessionCode, setPublicSessionCode] = useState<string | null>(() => {
+    const path = window.location.pathname;
+    if (path.startsWith('/public/session/')) {
+      const code = path.replace('/public/session/', '').trim().toUpperCase();
+      return code.includes('/') ? null : code;
+    }
+    if (path.startsWith('/umum/session/')) {
+      const code = path.replace('/umum/session/', '').trim().toUpperCase();
+      return code.includes('/') ? null : code;
+    }
+    const params = new URLSearchParams(window.location.search);
+    return params.get('session') || null;
+  });
+  const [isPublicPortalMode, setIsPublicPortalMode] = useState<boolean>(() => {
+    const path = window.location.pathname;
+    return path === '/umum' || path === '/public';
+  });
+
+  // Content Authoring Mode State (Full LMS Authoring Workspace)
+  const [isAuthoringOpen, setIsAuthoringOpen] = useState<boolean>(false);
+  const [editingMaterial, setEditingMaterial] = useState<MaterialItem | null>(null);
 
   const [showHelpModal, setShowHelpModal] = useState<boolean>(false);
   const [showAboutModal, setShowAboutModal] = useState<boolean>(false);
 
-  // Fetch from express backend if available
+  // User access management state
+  const [userAccounts, setUserAccounts] = useState<UserAccount[]>(DEFAULT_USERS);
+  const [userRoles, setUserRoles] = useState<Role[]>(DEFAULT_ROLES);
+  const [currentUser, setCurrentUser] = useState<any>(() => {
+    try {
+      const saved = sessionStorage.getItem('currentUser');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  // Active Role Permissions Resolver
+  const activeRole = useMemo(() => {
+    const roleId = currentUser?.user?.roleId || currentUser?.roleId || 'role-admin';
+    return userRoles.find(r => r.id === roleId) || userRoles[0] || DEFAULT_ROLES[0];
+  }, [currentUser, userRoles]);
+
+  // Check if current role has action permission on a menu
+  const hasPermission = (menuId: string, action: 'view' | 'add' | 'edit' | 'delete') => {
+    if (!activeRole) return false;
+    const menuPerm = activeRole.permissions.find(p => p.menuId === menuId);
+    if (!menuPerm) return false;
+    return menuPerm.actions.includes(action);
+  };
+
+  const isExecutive = activeRole.id === 'role-executive';
+  /** Where "back to home" lands. A pimpinan has no Beranda — their home is the dashboard. */
+  const homeTab = isExecutive ? 'executive' : 'beranda';
+  const canAddMaterial = hasPermission('katalog', 'add') || hasPermission('content-management', 'add') || activeRole.id === 'role-admin' || activeRole.id === 'role-trainer';
+  const canEditMaterial = hasPermission('katalog', 'edit') || hasPermission('content-management', 'edit') || activeRole.id === 'role-admin' || activeRole.id === 'role-trainer';
+  const canDeleteMaterial = hasPermission('katalog', 'delete') || hasPermission('content-management', 'delete') || activeRole.id === 'role-admin';
+  const canAccessUserAkses = hasPermission('user-akses', 'view') || activeRole.id === 'role-admin';
+  const canAccessContentManagement = canEditMaterial || canAddMaterial || activeRole.id === 'role-admin' || activeRole.id === 'role-trainer';
+  const canAccessReports = hasPermission('reports', 'view') || activeRole.id === 'role-admin' || activeRole.id === 'role-trainer' || activeRole.id === 'role-executive';
+
+  // Filtered materials for learner-facing portal views (Only published content for learners)
+  const learnerMaterials = useMemo(() => {
+    if (canAccessContentManagement) {
+      return materials;
+    }
+    return materials.filter(m => (m.publishStatus || 'published') === 'published');
+  }, [materials, canAccessContentManagement]);
+
+  // Helper to build authenticated headers
+  const getAuthHeaders = () => {
+    const userId = currentUser?.user?.id || currentUser?.id || 'usr-1';
+    const roleId = activeRole?.id || 'role-admin';
+    return {
+      'Content-Type': 'application/json',
+      'x-user-id': userId,
+      'x-role-id': roleId,
+    };
+  };
+
+  // Fetch materials & user access data from express backend (once on login, not on every role recalc)
   useEffect(() => {
-    fetch('/api/materials')
+    if (!isLoggedIn) return;
+
+    fetch('/api/materials', { headers: getAuthHeaders() })
       .then(res => res.json())
       .then(data => {
         if (data.success && Array.isArray(data.data) && data.data.length > 0) {
           setMaterials(data.data);
         }
       })
-      .catch(() => {
-        // Fallback to local state seamlessly
-      });
-  }, []);
+      .catch(() => {});
 
+    fetch('/api/user-access/data', { headers: getAuthHeaders() })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.data) {
+          if (Array.isArray(data.data.users) && data.data.users.length > 0) {
+            setUserAccounts(data.data.users);
+          }
+          if (Array.isArray(data.data.roles) && data.data.roles.length > 0) {
+            setUserRoles(data.data.roles);
+          }
+        }
+      })
+      .catch(() => {});
+  }, [isLoggedIn]);
+
+  // Toast Notification Manager
   const addToast = (type: 'success' | 'info' | 'warning', title: string, message: string) => {
     const id = Date.now().toString();
     setToasts(prev => [...prev, { id, type, title, message }]);
@@ -53,6 +203,178 @@ export default function App() {
 
   const removeToast = (id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id));
+  };
+
+  // Real-time Progress Update & Persistence
+  const handleUpdateProgress = (
+    materialId: string,
+    progressPercent: number,
+    status?: LearningStatus,
+    completedLessonId?: string
+  ) => {
+    // Optimistic state update
+    setMaterials(prev =>
+      prev.map(m => {
+        if (m.id === materialId) {
+          const updatedModules = m.modules?.map(mod => ({
+            ...mod,
+            lessons: mod.lessons.map(les =>
+              les.id === completedLessonId ? { ...les, isCompleted: true } : les
+            ),
+          }));
+
+          return {
+            ...m,
+            progressPercent: Math.min(100, Math.max(0, progressPercent)),
+            status: status || (progressPercent >= 100 ? 'completed' : 'in_progress'),
+            modules: updatedModules || m.modules,
+          };
+        }
+        return m;
+      })
+    );
+
+    // Sync to Express Backend / JSON DB
+    fetch(`/api/materials/${materialId}/progress`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ progressPercent, status, completedLessonId }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.data) {
+          setMaterials(prev => prev.map(m => (m.id === materialId ? { ...m, ...data.data } : m)));
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/learning-records/progress', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ materialId, progressPercent, status, completedLessonId }),
+    }).catch(() => {});
+  };
+
+  // Sync users to backend json
+  const handleUpdateUsers = (newUsers: UserAccount[]) => {
+    setUserAccounts(newUsers);
+    fetch('/api/user-access/users', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ users: newUsers }),
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Forbidden');
+        return res.json();
+      })
+      .then(() => addToast('success', 'Data Disimpan', 'Daftar user berhasil diperbarui di user-data.json'))
+      .catch(() => addToast('warning', 'Gagal Simpan', 'Perubahan user gagal disimpan ke backend.'));
+  };
+
+  // Sync roles to backend json
+  const handleUpdateRoles = (newRoles: Role[]) => {
+    setUserRoles(newRoles);
+    fetch('/api/user-access/roles', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ roles: newRoles }),
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Forbidden');
+        return res.json();
+      })
+      .then(() => addToast('success', 'Data Disimpan', 'Daftar role berhasil diperbarui di user-data.json'))
+      .catch(() => addToast('warning', 'Gagal Simpan', 'Perubahan role gagal disimpan ke backend.'));
+  };
+
+  // Save (Create or Update) Material from Authoring Workspace
+  const handleSaveMaterial = (formData: Partial<MaterialItem>, isDraft: boolean = false) => {
+    if (editingMaterial) {
+      // Update Existing
+      fetch(`/api/materials/${editingMaterial.id}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(formData),
+      })
+        .then(res => {
+          if (!res.ok) throw new Error('Forbidden');
+          return res.json();
+        })
+        .then(data => {
+          if (data.success) {
+            setMaterials(prev => prev.map(m => m.id === editingMaterial.id ? { ...m, ...data.data } : m));
+            addToast('success', isDraft ? 'Draft Disimpan' : 'Materi Diperbarui', `Modul "${formData.title}" berhasil ${isDraft ? 'disimpan sebagai draft' : 'dipublikasikan'}.`);
+          }
+        })
+        .catch(() => {
+          setMaterials(prev => prev.map(m => m.id === editingMaterial.id ? { ...m, ...formData } as MaterialItem : m));
+          addToast('success', 'Materi Diperbarui', `Modul "${formData.title}" berhasil diperbarui.`);
+        });
+    } else {
+      // Create New
+      fetch('/api/materials', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(formData),
+      })
+        .then(res => {
+          if (!res.ok) throw new Error('Forbidden');
+          return res.json();
+        })
+        .then(data => {
+          if (data.success) {
+            setMaterials(prev => [data.data, ...prev]);
+            addToast('success', isDraft ? 'Draft Disimpan' : 'Materi Diterbitkan', `Modul "${formData.title}" berhasil ${isDraft ? 'disimpan sebagai draft' : 'dipublikasikan ke katalog'}.`);
+          }
+        })
+        .catch(() => {
+          const newItem: MaterialItem = {
+            ...formData,
+            id: `mat-${Date.now()}`,
+            views: 0,
+            downloads: 0,
+            progressPercent: 0,
+            status: 'not_started',
+            publishDate: new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }),
+          } as MaterialItem;
+          setMaterials(prev => [newItem, ...prev]);
+          addToast('success', 'Materi Diterbitkan', `Modul "${formData.title}" berhasil ditambahkan.`);
+        });
+    }
+    setIsAuthoringOpen(false);
+    setEditingMaterial(null);
+  };
+
+  // Delete Material
+  const handleDeleteMaterial = (id: string) => {
+    const target = materials.find(m => m.id === id);
+    if (!target) return;
+    if (confirm(`Apakah Anda yakin ingin menghapus materi "${target.title}"?`)) {
+      fetch(`/api/materials/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      })
+        .then(res => {
+          if (!res.ok) throw new Error('Forbidden');
+          return res.json();
+        })
+        .then(data => {
+          if (data.success) {
+            setMaterials(prev => prev.filter(m => m.id !== id));
+            addToast('info', 'Materi Dihapus', `Modul "${target.title}" telah dihapus.`);
+            if (selectedCourseDetail?.id === id) {
+              setSelectedCourseDetail(null);
+            }
+          }
+        })
+        .catch(() => {
+          setMaterials(prev => prev.filter(m => m.id !== id));
+          addToast('info', 'Materi Dihapus', `Modul "${target.title}" telah dihapus.`);
+          if (selectedCourseDetail?.id === id) {
+            setSelectedCourseDetail(null);
+          }
+        });
+    }
   };
 
   // Handle Tab changes from Sidebar
@@ -66,10 +388,15 @@ export default function App() {
       return;
     }
 
+    // Reset views
+    setSelectedCourseDetail(null);
+    setIsAuthoringOpen(false);
+    setEditingMaterial(null);
     setCurrentTab(tab);
+
     if (typeFilter !== 'all') {
       setSelectedType(typeFilter);
-    } else if (tab === 'katalog' || tab === 'beranda') {
+    } else if (tab === 'learning' || tab === 'beranda') {
       setSelectedType('all');
       setSelectedLevel('ALL');
     }
@@ -85,7 +412,7 @@ export default function App() {
           addToast(
             nextState ? 'success' : 'info',
             nextState ? 'Ditambahkan ke Favorit' : 'Dihapus dari Favorit',
-            `Modul "${item.title}" ${nextState ? 'berhasil disimpan ke daftar favorit Anda.' : 'telah dihapus dari daftar favorit.'}`
+            `Modul "${item.title}" ${nextState ? 'berhasil disimpan ke daftar favorit.' : 'telah dihapus dari daftar favorit.'}`
           );
           return { ...item, bookmarked: nextState };
         }
@@ -97,9 +424,10 @@ export default function App() {
     fetch(`/api/materials/${id}/bookmark`, { method: 'POST' }).catch(() => {});
   };
 
-  // Handle open modal
-  const handleOpenMaterial = (material: MaterialItem) => {
-    setActiveMaterial(material);
+  // Open Course Detail (Learning Journey step)
+  const handleOpenCourseDetail = (material: MaterialItem) => {
+    setIsAuthoringOpen(false);
+    setSelectedCourseDetail(material);
     setViewHistory(prev => Array.from(new Set([material.id, ...prev])));
 
     // Update view count
@@ -107,7 +435,20 @@ export default function App() {
     fetch(`/api/materials/${material.id}/view`, { method: 'POST' }).catch(() => {});
   };
 
-  // Handle download simulation
+  // Open Authoring Mode (Add / Edit)
+  const handleOpenAuthoring = (material: MaterialItem | null = null) => {
+    setSelectedCourseDetail(null);
+    setEditingMaterial(material);
+    setIsAuthoringOpen(true);
+  };
+
+  // Start / Continue Learning in Focus Mode
+  const handleStartLearning = (material: MaterialItem) => {
+    setActiveFocusMaterial(material);
+    setViewHistory(prev => Array.from(new Set([material.id, ...prev])));
+  };
+
+  // Download simulation
   const handleDownload = (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     const item = materials.find(m => m.id === id);
@@ -122,81 +463,177 @@ export default function App() {
     }
   };
 
-  // Filter and sort items
-  const filteredMaterials = useMemo(() => {
-    let result = [...materials];
-
-    // Filter by Sidebar tabs like Favorit or Riwayat
-    if (currentTab === 'favorit') {
-      result = result.filter(item => item.bookmarked);
-    } else if (currentTab === 'riwayat') {
-      result = result.filter(item => viewHistory.includes(item.id));
+  const handleLogin = (userData?: { user: any; role: any }) => {
+    setIsLoggedIn(true);
+    sessionStorage.setItem('isLoggedIn', 'true');
+    if (userData) {
+      setCurrentUser(userData);
+      sessionStorage.setItem('currentUser', JSON.stringify(userData));
+      // Land each role on the screen it actually works from. A pimpinan opening the
+      // app wants the national picture, not the learner home page.
+      const roleId = userData.user?.roleId || userData.role?.id;
+      if (roleId === 'role-executive') setCurrentTab('executive');
+      else setCurrentTab('beranda');
     }
+  };
 
-    // Filter by Level
-    if (selectedLevel !== 'ALL') {
-      result = result.filter(item => item.level.toUpperCase() === selectedLevel.toUpperCase());
-    }
-
-    // Filter by Type
-    if (selectedType !== 'all') {
-      result = result.filter(item => item.type === selectedType);
-    }
-
-    // Search query
-    if (searchQuery.trim().length > 0) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(item =>
-        item.title.toLowerCase().includes(q) ||
-        item.description.toLowerCase().includes(q) ||
-        item.level.toLowerCase().includes(q) ||
-        item.typeLabel.toLowerCase().includes(q)
+  if (!isLoggedIn) {
+    if (isInvalidRoute) {
+      return (
+        <div className="min-h-screen bg-[#f7f9fb] flex flex-col justify-center items-center p-4">
+          <NotFoundPage
+            onBackToHome={() => {
+              window.history.pushState({}, '', '/');
+              setIsInvalidRoute(false);
+              setIsPublicPortalMode(false);
+              setPublicSessionCode(null);
+            }}
+            onBackToPublicPortal={() => {
+              window.history.pushState({}, '', '/umum');
+              setIsInvalidRoute(false);
+              setIsPublicPortalMode(true);
+              setPublicSessionCode(null);
+            }}
+            isPublicMode={true}
+            message="Alamat URL yang Anda tuju pada portal Dikmas Lantas POLRI tidak valid atau tidak ditemukan."
+          />
+        </div>
       );
     }
 
-    // Sorting
-    if (sortBy === 'popular') {
-      result.sort((a, b) => b.views - a.views);
-    } else if (sortBy === 'downloads') {
-      result.sort((a, b) => (b.downloads || 0) - (a.downloads || 0));
-    } else if (sortBy === 'az') {
-      result.sort((a, b) => a.title.localeCompare(b.title));
+    if (publicSessionCode) {
+      return (
+        <div className="min-h-screen bg-slate-900 p-4">
+          <PublicSessionView
+            initialCode={publicSessionCode}
+            onBackToPortal={() => {
+              window.history.pushState({}, '', '/umum');
+              setPublicSessionCode(null);
+              setIsPublicPortalMode(true);
+            }}
+          />
+        </div>
+      );
     }
 
-    return result;
-  }, [materials, selectedLevel, selectedType, searchQuery, sortBy, currentTab, viewHistory]);
+    if (isPublicPortalMode) {
+      return (
+        <div className="min-h-screen bg-[#f7f9fb] text-[#191c1e] p-4 sm:p-8 max-w-7xl mx-auto space-y-6">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-full bg-[#0a1d37] p-1 flex items-center justify-center">
+                <img
+                  src="/favicon.svg"
+                  alt="POLRI"
+                  className="w-6 h-6 object-contain"
+                  onError={(e) => {
+                    (e.target as any).style.display = 'none';
+                  }}
+                />
+              </div>
+              <div>
+                <h2 className="font-black text-slate-900 text-sm tracking-tight">SM-LEARNING DIKMAS POLRI</h2>
+                <p className="text-[10px] text-slate-500 font-semibold uppercase">Portal Edukasi Terbuka</p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                window.history.pushState({}, '', '/');
+                setIsPublicPortalMode(false);
+              }}
+              className="px-4 py-2 bg-[#0a1d37] text-white text-xs font-bold rounded-xl hover:bg-slate-800 transition cursor-pointer"
+            >
+              Masuk Personel DIKMAS POLRI
+            </button>
+          </div>
 
-  const displayedMaterials = useMemo(() => {
-    return filteredMaterials.slice(0, visibleCount);
-  }, [filteredMaterials, visibleCount]);
+          <PublicLearningPortal
+            onOpenSessionJoin={(code) => {
+              if (code) {
+                window.history.pushState({}, '', `/umum/session/${encodeURIComponent(code)}`);
+              }
+              setPublicSessionCode(code || '');
+            }}
+            onOpenCourseDetail={(mat) => setSelectedCourseDetail(mat)}
+          />
 
-  const handleLoadMore = () => {
-    setIsLoadingMore(true);
-    setTimeout(() => {
-      setVisibleCount(prev => prev + 3);
-      setIsLoadingMore(false);
-      addToast('info', 'Materi Diperbarui', 'Menampilkan lebih banyak modul edukasi keselamatan POLRI.');
-    }, 400);
-  };
+          {selectedCourseDetail && (
+            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+              <div className="bg-white rounded-3xl max-w-4xl w-full p-6 max-h-[90vh] overflow-y-auto">
+                <CourseDetailPage
+                  material={selectedCourseDetail}
+                  allMaterials={materials.filter(m => m.publicAccess !== 'restricted' && m.publishStatus === 'published')}
+                  onBack={() => setSelectedCourseDetail(null)}
+                  onStartLearning={(mat) => setActiveFocusMaterial(mat)}
+                  onToggleBookmark={handleToggleBookmark}
+                  onDownload={handleDownload}
+                  onOpenRelatedCourse={(rel) => setSelectedCourseDetail(rel)}
+                  canEdit={false}
+                  canDelete={false}
+                  guestProgressOverride={readGuestMaterialProgress(selectedCourseDetail.id)}
+                />
+              </div>
+            </div>
+          )}
 
-  // Group displayed items into featured, standard, and compact to maintain layout harmony
-  const featuredItem = displayedMaterials.find(m => m.size === 'featured') || (displayedMaterials.length > 0 ? displayedMaterials[0] : null);
-  const remainingItems = displayedMaterials.filter(m => m.id !== featuredItem?.id);
+          {activeFocusMaterial && (
+            <LearningFocusMode
+              material={activeFocusMaterial}
+              onExit={() => setActiveFocusMaterial(null)}
+              onCompleteCourse={() => {
+                addToast('success', 'Modul Selesai', `Anda telah menyelesaikan seluruh silabus ${activeFocusMaterial.title}.`);
+                setActiveFocusMaterial(null);
+              }}
+              // Anonymous visitors have no server record: keep their reading progress
+              // in this browser so a return visit shows what is already finished.
+              resumeCompletedLessonIds={
+                readGuestMaterialProgress(activeFocusMaterial.id)?.completedLessonIds || []
+              }
+              onLessonsCompletedChange={(ids, total) =>
+                saveGuestLessonProgress({
+                  materialId: activeFocusMaterial.id,
+                  completedLessonIds: ids,
+                  totalLessons: total
+                })
+              }
+              onProgressUpdate={() => {}}
+            />
+          )}
+        </div>
+      );
+    }
 
-  // Standard cards (e.g. Cyberbullying & Narkoba)
-  const standardItems = remainingItems.filter(m => m.size === 'standard' || m.type === 'infografis' || m.type === 'modul');
-
-  // Compact cards (bottom horizontal cards)
-  const compactItems = remainingItems.filter(m => !standardItems.some(s => s.id === m.id));
+    return (
+      <LoginPage
+        onLogin={handleLogin}
+        onOpenPublicPortal={() => {
+          window.history.pushState({}, '', '/umum');
+          setIsPublicPortalMode(true);
+        }}
+        onOpenPublicSession={(code) => {
+          if (code) {
+            window.history.pushState({}, '', `/umum/session/${encodeURIComponent(code)}`);
+          }
+          setPublicSessionCode(code || '');
+        }}
+      />
+    );
+  }
 
   return (
     <div className="bg-[#f7f9fb] text-[#191c1e] min-h-screen flex antialiased">
       {/* Side Navigation Bar */}
       <Sidebar
-        currentTab={currentTab}
+        currentTab={isAuthoringOpen ? 'content-management' : currentTab}
         onSelectTab={handleSelectTab}
         isOpenMobile={isMobileMenuOpen}
         onCloseMobile={() => setIsMobileMenuOpen(false)}
+        canAccessUserManagement={canAccessUserAkses}
+        canAccessContentManagement={canAccessContentManagement}
+        canAccessReports={canAccessReports}
+        isExecutive={isExecutive}
+        canAccessExecutive={isExecutive || activeRole.id === 'role-admin'}
+        isTrainer={activeRole.id === 'role-trainer' || activeRole.id === 'role-admin'}
       />
 
       {/* Main Content Wrapper */}
@@ -206,175 +643,364 @@ export default function App() {
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
-          onSelectMaterialById={(id) => {
-            const found = materials.find(m => m.id === id);
-            if (found) handleOpenMaterial(found);
+          currentUser={currentUser}
+          currentRole={activeRole}
+          materials={learnerMaterials}
+          onSelectMaterial={(material) => handleOpenCourseDetail(material)}
+          onOpenProfile={() => handleSelectTab('profile')}
+          onLogout={() => {
+            setIsLoggedIn(false);
+            setCurrentUser(null);
+            sessionStorage.removeItem('isLoggedIn');
+            sessionStorage.removeItem('currentUser');
           }}
         />
 
         {/* Main Content Body */}
-        <main className="flex-1 mt-16 p-4 md:p-12 space-y-8 max-w-[1440px] mx-auto w-full">
-          {/* Header Banner info if in special tab */}
-          {currentTab === 'jenjang' && (
-            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
-              <div className="flex items-center space-x-2.5 mb-3">
-                <BookOpen className="w-5 h-5 text-blue-600" />
-                <h3 className="font-headline font-bold text-lg text-slate-900">Pilih Jenjang Pendidikan</h3>
-              </div>
-              <p className="text-xs text-slate-600 mb-4">
-                Pilih jenjang sekolah untuk menyaring kurikulum edukasi keselamatan yang sesuai dengan tahapan usia peserta didik.
-              </p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {[
-                  { lvl: 'TK/PAUD' as EducationLevel, label: 'TK / PAUD', desc: 'Usia Dini & Pengenalan', color: 'border-emerald-200 bg-emerald-50/60 text-emerald-950 hover:bg-emerald-100/70' },
-                  { lvl: 'SD' as EducationLevel, label: 'Sekolah Dasar (SD)', desc: 'Etika & Rambu Lalu Lintas', color: 'border-red-200 bg-red-50/60 text-red-950 hover:bg-red-100/70' },
-                  { lvl: 'SMP' as EducationLevel, label: 'Sekolah Menengah Pertama', desc: 'Etika Siber & Bullying', color: 'border-blue-200 bg-blue-50/60 text-blue-950 hover:bg-blue-100/70' },
-                  { lvl: 'SMA' as EducationLevel, label: 'SMA / SMK / Sederajat', desc: 'Anti Narkoba & SIM C', color: 'border-slate-300 bg-slate-100 text-slate-950 hover:bg-slate-200/70' },
-                ].map((item) => (
-                  <button
-                    key={item.lvl}
-                    onClick={() => setSelectedLevel(item.lvl)}
-                    className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${item.color} ${selectedLevel === item.lvl ? 'ring-2 ring-[#0a1d37]' : ''}`}
-                  >
-                    <span className="font-bold text-xs block">{item.label}</span>
-                    <span className="text-[11px] opacity-75 mt-0.5 block">{item.desc}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {currentTab === 'favorit' && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <Sparkles className="w-5 h-5 text-amber-600" />
-                <div>
-                  <h3 className="font-bold text-sm text-amber-950">Materi Favorit Tersimpan</h3>
-                  <p className="text-xs text-amber-800">Daftar panduan keselamatan yang telah Anda tandai untuk akses cepat.</p>
-                </div>
-              </div>
-              <button
-                onClick={() => handleSelectTab('katalog')}
-                className="text-xs text-blue-700 font-semibold hover:underline"
-              >
-                Lihat Semua Katalog
-              </button>
-            </div>
-          )}
-
-          {currentTab === 'riwayat' && (
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-sm text-blue-950">Riwayat Pembelajaran Terakhir</h3>
-                <p className="text-xs text-blue-800">Lanjutkan materi edukasi yang baru saja Anda buka.</p>
-              </div>
-              <button
-                onClick={() => handleSelectTab('katalog')}
-                className="text-xs text-blue-700 font-semibold hover:underline"
-              >
-                Katalog Lengkap
-              </button>
-            </div>
-          )}
-
-          {/* Page Header & Filter Controls */}
-          <FilterBar
-            currentLevel={selectedLevel}
-            onSelectLevel={setSelectedLevel}
-            currentType={selectedType}
-            onSelectType={setSelectedType}
-            sortBy={sortBy}
-            onSelectSort={setSortBy}
-            totalMaterialsCount={filteredMaterials.length}
-          />
-
-          {/* Empty State */}
-          {filteredMaterials.length === 0 && (
-            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center max-w-lg mx-auto my-8 shadow-xs">
-              <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4 text-slate-400">
-                <SearchX className="w-8 h-8" />
-              </div>
-              <h3 className="font-headline text-lg font-bold text-slate-800 mb-1">
-                Materi Tidak Ditemukan
-              </h3>
-              <p className="text-xs text-slate-500 mb-6">
-                Tidak ada materi keselamatan yang sesuai dengan kata kunci atau filter yang Anda pilih.
-              </p>
-              <button
-                onClick={() => {
-                  setSelectedLevel('ALL');
-                  setSelectedType('all');
-                  setSearchQuery('');
+        <main className="flex-1 mt-16 p-3 sm:p-6 md:p-10 pb-24 md:pb-12 space-y-6 sm:space-y-8 max-w-[1440px] mx-auto w-full overflow-x-hidden">
+          {/* 1. CONTENT AUTHORING WORKSPACE (FULL PAGE AUTHORING) */}
+          {isAuthoringOpen ? (
+            <ContentAuthoringPage
+              initialData={editingMaterial}
+              onBack={() => {
+                setIsAuthoringOpen(false);
+                setEditingMaterial(null);
+              }}
+              onSave={handleSaveMaterial}
+              isReadOnly={!canEditMaterial && !canAddMaterial}
+            />
+          ) : selectedCourseDetail ? (
+            /* 2. COURSE DETAIL VIEW */
+            <CourseDetailPage
+              material={materials.find(m => m.id === selectedCourseDetail.id) || selectedCourseDetail}
+              allMaterials={learnerMaterials}
+              onBack={() => setSelectedCourseDetail(null)}
+              onStartLearning={handleStartLearning}
+              onToggleBookmark={handleToggleBookmark}
+              onDownload={handleDownload}
+              onOpenRelatedCourse={(rel) => handleOpenCourseDetail(rel)}
+              onEdit={(m) => handleOpenAuthoring(m)}
+              onDelete={(id) => handleDeleteMaterial(id)}
+              canEdit={canEditMaterial}
+              canDelete={canDeleteMaterial}
+              reviewMode={isExecutive}
+            />
+          ) : currentTab === 'beranda' ? (
+            /* 3. BERANDA DASHBOARD */
+            <BerandaPage
+              currentUser={currentUser}
+              currentRole={activeRole}
+              materials={learnerMaterials}
+              viewHistory={viewHistory}
+              onOpenMaterial={handleOpenCourseDetail}
+              onSelectTab={handleSelectTab}
+              onSelectLevel={setSelectedLevel}
+              onToggleBookmark={handleToggleBookmark}
+              canAdd={canAddMaterial}
+              canEdit={canEditMaterial}
+              canDelete={canDeleteMaterial}
+              onAddNewMaterial={() => handleOpenAuthoring(null)}
+              onEditMaterial={(m) => handleOpenAuthoring(m)}
+              onDeleteMaterial={handleDeleteMaterial}
+            />
+          ) : currentTab === 'learning' || currentTab === 'katalog' ? (
+            /* 4. LEARNING LIBRARY */
+            <LearningPage
+              materials={learnerMaterials}
+              selectedLevel={selectedLevel}
+              onSelectLevel={setSelectedLevel}
+              selectedType={selectedType}
+              onSelectType={setSelectedType}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              sortBy={sortBy}
+              onSelectSort={setSortBy}
+              onOpenCourseDetail={handleOpenCourseDetail}
+              onToggleBookmark={handleToggleBookmark}
+              canAdd={canAddMaterial}
+              onAddNewMaterial={() => handleOpenAuthoring(null)}
+              reviewMode={isExecutive}
+            />
+          ) : currentTab === 'my-learning' ? (
+            /* 5. MY LEARNING */
+            <MyLearningPage
+              materials={learnerMaterials}
+              viewHistory={viewHistory}
+              onOpenCourseDetail={handleOpenCourseDetail}
+              onStartLearning={handleStartLearning}
+              onToggleBookmark={handleToggleBookmark}
+              onNavigateToLearning={() => handleSelectTab('learning')}
+            />
+          ) : currentTab === 'progress' ? (
+            /* 6. CAPAIAN & SERTIFIKAT */
+            <ProgressPage
+              currentUser={currentUser}
+              materials={learnerMaterials}
+              onOpenCourseDetail={handleOpenCourseDetail}
+            />
+          ) : currentTab === 'trainer-outreach' ? (
+            /* TRAINER OUTREACH FIELD SESSIONS */
+            (activeRole.id === 'role-trainer' || activeRole.id === 'role-admin') ? (
+              <TrainerOutreachPage
+                currentUser={currentUser}
+                currentRole={activeRole}
+                materials={materials}
+                onOpenPresentationRoom={(ses) => {
+                  setActivePresentationSession(ses);
+                  setCurrentTab('presentation-room');
                 }}
-                className="bg-[#0a1d37] hover:bg-[#162c4e] text-white px-5 py-2.5 rounded-lg text-xs font-semibold transition-all cursor-pointer"
-              >
-                Reset Semua Filter
-              </button>
-            </div>
-          )}
-
-          {/* Bento Grid Content */}
-          {filteredMaterials.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-              {/* Featured 8-Column Card (Pedoman Keselamatan Berlalu Lintas untuk Anak Usia Dini) */}
-              {featuredItem && (
-                <MaterialCardFeatured
-                  material={featuredItem}
-                  onOpen={handleOpenMaterial}
-                  onToggleBookmark={handleToggleBookmark}
-                />
-              )}
-
-              {/* Standard 4-Column Cards (Cyberbullying & Narkoba) */}
-              {standardItems.map((item) => (
-                <MaterialCardStandard
-                  key={item.id}
-                  material={item}
-                  onOpen={handleOpenMaterial}
-                  onToggleBookmark={handleToggleBookmark}
-                  onDownloadAction={(id, e) => handleDownload(id, e)}
-                />
-              ))}
-
-              {/* Compact 4-Column Horizontal Cards (Polisi Sahabat Anak, Kuis, Bersepeda) */}
-              {compactItems.map((item) => (
-                <MaterialCardCompact
-                  key={item.id}
-                  material={item}
-                  onOpen={handleOpenMaterial}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Load More Button */}
-          {visibleCount < filteredMaterials.length && (
-            <div className="flex justify-center pt-8 pb-4">
-              <button
-                id="btn-load-more"
-                onClick={handleLoadMore}
-                disabled={isLoadingMore}
-                className="px-6 py-3 border-2 border-[#0a1d37] text-[#0a1d37] hover:bg-[#0a1d37] hover:text-white rounded-lg font-semibold text-sm transition-all duration-200 flex items-center space-x-2.5 shadow-2xs hover:shadow-md active:scale-95 cursor-pointer"
-              >
-                <RefreshCw className={`w-4 h-4 ${isLoadingMore ? 'animate-spin' : ''}`} />
-                <span>{isLoadingMore ? 'Memuat Konten...' : 'Muat Lebih Banyak'}</span>
-              </button>
-            </div>
+                onOpenReportModal={(ses) => setActiveReportSession(ses)}
+              />
+            ) : (
+              <ForbiddenPage
+                onBackToHome={() => setCurrentTab(homeTab)}
+                requiredMenu="Kegiatan Lapangan & Sosialisasi"
+                roleName={activeRole.name}
+              />
+            )
+          ) : currentTab === 'presentation-room' && activePresentationSession ? (
+            /* PRESENTATION ROOM */
+            (activeRole.id === 'role-trainer' || activeRole.id === 'role-admin') ? (
+              <PresentationRoom
+                session={activePresentationSession}
+                onBack={() => {
+                  setActivePresentationSession(null);
+                  setCurrentTab('trainer-outreach');
+                }}
+                onOpenReportModal={(ses) => setActiveReportSession(ses)}
+                onOpenCourseMaterial={(matId) => {
+                  const target = materials.find(m => m.id === matId);
+                  if (target) handleOpenCourseDetail(target);
+                }}
+              />
+            ) : (
+              <ForbiddenPage
+                onBackToHome={() => setCurrentTab(homeTab)}
+                requiredMenu="Ruang Presentasi Lapangan"
+                roleName={activeRole.name}
+              />
+            )
+          ) : currentTab === 'public-portal' ? (
+            /* PUBLIC LEARNING PORTAL — citizen-facing, not a pimpinan surface */
+            isExecutive ? (
+              <ForbiddenPage
+                onBackToHome={() => setCurrentTab(homeTab)}
+                requiredMenu="Portal Edukasi Publik"
+                roleName={activeRole.name}
+              />
+            ) : (
+              <PublicLearningPortal
+                onOpenSessionJoin={(code) => {
+                  setPublicSessionCode(code || '');
+                  setCurrentTab('public-session');
+                }}
+                onOpenCourseDetail={handleOpenCourseDetail}
+              />
+            )
+          ) : currentTab === 'public-session' ? (
+            /* PUBLIC SESSION PARTICIPANT VIEW */
+            <PublicSessionView
+              initialCode={publicSessionCode || ''}
+              onBackToPortal={() => {
+                setPublicSessionCode(null);
+                setCurrentTab('public-portal');
+              }}
+            />
+          ) : currentTab === 'executive' ? (
+            /* 7. EKSEKUTIF DASHBOARD */
+            (isExecutive || activeRole.id === 'role-admin') ? (
+              <ExecutiveDashboardPage
+                materials={materials}
+                authHeaders={getAuthHeaders()}
+              />
+            ) : (
+              <ForbiddenPage
+                onBackToHome={() => setCurrentTab(homeTab)}
+                requiredMenu="Dashboard Eksekutif"
+                roleName={activeRole.name}
+              />
+            )
+          ) : currentTab === 'content-management' ? (
+            /* 8. KELOLA KONTEN & SILABUS */
+            canAccessContentManagement ? (
+              <ContentManagementPage
+                materials={materials}
+                onAddNewMaterial={() => handleOpenAuthoring(null)}
+                onEditMaterial={(m) => handleOpenAuthoring(m)}
+                onDeleteMaterial={handleDeleteMaterial}
+                onOpenCourseDetail={handleOpenCourseDetail}
+                canAdd={canAddMaterial}
+                canEdit={canEditMaterial}
+                canDelete={canDeleteMaterial}
+              />
+            ) : (
+              <ForbiddenPage
+                onBackToHome={() => setCurrentTab(homeTab)}
+                requiredMenu="Kelola Konten & Silabus"
+                roleName={activeRole.name}
+              />
+            )
+          ) : currentTab === 'reports' ? (
+            /* 9. PUSAT LAPORAN & EKSPOR DATA */
+            canAccessReports ? (
+              <ReportsPage
+                materials={materials}
+                users={userAccounts}
+                roles={userRoles}
+                currentRole={activeRole}
+                currentUser={currentUser}
+              />
+            ) : (
+              <ForbiddenPage
+                onBackToHome={() => setCurrentTab(homeTab)}
+                requiredMenu="Pusat Laporan & Data Ekspor"
+                roleName={activeRole.name}
+              />
+            )
+          ) : currentTab === 'user-akses' ? (
+            /* 10. USER AKSES & RBAC */
+            canAccessUserAkses ? (
+              <UserAccessPage
+                users={userAccounts}
+                roles={userRoles}
+                onUpdateUsers={handleUpdateUsers}
+                onUpdateRoles={handleUpdateRoles}
+                materialsCount={materials.length}
+              />
+            ) : (
+              <ForbiddenPage
+                onBackToHome={() => setCurrentTab(homeTab)}
+                requiredMenu="Manajemen Akses Pengguna & RBAC"
+                roleName={activeRole.name}
+              />
+            )
+          ) : currentTab === 'profile' ? (
+            /* 10. PROFIL PENGGUNA */
+            <ProfilePage
+              currentUser={currentUser}
+              currentRole={activeRole}
+              onLogout={() => {
+                setIsLoggedIn(false);
+                setCurrentUser(null);
+                sessionStorage.removeItem('isLoggedIn');
+                sessionStorage.removeItem('currentUser');
+              }}
+              onUpdateCurrentUserFullName={(newName) => {
+                setCurrentUser((prev: any) => {
+                  if (!prev) return prev;
+                  const updated = {
+                    ...prev,
+                    user: { ...prev.user, fullName: newName },
+                    fullName: newName,
+                  };
+                  sessionStorage.setItem('currentUser', JSON.stringify(updated));
+                  return updated;
+                });
+                addToast('success', 'Profil Diperbarui', 'Nama tampilan akun berhasil disimpan.');
+              }}
+            />
+          ) : (
+            <LearningPage
+              materials={learnerMaterials}
+              selectedLevel={selectedLevel}
+              onSelectLevel={setSelectedLevel}
+              selectedType={selectedType}
+              onSelectType={setSelectedType}
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              sortBy={sortBy}
+              onSelectSort={setSortBy}
+              onOpenCourseDetail={handleOpenCourseDetail}
+              onToggleBookmark={handleToggleBookmark}
+              canAdd={canAddMaterial}
+              onAddNewMaterial={() => handleOpenAuthoring(null)}
+              reviewMode={isExecutive}
+            />
           )}
         </main>
       </div>
 
-      {/* Interactive Learn & Quiz Modal */}
-      {activeMaterial && (
-        <LearnModal
-          material={activeMaterial}
-          onClose={() => setActiveMaterial(null)}
-          onToggleBookmark={handleToggleBookmark}
-          onDownload={handleDownload}
+      {/* FULL-SCREEN IMMERSIVE FOCUS LEARNING MODE */}
+      {activeFocusMaterial && (
+        <LearningFocusMode
+          material={materials.find(m => m.id === activeFocusMaterial.id) || activeFocusMaterial}
+          onExit={() => setActiveFocusMaterial(null)}
+          reviewMode={isExecutive}
+          onCompleteCourse={() => {
+            if (isExecutive) {
+              addToast('info', 'Peninjauan Selesai', `Seluruh silabus ${activeFocusMaterial.title} selesai ditinjau.`);
+              setActiveFocusMaterial(null);
+              return;
+            }
+            handleUpdateProgress(activeFocusMaterial.id, 100, 'completed');
+            addToast('success', 'Kursus Diselesaikan', `Selamat! Anda telah menyelesaikan seluruh silabus ${activeFocusMaterial.title}.`);
+            setActiveFocusMaterial(null);
+          }}
+          onOpenQuiz={() => {
+            setActiveQuizMaterial(activeFocusMaterial);
+          }}
+          // A pimpinan inspecting a module is not enrolled in it — recording their
+          // reading as learner progress would pollute their own capaian record.
+          onProgressUpdate={(lessonId, percent) => {
+            if (isExecutive) return;
+            handleUpdateProgress(
+              activeFocusMaterial.id,
+              percent,
+              percent >= 100 ? 'completed' : 'in_progress',
+              lessonId
+            );
+          }}
         />
       )}
 
-      {/* Help Modal */}
+      {/* INTERACTIVE QUIZ EVALUATION EXPERIENCE */}
+      {activeQuizMaterial && (
+        <QuizExperience
+          material={materials.find(m => m.id === activeQuizMaterial.id) || activeQuizMaterial}
+          onExit={() => setActiveQuizMaterial(null)}
+          onFinishQuiz={(score, answers) => {
+            const passed = score >= 70;
+            // Optimistic update
+            handleUpdateProgress(activeQuizMaterial.id, passed ? 100 : 75, passed ? 'completed' : 'in_progress');
+
+            // Persistent sync to server learning records.
+            // Server re-scores from `answers` (never trusts the client score),
+            // so the answer map must be sent or the attempt is graded 0.
+            fetch('/api/quiz/submit', {
+              method: 'POST',
+              headers: getAuthHeaders(),
+              body: JSON.stringify({
+                materialId: activeQuizMaterial.id,
+                answers,
+                score,
+                passingGrade: 70,
+              }),
+            })
+              .then(res => res.json())
+              .then(() => {
+                // Refresh materials data
+                fetch('/api/materials', { headers: getAuthHeaders() })
+                  .then(r => r.json())
+                  .then(data => {
+                    if (data.success && Array.isArray(data.data)) {
+                      setMaterials(data.data);
+                    }
+                  })
+                  .catch(() => {});
+              })
+              .catch(() => {});
+
+            if (passed) {
+              addToast('success', 'Ujian Lulus & Sertifikat Terbit', `Skor Anda: ${score}%. Sertifikat kelulusan dapat diakses di menu Capaian & Sertifikat.`);
+            } else {
+              addToast('warning', 'Evaluasi Remedial', `Skor Anda: ${score}%. Silakan pelajari kembali modul untuk memperbarui nilai.`);
+            }
+            setActiveQuizMaterial(null);
+          }}
+        />
+      )}
+
+      {/* HELP MODAL */}
       {showHelpModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
@@ -393,12 +1019,12 @@ export default function App() {
                 <p className="text-blue-800">Hubungi layanan kepolisian bebas pulsa 24 jam untuk laporan kedaruratan atau konsultasi kamtibmas.</p>
               </div>
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <h4 className="font-bold text-slate-900 text-sm mb-1">Cara Mengakses & Mengunduh Materi</h4>
-                <p>Klik tombol "Mulai Belajar" atau "Lihat" pada modul untuk membuka video interaktif, rangkuman, kuis, dan mengunduh berkas PDF resmi.</p>
+                <h4 className="font-bold text-slate-900 text-sm mb-1">Alur Pembelajaran & Uji Kompetensi</h4>
+                <p>Pilih materi di <strong>Learning Library</strong>, buka <strong>Course Detail</strong> untuk mempelajari silabus, masuk ke <strong>Focus Learning Mode</strong>, dan selesaikan <strong>Kuis Interaktif</strong> untuk menerbitkan sertifikat resmi.</p>
               </div>
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <h4 className="font-bold text-slate-900 text-sm mb-1">Sertifikasi & Evaluasi Siswa</h4>
-                <p>Kerjakan kuis 15 butir soal di setiap modul untuk menguji pemahaman dan mendapatkan status kelulusan materi keselamatan.</p>
+                <h4 className="font-bold text-slate-900 text-sm mb-1">Penerbitan Sertifikat Kelulusan</h4>
+                <p>Setelah lulus kuis dengan nilai minimum 70%, buka menu <strong>Capaian & Sertifikat</strong> untuk mengunduh dokumen transkrip dan sertifikat digital Anda.</p>
               </div>
             </div>
             <div className="pt-2 flex justify-end">
@@ -413,12 +1039,12 @@ export default function App() {
         </div>
       )}
 
-      {/* About Modal */}
+      {/* ABOUT MODAL */}
       {showAboutModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="font-headline text-lg font-bold text-slate-900">Tentang E-Learning Safety Education</h3>
+              <h3 className="font-headline text-lg font-bold text-slate-900">Tentang SM-Learning Dikmas Lantas POLRI</h3>
               <button
                 onClick={() => setShowAboutModal(false)}
                 className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
@@ -428,12 +1054,12 @@ export default function App() {
             </div>
             <div className="space-y-3 text-xs text-slate-600">
               <p className="leading-relaxed">
-                Platform <strong>E-Learning Safety Education POLRI</strong> merupakan inisiatif digital nasional dari <strong>Korlantas POLRI</strong> dan <strong>Ditbinmas POLRI</strong> untuk menanamkan budaya tertib berlalu lintas, kesadaran keamanan digital, serta pencegahan kenakalan remaja sejak dini.
+                Platform <strong>SM-Learning (Safety & Moral Learning) Dikmas Lantas POLRI</strong> merupakan ekosistem pendidikan digital modern yang dirancang oleh <strong>Korlantas POLRI</strong> bersama <strong>Ditbinmas POLRI</strong> guna menanamkan pemahaman etika berlalu lintas, kesadaran hukum, dan pencegahan kenakalan remaja di seluruh jenjang pendidikan nasional.
               </p>
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5">
-                <p><strong>Penyelenggara:</strong> Kepolisian Negara Republik Indonesia</p>
-                <p><strong>Sasaran:</strong> Peserta Didik TK/PAUD, SD, SMP, SMA & Pengajar</p>
-                <p><strong>Versi Sistem:</strong> v2.4.0-Production (2026)</p>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                <div className="font-bold text-slate-800 text-xs">Informasi Versi Sistem:</div>
+                <div className="text-[11px] text-slate-500">Versi: 2.5.0 Enterprise E-Learning Edition</div>
+                <div className="text-[11px] text-slate-500">Arsitektur: React 19 + Express Engine + RBAC Engine</div>
               </div>
             </div>
             <div className="pt-2 flex justify-end">
@@ -448,11 +1074,40 @@ export default function App() {
         </div>
       )}
 
-      {/* Real-time Toast Notifications */}
-      <Toast toasts={toasts} onDismiss={removeToast} />
+      {/* OUTREACH ACTIVITY REPORT & CLOSURE MODAL */}
+      {activeReportSession && (
+        <ActivityReportModal
+          session={activeReportSession}
+          authHeaders={getAuthHeaders()}
+          onClose={() => setActiveReportSession(null)}
+          onSuccess={() => {
+            setActiveReportSession(null);
+            addToast('success', 'Laporan Berhasil Disimpan', 'Kegiatan pemaparan telah diselesaikan dan berita acara diterbitkan.');
+            // Switch to outreach tab
+            setCurrentTab('trainer-outreach');
+          }}
+        />
+      )}
 
-      {/* Ask AI Floating Widget */}
-      <AskAiWidget />
+      {/* ASK AI FLOATING COPILOT WIDGET */}
+      <AskAiWidget
+        materials={materials}
+        onSelectMaterial={handleOpenCourseDetail}
+      />
+
+      {/* MOBILE BOTTOM NAVIGATION */}
+      <BottomNav
+        currentTab={currentTab}
+        onSelectTab={handleSelectTab}
+        currentRole={activeRole}
+        canAccessContentManagement={canAccessContentManagement}
+        canAccessReports={canAccessReports}
+        isExecutive={isExecutive}
+        isTrainer={activeRole.id === 'role-trainer' || activeRole.id === 'role-admin'}
+      />
+
+      {/* TOAST SYSTEM */}
+      <Toast toasts={toasts} onDismiss={(id) => removeToast(id)} />
     </div>
   );
 }

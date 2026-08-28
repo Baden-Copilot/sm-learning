@@ -1,0 +1,71 @@
+================================================================================
+RINGKASAN & DOKUMENTASI SISTEM E-LEARNING DIKMAS LANTAS POLRI
+Update Terakhir : 28 Agustus 2026
+Akses Server    : http://localhost:4003/
+Teknologi       : React 19, TypeScript, Tailwind CSS 4, Express 4, Vite 6, tsx
+================================================================================
+
+1. ROLE PENGGUNA & FITUR UTAMA
+--------------------------------------------------------------------------------
+A. PUBLIK / MASYARAKAT UMUM
+   - Portal Edukasi Publik (/umum): Akses modul edukasi tanpa login, tracking modul selesai di cache.
+   - Live Room Peserta (/public/session/:code): Gabung sesi penyuluhan lewat kode / QR, baca materi, kerjakan kuis evaluasi.
+   - Sertifikat Instan: Otomatis terbit dan bisa diunduh setelah lulus kuis (>=70%) atau selesai membaca materi.
+   - Alesha AI: Asisten AI interaktif untuk tanya jawab aturan lalu lintas dan keselamatan berkendara.
+
+B. SISWA / PERSONEL POLRI
+   - Beranda Edukasi: Ringkasan progres, materi rekomendasi, dan spotlight "Lanjutkan Belajar".
+   - Katalog Materi: Modul lengkap TK/PAUD, SD, SMP, SMA (Video, PDF/Modul, Infografis, Kuis).
+   - Ruang Belajar Fokus: Mode baca terfokus, zoom dokumen, video player, dan kuis in-flow.
+   - My Learning & Capaian: Riwayat modul aktif, selesai, bookmark favorit, dan unduh sertifikat resmi.
+
+C. TRAINER / INSTRUKTUR DIKMAS
+   - Syarat Buat Sesi (Competency Gate): Instruktur wajib lulus materi terlebih dahulu sebelum bisa memaparkannya ke publik.
+   - Authoring Workspace & Kuis: Buat/edit materi 5 langkah (Info, Silabus, Setting, Metadata, Preview) + Kuis Builder.
+   - Sesi Pemaparan Lapangan: Buat sesi baru, bagikan kode akses / QR, dan buka Ruang Presentasi Live dengan preview materi.
+   - Laporan Kegiatan (Berita Acara): Tutup sesi, konfirmasi jumlah peserta fisik, input catatan, dan upload foto bukti lapangan.
+   - Hasil Kegiatan & Cetak Sertifikat: Preview hasil interaksi, tabel nilai peserta, cetak sertifikat perorangan, dan Cetak Semua (Batch Print A4 Landscape).
+
+D. EKSEKUTIF / PIMPINAN POLRI (Kapolda / Kapolres / Kakorlantas)
+   - Eksekutif Dashboard: Dashboard analitik makro (bebas form input dan tanpa tombol mulai belajar).
+   - Penilaian KPI Wilayah: Scorecard & ranking otomatis untuk Polda, Polres, dan Trainer (Bobot: Aktivitas, Jangkauan, Kelulusan, Disiplin Laporan).
+   - Monitoring Blank Spot: Daftar Polda/Polres yang pasif (belum ada kegiatan).
+   - Detail Kegiatan Lapangan: Drilldown ke setiap sesi penyuluhan (foto bukti, sebaran nilai, tingkat partisipasi, berita acara).
+
+E. SUPER ADMIN / SUPERUSER
+   - Kelola Pengguna: Tambah, edit, nonaktifkan akun, dan reset password.
+   - Matriks Hak Akses (RBAC): Atur izin View, Add, Edit, Delete per menu untuk setiap role.
+   - Audit Log & Ekspor Laporan: Rekam jejak aktivitas sistem dan ekspor data ke file CSV.
+
+
+2. SISTEM SERTIFIKAT DIGITAL & CETAK
+--------------------------------------------------------------------------------
+- Format Dokumen: Standar resmi A4 Landscape, siap cetak atau Save as PDF tanpa library berat.
+- Ornamen Resmi:
+  * Logo POLRI (kiri) & Logo Korlantas (kanan) berformat Base64 (tampil offline).
+  * Watermark Korlantas halus di latar belakang.
+  * Cap Dinas "DIKMAS KORLANTAS POLRI" besar di tengah dokumen.
+  * Nomor registrasi resmi (POLRI/DIKMAS/2026/000001), QR Seal verifikasi, dan badge tanda tangan elektronik.
+- Batch Print (Cetak Massal):
+  * URL: /api/outreach/sessions/:sessionId/certificates/batch-print
+  * Menghasilkan multi-halaman langsung untuk seluruh peserta yang lulus dalam satu klik.
+
+
+3. STRUKTUR PENYIMPANAN DATA (JSON DB)
+--------------------------------------------------------------------------------
+- data/materials.json          : Data modul, pelajaran, video, infografis, dan kuis.
+- data/user-data.json          : Akun pengguna, role, dan matriks izin RBAC.
+- data/outreach-sessions.json  : Sesi penyuluhan lapangan (status aktif/closed, kode akses, wilayah).
+- data/learning-records.json   : Nilai kuis, progres belajar, dan database sertifikat terbit.
+- data/learning-events.json    : Log interaksi real-time (join session, view materi, kuis).
+- data/outreach-reports.json   : Berita acara laporan kegiatan resmi dan foto dokumentasi.
+- data/session-participants.json: Data peserta yang hadir pada sesi penyuluhan.
+
+
+4. AKUN DEFAULT UNTUK TESTING
+--------------------------------------------------------------------------------
+1. Super Admin : superadmin / admin123  (Hak akses penuh sistem & user)
+2. Trainer     : trainer1 / trainer123  (Instruktur pemaparan & penyusun materi)
+3. Eksekutif   : eksekutif / eksekutif123 (Pimpinan POLRI / evaluasi KPI)
+4. Siswa       : user1 / 123456        (Peserta didik / personel belajar)
+================================================================================

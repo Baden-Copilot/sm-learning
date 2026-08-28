@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, FileText, Video, Eye, Download, ChevronRight, Bookmark } from 'lucide-react';
+import { BarChart3, FileText, Video, Eye, Download, ChevronRight, Bookmark, Pencil, Trash2 } from 'lucide-react';
 import { MaterialItem } from '../types';
 
 interface MaterialCardStandardProps {
@@ -7,6 +7,10 @@ interface MaterialCardStandardProps {
   onOpen: (material: MaterialItem) => void;
   onToggleBookmark: (id: string, e: React.MouseEvent) => void;
   onDownloadAction?: (id: string, e: React.MouseEvent) => void;
+  canEdit?: boolean;
+  canDelete?: boolean;
+  onEdit?: (material: MaterialItem) => void;
+  onDelete?: (id: string) => void;
 }
 
 export const MaterialCardStandard: React.FC<MaterialCardStandardProps> = ({
@@ -14,6 +18,10 @@ export const MaterialCardStandard: React.FC<MaterialCardStandardProps> = ({
   onOpen,
   onToggleBookmark,
   onDownloadAction,
+  canEdit,
+  canDelete,
+  onEdit,
+  onDelete,
 }) => {
   const getBadgeColor = (level: string) => {
     switch (level) {
@@ -62,19 +70,47 @@ export const MaterialCardStandard: React.FC<MaterialCardStandardProps> = ({
           {material.badgeTag || material.level}
         </div>
 
-        {/* Favorite/Bookmark Toggle */}
-        <button
-          onClick={(e) => onToggleBookmark(material.id, e)}
-          className={`absolute top-4 right-4 p-2 rounded-full backdrop-blur-md transition-colors ${
-            material.bookmarked 
-              ? 'bg-amber-400 text-slate-900 shadow-md' 
-              : 'bg-black/35 text-white hover:bg-black/50'
-          }`}
-          title="Simpan ke favorit"
-          aria-label="Simpan ke favorit"
-        >
-          <Bookmark className={`w-3.5 h-3.5 ${material.bookmarked ? 'fill-current' : ''}`} />
-        </button>
+        {/* Controls Overlay */}
+        <div className="absolute top-4 right-4 flex items-center space-x-1.5 z-10">
+          {canEdit && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit?.(material);
+              }}
+              className="p-1.5 rounded-full bg-white/90 text-slate-800 hover:bg-white shadow-md hover:text-blue-600 transition-all cursor-pointer"
+              title="Edit Materi"
+            >
+              <Pencil className="w-3 h-3" />
+            </button>
+          )}
+
+          {canDelete && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete?.(material.id);
+              }}
+              className="p-1.5 rounded-full bg-white/90 text-slate-800 hover:bg-white shadow-md hover:text-red-600 transition-all cursor-pointer"
+              title="Hapus Materi"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          )}
+
+          <button
+            onClick={(e) => onToggleBookmark(material.id, e)}
+            className={`p-1.5 rounded-full backdrop-blur-md transition-colors cursor-pointer ${
+              material.bookmarked
+                ? 'bg-amber-400 text-slate-900 shadow-md'
+                : 'bg-black/35 text-white hover:bg-black/50'
+            }`}
+            title="Simpan ke favorit"
+            aria-label="Simpan ke favorit"
+          >
+            <Bookmark className={`w-3.5 h-3.5 ${material.bookmarked ? 'fill-current' : ''}`} />
+          </button>
+        </div>
       </div>
 
       {/* Content Body */}

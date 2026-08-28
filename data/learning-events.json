@@ -1,0 +1,129 @@
+[
+  {
+    "id": "evt-1787878410323",
+    "sessionId": "SES-2026-685589",
+    "participantId": "part-1787878410322-zpmf",
+    "materialId": "mat-sma-01",
+    "eventType": "join_session",
+    "details": {
+      "name": "Ferdiansah",
+      "place": "SMK 1 JAKARTA SELATAN"
+    },
+    "timestamp": "2026-08-28T00:53:30.322Z"
+  },
+  {
+    "id": "evt-1787878410339-zow",
+    "sessionId": "SES-2026-685589",
+    "participantId": "part-1787878410322-zpmf",
+    "userId": null,
+    "materialId": "mat-sma-01",
+    "eventType": "material_view",
+    "details": {
+      "initial": true
+    },
+    "timestamp": "2026-08-28T00:53:30.339Z"
+  },
+  {
+    "id": "evt-1787878410357-m0h",
+    "sessionId": "SES-2026-685589",
+    "participantId": "part-1787878410322-zpmf",
+    "userId": null,
+    "materialId": "mat-sma-01",
+    "eventType": "lesson_view",
+    "details": {
+      "lessonId": "les-sma-1",
+      "lessonTitle": "Klasifikasi Narkoba & Modus Peredaran Baru"
+    },
+    "timestamp": "2026-08-28T00:53:30.357Z"
+  },
+  {
+    "id": "evt-1787878414109-v4w",
+    "sessionId": "SES-2026-685589",
+    "participantId": "part-1787878410322-zpmf",
+    "userId": null,
+    "materialId": "mat-sma-01",
+    "eventType": "lesson_view",
+    "details": {
+      "lessonId": "les-sma-2",
+      "lessonTitle": "Dampak Medis Kerusakan Otak & Saraf"
+    },
+    "timestamp": "2026-08-28T00:53:34.109Z"
+  },
+  {
+    "id": "evt-1787878414660-w6y",
+    "sessionId": "SES-2026-685589",
+    "participantId": "part-1787878410322-zpmf",
+    "userId": null,
+    "materialId": "mat-sma-01",
+    "eventType": "lesson_view",
+    "details": {
+      "lessonId": "les-sma-3",
+      "lessonTitle": "Konsekuensi Pidana Perkelahian Berkelompok"
+    },
+    "timestamp": "2026-08-28T00:53:34.660Z"
+  },
+  {
+    "id": "evt-1787878415470-g08",
+    "sessionId": "SES-2026-685589",
+    "participantId": "part-1787878410322-zpmf",
+    "userId": null,
+    "materialId": "mat-sma-01",
+    "eventType": "lesson_view",
+    "details": {
+      "lessonId": "les-sma-4",
+      "lessonTitle": "Evaluasi Akhir Pemahaman Anti-Narkoba"
+    },
+    "timestamp": "2026-08-28T00:53:35.469Z"
+  },
+  {
+    "id": "evt-1787878417041-0iq",
+    "sessionId": "SES-2026-685589",
+    "participantId": "part-1787878410322-zpmf",
+    "userId": null,
+    "materialId": "mat-sma-01",
+    "eventType": "quiz_start",
+    "details": {
+      "materialId": "mat-sma-01"
+    },
+    "timestamp": "2026-08-28T00:53:37.041Z"
+  },
+  {
+    "id": "evt-1787878421022-aab",
+    "sessionId": "SES-2026-685589",
+    "participantId": "part-1787878410322-zpmf",
+    "userId": null,
+    "materialId": "mat-sma-01",
+    "eventType": "lesson_view",
+    "details": {
+      "lessonId": "les-sma-4",
+      "lessonTitle": "Evaluasi Akhir Pemahaman Anti-Narkoba"
+    },
+    "timestamp": "2026-08-28T00:53:41.022Z"
+  },
+  {
+    "id": "evt-1787878426841-efr",
+    "sessionId": "SES-2026-685589",
+    "participantId": "part-1787878410322-zpmf",
+    "userId": null,
+    "materialId": "mat-sma-01",
+    "eventType": "quiz_start",
+    "details": {
+      "materialId": "mat-sma-01"
+    },
+    "timestamp": "2026-08-28T00:53:46.841Z"
+  },
+  {
+    "id": "evt-1787878431196",
+    "sessionId": "SES-2026-685589",
+    "participantId": "part-1787878410322-zpmf",
+    "materialId": "mat-sma-01",
+    "eventType": "quiz_completed",
+    "details": {
+      "score": 100,
+      "passed": true,
+      "correctCount": 1,
+      "totalQuestions": 1
+    },
+    "timestamp": "2026-08-28T00:53:51.170Z"
+  }
+]

@@ -1,0 +1,477 @@
+[
+  {
+    "id": "mat-sd-01",
+    "title": "Pedoman Keselamatan Berlalu Lintas untuk Anak Usia Dini",
+    "level": "SD",
+    "type": "video",
+    "typeLabel": "Video Edukasi",
+    "isNew": true,
+    "featured": true,
+    "size": "featured",
+    "badgeTag": "SD",
+    "publishStatus": "published",
+    "publicAccess": "allowed",
+    "description": "Modul interaktif yang mengajarkan dasar-dasar keselamatan di jalan raya, pengenalan rambu lalu lintas sederhana, dan cara menyeberang jalan yang aman.",
+    "imageUrl": "https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=800&q=80",
+    "imageAlt": "Pedoman Keselamatan Berlalu Lintas untuk Anak Usia Dini",
+    "metadataText": "12 Menit",
+    "views": 21,
+    "downloads": 0,
+    "readTime": "12 Menit",
+    "duration": "12:30",
+    "author": "Korlantas POLRI & Kemendikbudristek",
+    "publishDate": "15 Agustus 2026",
+    "downloadSize": "18.4 MB (PDF + Video Ringkasan)",
+    "progressPercent": 100,
+    "status": "completed",
+    "estimatedHours": 1.5,
+    "certificationAvailable": true,
+    "summary": "Materi ini dirancang khusus untuk mengajarkan etika berlalu lintas sejak dini. Mulai dari aturan menyeberang di Zebra Cross (4T: Tunggu, Tengok kanan, Tengok kiri, Tengok kanan lagi), mengenali warna lampu APILL, hingga kewajiban menggunakan helm SNI.",
+    "keyPoints": [
+      "Memahami arti warna lampu lalu lintas (Merah: Berhenti, Kuning: Bersiap/Hati-hati, Hijau: Berjalan)",
+      "Prinsip 4T saat menyeberang di Zebra Cross dan Jembatan Penyeberangan Orang (JPO)",
+      "Penggunaan helm berstandar SNI bagi anak saat dibonceng kendaraan roda dua",
+      "Etika berjalan di trotoar yang aman dan mengenali bahaya blind spot kendaraan besar"
+    ],
+    "modules": [
+      {
+        "id": "mod-1",
+        "title": "Modul 1: Pengenalan Lingkungan Jalan & Trotoar",
+        "lessons": [
+          {
+            "id": "les-1-1",
+            "title": "Mengenal Jalur Pejalan Kaki & Trotoar",
+            "duration": "03:15",
+            "type": "video",
+            "isCompleted": true
+          },
+          {
+            "id": "les-1-2",
+            "title": "Bahaya Bermain di Pinggir Jalan Raya",
+            "duration": "04:00",
+            "type": "reading",
+            "isCompleted": true
+          }
+        ]
+      },
+      {
+        "id": "mod-2",
+        "title": "Modul 2: Rambu APILL & Menyeberang Aman (4T)",
+        "lessons": [
+          {
+            "id": "les-2-1",
+            "title": "Warna Lampu Lalu Lintas dan Artinya",
+            "duration": "02:45",
+            "type": "video",
+            "isCompleted": true
+          },
+          {
+            "id": "les-2-2",
+            "title": "Praktek Menyeberang Metode 4T di Zebra Cross",
+            "duration": "05:10",
+            "type": "video",
+            "isCompleted": true
+          }
+        ]
+      },
+      {
+        "id": "mod-3",
+        "title": "Modul 3: Evaluasi & Uji Pemahaman",
+        "lessons": [
+          {
+            "id": "les-3-1",
+            "title": "Kuis Keselamatan Berlalu Lintas Dasar",
+            "duration": "05:00",
+            "type": "quiz",
+            "isCompleted": true
+          }
+        ]
+      }
+    ],
+    "quiz": [
+      {
+        "id": 1,
+        "question": "Apa arti dari warna lampu lalu lintas warna KUNING?",
+        "options": [
+          "Langsung tancap gas secepatnya",
+          "Hati-hati dan bersiap berhenti atau memperlambat laju",
+          "Boleh belok kiri sesuka hati",
+          "Kendaraan harus mematikan mesin"
+        ],
+        "correctIndex": 1,
+        "explanation": "Lampu kuning mengisyaratkan pengemudi untuk berhati-hati dan bersiap berhenti jika memungkinkan secara aman."
+      },
+      {
+        "id": 2,
+        "question": "Metode menyeberang jalan yang aman menurut edukasi Polisi Sahabat Anak adalah...",
+        "options": [
+          "Lari sekencang mungkin tanpa melihat",
+          "Metode 4T (Tunggu, Tengok kanan, Tengok kiri, Tengok kanan lagi)",
+          "Menyeberang sambil main ponsel",
+          "Menyeberang di tikungan tajam"
+        ],
+        "correctIndex": 1,
+        "explanation": "Metode 4T memastikan lintasan aman dari kendaraan sebelum dan selama menyeberang jalan."
+      },
+      {
+        "id": 3,
+        "question": "Mengapa anak wajib memakai helm SNI saat dibonceng sepeda motor?",
+        "options": [
+          "Agar terlihat bergaya",
+          "Melindungi kepala dari benturan saat terjadi hal darurat",
+          "Supaya tidak kena tilang kamera saja",
+          "Hanya jika bepergian jarak jauh"
+        ],
+        "correctIndex": 1,
+        "explanation": "Helm standar SNI dirancang untuk meredam benturan fatal pada kepala pengendara dan pembonceng."
+      }
+    ]
+  },
+  {
+    "id": "mat-smp-01",
+    "title": "Cerdas Bersosial Media: Pencegahan Cyberbullying & Kejahatan Siber Remaja",
+    "level": "SMP",
+    "type": "infografis",
+    "typeLabel": "Infografis",
+    "size": "standard",
+    "badgeTag": "SMP",
+    "publishStatus": "published",
+    "publicAccess": "allowed",
+    "description": "Panduan praktis bagi pelajar menengah untuk mengenali, mencegah, dan melaporkan tindakan perundungan siber dan perlindungan data pribadi.",
+    "imageUrl": "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80",
+    "imageAlt": "Cerdas Bersosial Media",
+    "metadataText": "5 Menit Baca",
+    "readTime": "5 Menit",
+    "views": 3,
+    "downloads": 0,
+    "author": "Dittipidsiber Bareskrim POLRI",
+    "publishDate": "10 Agustus 2026",
+    "downloadSize": "4.2 MB (Infografis HD)",
+    "progressPercent": 100,
+    "status": "completed",
+    "estimatedHours": 1,
+    "certificationAvailable": true,
+    "summary": "Infografis edukatif berisi panduan langkah demi langkah saat menghadapi cyberbullying, perlindungan privasi akun media sosial, pemahaman UU ITE yang relevan untuk pelajar, dan saluran aduan siber POLRI.",
+    "keyPoints": [
+      "Gunakan prinsip THINK (True, Helpful, Inspiring, Necessary, Kind) sebelum mengunggah konten",
+      "Lindungi kerahasiaan identitas: jangan bagikan lokasi real-time, nomor identitas, dan password",
+      "Tata cara pelaporan cyberbullying dan pemblokiran akun pelaku tanpa membalas dengan ujaran kebencian",
+      "Memahami batasan hukum UU ITE mengenai pencemaran nama baik dan manipulasi dokumen digital"
+    ],
+    "modules": [
+      {
+        "id": "mod-smp-1",
+        "title": "Modul 1: Literasi Digital & Prinsip THINK",
+        "lessons": [
+          {
+            "id": "les-smp-1",
+            "title": "Memahami Bentuk Cyberbullying di Media Sosial",
+            "duration": "03:00",
+            "type": "infografis",
+            "isCompleted": true
+          },
+          {
+            "id": "les-smp-2",
+            "title": "Penerapan Prinsip THINK Sebelum Posting",
+            "duration": "02:00",
+            "type": "reading",
+            "isCompleted": true
+          }
+        ]
+      },
+      {
+        "id": "mod-smp-2",
+        "title": "Modul 2: Perlindungan Privasi & Tindakan Hukum",
+        "lessons": [
+          {
+            "id": "les-smp-3",
+            "title": "Langkah Aduan ke Patroli Siber POLRI",
+            "duration": "04:00",
+            "type": "reading",
+            "isCompleted": true
+          },
+          {
+            "id": "les-smp-4",
+            "title": "Kuis Kesadaran Hukum Siber",
+            "duration": "05:00",
+            "type": "quiz",
+            "isCompleted": true
+          }
+        ]
+      }
+    ],
+    "quiz": [
+      {
+        "id": 1,
+        "question": "Prinsip huruf 'T' dalam konsep THINK saat berselancar di internet adalah...",
+        "options": [
+          "Trending",
+          "True (Apakah informasi ini benar/fakta)",
+          "Toxic",
+          "Time"
+        ],
+        "correctIndex": 1,
+        "explanation": "True berarti memverifikasi kebenaran informasi sebelum membagikannya."
+      },
+      {
+        "id": 2,
+        "question": "Jika Anda atau teman menjadi korban cyberbullying, tindakan terbaik pertama adalah...",
+        "options": [
+          "Membalas menyerang dengan cacian",
+          "Menyimpan bukti tangkapan layar, blokir pelaku, dan lapor guru/orang tua",
+          "Menghapus semua akun selamanya",
+          "Menyebarkan identitas pelaku ke publik"
+        ],
+        "correctIndex": 1,
+        "explanation": "Simpan bukti otentik dan laporkan kepada pihak berwenang atau orang dewasa terpercaya."
+      }
+    ]
+  },
+  {
+    "id": "mat-sma-01",
+    "title": "Bahaya Penyalahgunaan Narkoba & Pencegahan Tawuran Pelajar",
+    "level": "SMA",
+    "type": "modul",
+    "typeLabel": "Modul Pembelajaran",
+    "size": "standard",
+    "badgeTag": "SMA",
+    "publishStatus": "published",
+    "publicAccess": "allowed",
+    "description": "Materi komprehensif mengenai bahaya zat narkotika, psikotropika, konsekuensi pidana, serta strategi pembinaan karakter pelajar tangguh.",
+    "imageUrl": "https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?auto=format&fit=crop&w=800&q=80",
+    "imageAlt": "Bahaya Narkoba & Tawuran",
+    "metadataText": "12 Halaman",
+    "pageCount": 12,
+    "views": 2,
+    "downloads": 0,
+    "author": "Dittipid Narkoba Bareskrim & Binmas POLRI",
+    "publishDate": "02 Agustus 2026",
+    "downloadSize": "8.7 MB (Modul Lengkap PDF)",
+    "progressPercent": 100,
+    "status": "completed",
+    "estimatedHours": 2,
+    "certificationAvailable": true,
+    "summary": "Buku panduan lengkap pencegahan penyalahgunaan narkotika, zat adiktif, dan aksi kekerasan tawuran pelajar. Mengulas dampak fisik, psikologis, sosial, dan ancaman pidana hukum positif di Indonesia.",
+    "keyPoints": [
+      "Mengenali modus peredaran gelap narkoba di kalangan generasi muda dan pelajar",
+      "Dampak kerusakan permanen pada sistem saraf dan masa depan peserta didik",
+      "Konsekuensi sanksi pidana UU No. 35 Tahun 2009 tentang Narkotika",
+      "Peran konseling sebaya dan keterlibatan aktif dalam kegiatan ekstrakurikuler positif"
+    ],
+    "modules": [
+      {
+        "id": "mod-sma-1",
+        "title": "Modul 1: Bahaya Narkoba & Zat Adiktif",
+        "lessons": [
+          {
+            "id": "les-sma-1",
+            "title": "Klasifikasi Narkoba & Modus Peredaran Baru",
+            "duration": "06:00",
+            "type": "reading",
+            "isCompleted": true
+          },
+          {
+            "id": "les-sma-2",
+            "title": "Dampak Medis Kerusakan Otak & Saraf",
+            "duration": "08:00",
+            "type": "reading",
+            "isCompleted": true
+          }
+        ]
+      },
+      {
+        "id": "mod-sma-2",
+        "title": "Modul 2: Pencegahan Tawuran & Sanksi Hukum Pidana",
+        "lessons": [
+          {
+            "id": "les-sma-3",
+            "title": "Konsekuensi Pidana Perkelahian Berkelompok",
+            "duration": "07:00",
+            "type": "reading",
+            "isCompleted": true
+          },
+          {
+            "id": "les-sma-4",
+            "title": "Evaluasi Akhir Pemahaman Anti-Narkoba",
+            "duration": "10:00",
+            "type": "quiz",
+            "isCompleted": true
+          }
+        ]
+      }
+    ],
+    "quiz": [
+      {
+        "id": 1,
+        "question": "Undang-Undang Republik Indonesia yang mengatur tentang sanksi pidana narkotika adalah...",
+        "options": [
+          "UU No. 35 Tahun 2009",
+          "UU No. 22 Tahun 2009",
+          "UU No. 11 Tahun 2008",
+          "UU No. 14 Tahun 2005"
+        ],
+        "correctIndex": 0,
+        "explanation": "UU No. 35 Tahun 2009 mengatur komprehensif tentang Narkotika dan hukumannya."
+      }
+    ]
+  },
+  {
+    "id": "mat-paud-01",
+    "title": "Polisi Sahabat Anak: Pengenalan Rambu & Profesi Bhayangkara",
+    "level": "TK/PAUD",
+    "type": "video",
+    "typeLabel": "Video Edukasi",
+    "size": "compact",
+    "badgeTag": "TK/PAUD",
+    "publishStatus": "published",
+    "publicAccess": "allowed",
+    "description": "Animasi edukatif pengenalan tugas kepolisian dan tata tertib dasar keselamatan jalan untuk anak usia dini.",
+    "imageUrl": "https://images.unsplash.com/photo-1587654780291-39c9404d746b?auto=format&fit=crop&w=800&q=80",
+    "imageAlt": "Polisi Sahabat Anak",
+    "metadataText": "8 Menit",
+    "duration": "08:15",
+    "views": 1,
+    "downloads": 0,
+    "author": "Ditbinmas Baharkam POLRI",
+    "publishDate": "20 Juli 2026",
+    "progressPercent": 100,
+    "status": "completed",
+    "estimatedHours": 0.5,
+    "certificationAvailable": true,
+    "summary": "Pengenalan profesi polisi melalui lagu, dongeng, dan animasi yang ramah anak. Menumbuhkan rasa aman dan kedekatan anak-anak dengan aparat kepolisian saat membutuhkan bantuan di tempat umum.",
+    "modules": [
+      {
+        "id": "mod-paud-1",
+        "title": "Modul 1: Sahabat Polisi",
+        "lessons": [
+          {
+            "id": "les-paud-1",
+            "title": "Animasi Tugas Polisi Patroli",
+            "duration": "04:15",
+            "type": "video",
+            "isCompleted": true
+          },
+          {
+            "id": "les-paud-2",
+            "title": "Mengenal Rambu Lampu Merah Ceria",
+            "duration": "04:00",
+            "type": "video",
+            "isCompleted": true
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mat-sd-02",
+    "title": "Evaluasi Pemahaman Rambu & Marka Jalan Raya",
+    "level": "SD",
+    "type": "kuis",
+    "typeLabel": "Kuis & Evaluasi",
+    "size": "compact",
+    "badgeTag": "SD",
+    "publishStatus": "published",
+    "publicAccess": "allowed",
+    "description": "Tes interaktif pemahaman 10 jenis rambu larangan, peringatan, perintah, dan petunjuk untuk siswa sekolah dasar.",
+    "imageUrl": "https://images.unsplash.com/photo-1606326608606-aa0b62935f2b?auto=format&fit=crop&w=800&q=80",
+    "imageAlt": "Kuis Rambu",
+    "metadataText": "10 Pertanyaan",
+    "questionsCount": 10,
+    "views": 1,
+    "downloads": 0,
+    "author": "Korlantas POLRI",
+    "publishDate": "18 Juli 2026",
+    "progressPercent": 100,
+    "status": "completed",
+    "estimatedHours": 0.5,
+    "certificationAvailable": true,
+    "modules": [
+      {
+        "id": "mod-sd2-1",
+        "title": "Modul Evaluasi",
+        "lessons": [
+          {
+            "id": "les-sd2-1",
+            "title": "Uji Rambu Larangan & Perintah",
+            "duration": "10:00",
+            "type": "quiz",
+            "isCompleted": true
+          }
+        ]
+      }
+    ],
+    "quiz": [
+      {
+        "id": 1,
+        "question": "Rambu dengan lingkaran MERAH dan garis miring menunjukkan...",
+        "options": [
+          "Rambu Larangan",
+          "Rambu Petunjuk",
+          "Rambu Peringatan",
+          "Rambu Informasi"
+        ],
+        "correctIndex": 0,
+        "explanation": "Rambu lingkaran merah dengan garis silang/miring merupakan rambu larangan (misal: dilarang parkir, dilarang masuk)."
+      },
+      {
+        "id": 2,
+        "question": "Rambu berbentuk belah ketupat warna KUNING bergambar jalan berliku berfungsi sebagai...",
+        "options": [
+          "Peringatan bahaya / kondisi jalan",
+          "Perintah wajib belok",
+          "Petunjuk arah kota",
+          "Larangan melintas"
+        ],
+        "correctIndex": 0,
+        "explanation": "Warna dasar kuning menandakan rambu peringatan adanya potensi bahaya di depan."
+      }
+    ]
+  },
+  {
+    "id": "mat-smp-02",
+    "title": "Panduan Bersepeda Aman (Bike to School) Sesuai Standar Keselamatan",
+    "level": "SMP",
+    "type": "modul",
+    "typeLabel": "Modul Panduan",
+    "size": "compact",
+    "badgeTag": "SMP",
+    "publishStatus": "published",
+    "publicAccess": "allowed",
+    "description": "Kelengkapan wajib pesepeda pelajar: helm, lampu isyarat, marka jalur sepeda, dan etika berkendara di jalan umum.",
+    "imageUrl": "https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=800&q=80",
+    "imageAlt": "Panduan Bersepeda Aman",
+    "metadataText": "15 Halaman",
+    "pageCount": 15,
+    "views": 2,
+    "downloads": 0,
+    "author": "Subditkamsel Korlantas POLRI",
+    "publishDate": "05 Juli 2026",
+    "progressPercent": 100,
+    "status": "completed",
+    "estimatedHours": 1,
+    "certificationAvailable": true,
+    "summary": "Pedoman kelengkapan wajib bersepeda ke sekolah: pemakaian helm sepeda, penggunaan lampu depan-belakang, isyarat tangan saat berbelok, dan kepatuhan terhadap marka jalur khusus pesepeda.",
+    "modules": [
+      {
+        "id": "mod-smp2-1",
+        "title": "Modul 1: Kelengkapan Fisik & Keselamatan Sepeda",
+        "lessons": [
+          {
+            "id": "les-smp2-1",
+            "title": "Checklist Helm & Reflektor Sepeda",
+            "duration": "04:00",
+            "type": "reading",
+            "isCompleted": true
+          },
+          {
+            "id": "les-smp2-2",
+            "title": "Isyarat Tangan Saat Berbelok & Berhenti",
+            "duration": "05:00",
+            "type": "reading",
+            "isCompleted": true
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,29 @@
+[
+  {
+    "id": "SES-2026-685589",
+    "materialId": "mat-sma-01",
+    "materialTitle": "Bahaya Penyalahgunaan Narkoba & Pencegahan Tawuran Pelajar",
+    "trainerId": "user-2",
+    "trainerName": "Kompol Budi Santoso, S.H.",
+    "trainerPosition": "Kanit Dikyasa",
+    "trainerUnit": "Satlantas",
+    "trainerCompetency": {
+      "quizScore": null,
+      "progressPercent": 100,
+      "certificateNumber": "POLRI/DIKMAS/2026/000003",
+      "verifiedAt": "2026-08-28T00:41:25.589Z"
+    },
+    "activityName": "GIAT BAHAYA NARKOBA SMK 1 JAKSEL",
+    "polda": "Polda Metro Jaya",
+    "polres": "Polres Metro Jakarta Selatan",
+    "location": "AULA SEKOLAH",
+    "date": "2026-08-28",
+    "startTime": "09:00 WIB",
+    "status": "active",
+    "publicAccessCode": "POL-3FN1",
+    "publicAccessUrl": "/public/session/POL-3FN1",
+    "targetParticipants": 50,
+    "description": "TESTING ",
+    "createdAt": "2026-08-28T00:41:25.589Z"
+  }
+]

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Filter, Check, ArrowUpDown, Layers } from 'lucide-react';
+import { Filter, Check, ArrowUpDown, Layers, Plus } from 'lucide-react';
 import { EducationLevel, MaterialType } from '../types';
 
 interface FilterBarProps {
@@ -10,6 +10,8 @@ interface FilterBarProps {
   sortBy: 'latest' | 'popular' | 'downloads' | 'az';
   onSelectSort: (sort: 'latest' | 'popular' | 'downloads' | 'az') => void;
   totalMaterialsCount: number;
+  canAdd?: boolean;
+  onAddNewMaterial?: () => void;
 }
 
 export const FilterBar: React.FC<FilterBarProps> = ({
@@ -20,6 +22,8 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   sortBy,
   onSelectSort,
   totalMaterialsCount,
+  canAdd,
+  onAddNewMaterial,
 }) => {
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -103,7 +107,17 @@ export const FilterBar: React.FC<FilterBarProps> = ({
         })}
 
         {/* Filter Lainnya Dropdown Button */}
-        <div className="relative ml-auto md:ml-2" ref={dropdownRef}>
+        <div className="relative ml-auto md:ml-2 flex items-center gap-2" ref={dropdownRef}>
+          {canAdd && (
+            <button
+              onClick={onAddNewMaterial}
+              className="bg-[#0a1d37] hover:bg-[#162c4e] text-white px-4 py-2 rounded-full text-sm font-semibold flex items-center space-x-1.5 shadow-sm hover:shadow-md transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Tambah Materi</span>
+            </button>
+          )}
+
           <button
             id="btn-filter-lainnya-toggle"
             onClick={() => setShowFilterDropdown(!showFilterDropdown)}

@@ -1,12 +1,18 @@
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import polwanAvatar from '../data/polwan-avatar.png';
+import { MaterialItem } from '../types';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
 }
 
-export function AskAiWidget() {
+interface AskAiWidgetProps {
+  materials?: MaterialItem[];
+  onSelectMaterial?: (material: MaterialItem) => void;
+}
+
+export function AskAiWidget({ materials: _materials, onSelectMaterial: _onSelectMaterial }: AskAiWidgetProps = {}) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -31,12 +37,15 @@ export function AskAiWidget() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: nextMessages }),
       });
+      if (!res.ok) {
+        throw new Error('Server error');
+      }
       const data = await res.json();
       setMessages(prev => [...prev, { role: 'assistant', content: data.reply ?? 'Maaf, tidak ada jawaban.' }]);
-    } catch (err) {
+    } catch {
       setMessages(prev => [
         ...prev,
-        { role: 'assistant', content: 'Maaf, terjadi kesalahan koneksi. Coba lagi ya.' },
+        { role: 'assistant', content: 'Maaf, asisten Alesha AI sedang tidak tersedia. Silakan hubungi layanan 110 atau coba beberapa saat lagi.' },
       ]);
     } finally {
       setLoading(false);

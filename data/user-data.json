@@ -1,0 +1,104 @@
+{
+  "roles": [
+    {
+      "id": "role-admin",
+      "name": "Admin / Superuser",
+      "description": "Akses penuh ke seluruh sistem, materi, dan manajemen user akses",
+      "permissions": [
+        { "menuId": "beranda", "menuLabel": "Beranda", "actions": ["view", "add", "edit", "delete"] },
+        { "menuId": "learning", "menuLabel": "Learning", "actions": ["view", "add", "edit", "delete"] },
+        { "menuId": "my-learning", "menuLabel": "My Learning", "actions": ["view", "add", "edit", "delete"] },
+        { "menuId": "progress", "menuLabel": "Capaian & Sertifikat", "actions": ["view", "add", "edit", "delete"] },
+        { "menuId": "trainer-outreach", "menuLabel": "Kegiatan Lapangan (Trainer)", "actions": ["view", "add", "edit", "delete"] },
+        { "menuId": "content-management", "menuLabel": "Manajemen Konten", "actions": ["view", "add", "edit", "delete"] },
+        { "menuId": "executive", "menuLabel": "Eksekutif Dashboard", "actions": ["view", "add", "edit", "delete"] },
+        { "menuId": "reports", "menuLabel": "Laporan & Ekspor", "actions": ["view", "add", "edit", "delete"] },
+        { "menuId": "katalog", "menuLabel": "Katalog Materi", "actions": ["view", "add", "edit", "delete"] },
+        { "menuId": "jenjang", "menuLabel": "Jenjang Pendidikan", "actions": ["view", "add", "edit", "delete"] },
+        { "menuId": "video", "menuLabel": "Video", "actions": ["view", "add", "edit", "delete"] },
+        { "menuId": "dokumen", "menuLabel": "Dokumen", "actions": ["view", "add", "edit", "delete"] },
+        { "menuId": "infografis", "menuLabel": "Infografis", "actions": ["view", "add", "edit", "delete"] },
+        { "menuId": "kuis", "menuLabel": "Kuis & Evaluasi", "actions": ["view", "add", "edit", "delete"] },
+        { "menuId": "favorit", "menuLabel": "Favorit", "actions": ["view", "add", "edit", "delete"] },
+        { "menuId": "riwayat", "menuLabel": "Riwayat", "actions": ["view", "add", "edit", "delete"] },
+        { "menuId": "user-akses", "menuLabel": "User Akses", "actions": ["view", "add", "edit", "delete"] }
+      ]
+    },
+    {
+      "id": "role-trainer",
+      "name": "Trainer / Instruktur",
+      "description": "Tenaga pendidik kepolisian — dapat melihat, menambah, dan mengedit silabus materi, modul, video, kuis, serta menyelenggarakan kegiatan lapangan pemaparan",
+      "permissions": [
+        { "menuId": "beranda", "menuLabel": "Beranda", "actions": ["view"] },
+        { "menuId": "learning", "menuLabel": "Learning", "actions": ["view", "add", "edit"] },
+        { "menuId": "my-learning", "menuLabel": "My Learning", "actions": ["view", "add", "edit"] },
+        { "menuId": "progress", "menuLabel": "Capaian & Sertifikat", "actions": ["view"] },
+        { "menuId": "trainer-outreach", "menuLabel": "Kegiatan Lapangan (Trainer)", "actions": ["view", "add", "edit"] },
+        { "menuId": "content-management", "menuLabel": "Manajemen Konten", "actions": ["view", "add", "edit"] },
+        { "menuId": "reports", "menuLabel": "Laporan & Ekspor", "actions": ["view"] },
+        { "menuId": "katalog", "menuLabel": "Katalog Materi", "actions": ["view", "add", "edit"] },
+        { "menuId": "jenjang", "menuLabel": "Jenjang Pendidikan", "actions": ["view"] },
+        { "menuId": "video", "menuLabel": "Video", "actions": ["view", "add", "edit"] },
+        { "menuId": "dokumen", "menuLabel": "Dokumen", "actions": ["view", "add", "edit"] },
+        { "menuId": "infografis", "menuLabel": "Infografis", "actions": ["view", "add", "edit"] },
+        { "menuId": "kuis", "menuLabel": "Kuis & Evaluasi", "actions": ["view", "add", "edit"] },
+        { "menuId": "favorit", "menuLabel": "Favorit", "actions": ["view", "add", "edit", "delete"] },
+        { "menuId": "riwayat", "menuLabel": "Riwayat", "actions": ["view"] }
+      ]
+    },
+    {
+      "id": "role-executive",
+      "name": "Executive (Kapolri / Kapolda / Atasan)",
+      "description": "Pimpinan tingkat tinggi — akses khusus pemantauan performa nasional, statistik kelulusan, dan laporan eksekutif",
+      "permissions": [
+        { "menuId": "beranda", "menuLabel": "Beranda", "actions": ["view"] },
+        { "menuId": "executive", "menuLabel": "Eksekutif Dashboard", "actions": ["view"] },
+        { "menuId": "reports", "menuLabel": "Laporan & Ekspor", "actions": ["view"] },
+        { "menuId": "learning", "menuLabel": "Learning", "actions": ["view"] },
+        { "menuId": "my-learning", "menuLabel": "My Learning", "actions": ["view"] },
+        { "menuId": "progress", "menuLabel": "Capaian & Sertifikat", "actions": ["view"] },
+        { "menuId": "katalog", "menuLabel": "Katalog Materi", "actions": ["view"] },
+        { "menuId": "jenjang", "menuLabel": "Jenjang Pendidikan", "actions": ["view"] },
+        { "menuId": "video", "menuLabel": "Video", "actions": ["view"] },
+        { "menuId": "dokumen", "menuLabel": "Dokumen", "actions": ["view"] },
+        { "menuId": "infografis", "menuLabel": "Infografis", "actions": ["view"] },
+        { "menuId": "kuis", "menuLabel": "Kuis & Evaluasi", "actions": ["view"] },
+        { "menuId": "favorit", "menuLabel": "Favorit", "actions": ["view"] },
+        { "menuId": "riwayat", "menuLabel": "Riwayat", "actions": ["view"] }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "id": "user-1",
+      "username": "superuser",
+      "password": "123456",
+      "fullName": "AKBP Hendra Wijaya, S.I.K.",
+      "roleId": "role-admin",
+      "isActive": true,
+      "createdAt": "2026-01-01"
+    },
+    {
+      "id": "user-2",
+      "username": "trainer1",
+      "password": "123456",
+      "fullName": "Kompol Budi Santoso, S.H.",
+      "roleId": "role-trainer",
+      "isActive": true,
+      "createdAt": "2026-01-15",
+      "position": "Kanit Dikyasa",
+      "unit": "Satlantas",
+      "polda": "Polda Metro Jaya",
+      "polres": "Polres Metro Jakarta Selatan"
+    },
+    {
+      "id": "user-3",
+      "username": "executive",
+      "password": "123456",
+      "fullName": "Irjen Pol. Drs. Ahmad Fauzi, M.Si. (Kapolda)",
+      "roleId": "role-executive",
+      "isActive": true,
+      "createdAt": "2026-02-01"
+    }
+  ]
+}
