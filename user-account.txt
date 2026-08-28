@@ -1,0 +1,57 @@
+================================================================================
+               DAFTAR AKUN & HAK AKSES RESMI SM-LEARNING DIKMAS POLRI
+================================================================================
+Domain Login Internal : https://sm-learning.djalu.co.id/
+Portal Publik/Tamu    : https://sm-learning.djalu.co.id/umum (Tanpa Login)
+
+--------------------------------------------------------------------------------
+1. AKUN SUPERUSER / ADMINISTRATOR UTAMA
+--------------------------------------------------------------------------------
+Nama Lengkap : AKBP Hendra Wijaya, S.I.K.
+Username     : superuser
+Password     : 123456
+Role         : Admin / Superuser (role-admin)
+Status       : Aktif
+Hak Akses    : Penuh (Full CRUD pada seluruh menu sistem, manajemen user,
+               manajemen role & permission, manajemen konten, serta monitoring)
+
+--------------------------------------------------------------------------------
+2. AKUN TRAINER / INSTRUKTUR LAPANGAN
+--------------------------------------------------------------------------------
+Nama Lengkap : Kompol Budi Santoso, S.H.
+Jabatan      : Kanit Dikyasa
+Satuan       : Satlantas
+Wilayah      : Polda Metro Jaya - Polres Metro Jakarta Selatan
+Username     : trainer1
+Password     : 123456
+Role         : Trainer / Instruktur (role-trainer)
+Status       : Aktif
+Hak Akses    : Membuka Sesi Sosialisasi Lapangan (QR Code & Kode Sesi),
+               Presentasi Interaktif ke Proyektor, Monitoring Peserta Realtime,
+               Input Laporan Kegiatan Lapangan & Bukti Geotag, serta Cetak
+               Sertifikat Kelulusan Massal.
+
+--------------------------------------------------------------------------------
+3. AKUN EKSEKUTIF / PIMPINAN
+--------------------------------------------------------------------------------
+Nama Lengkap : Irjen Pol. Drs. Ahmad Fauzi, M.Si. (Kapolda)
+Username     : executive
+Password     : 123456
+Role         : Executive (role-executive)
+Status       : Aktif
+Hak Akses    : Dashboard Analitik Eksekutif, Pemantauan Statistik Edukasi
+               Kewilayahan (Polda / Polres), Tingkat Kelulusan Audiens Nasional,
+               serta Akses Unduh Laporan Rekapitulasi untuk Bahan Laporan Pimpinan.
+
+--------------------------------------------------------------------------------
+4. AKSES AUDIENS / MASYARAKAT / PELAJAR
+--------------------------------------------------------------------------------
+Tipe Akses   : Publik (Guest Mode)
+Akses URL    : https://sm-learning.djalu.co.id/umum
+Kredensial   : TIDAK PERLU LOGIN
+Cara Masuk   : Masuk ke halaman /umum dan masukkan Nama + Asal Sekolah/Instansi
+               saat bergabung ke Sesi Sosialisasi Instruktur melalui Kode Sesi
+               atau Scan QR Code di lokasi.
+================================================================================
+                      DIKMAS LANTAS KORLANTAS POLRI
+================================================================================
