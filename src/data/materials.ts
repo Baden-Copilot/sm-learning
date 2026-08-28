@@ -9,233 +9,673 @@ export const AVATAR_STUDENT_URL = 'https://lh3.googleusercontent.com/aida-public
 export const AVATAR_TEACHER_URL = 'https://lh3.googleusercontent.com/aida-public/AB6AXuCtWORCtS7EkXT2SULirMBrob5Jm-D-Xdyw2o4mw9uzmfPOLFtWmLfZSM5QQWgZwBY-lzfXHxAMT8hnfKhAOEMsply_WwzMSlKNYl_MEwjilm5Y4y-ayOlPQUlaWZVV6nH80zhdpFTa-_l2f78t8FbzzfBSDCke9Wy5SXbg6rX-vt0FGiWfEX41S_Jw_pA7abyOwG0_v7ft81t-yMbgE1KP24n1iAQ50coSkFJV5dkYA-AsY1L9SBw';
 
 export const INITIAL_MATERIALS: MaterialItem[] = [
+  // ===========================================================================
+  // 1. MODUL SD: Pedoman Keselamatan Berlalu Lintas untuk Anak Usia Dini
+  // ===========================================================================
   {
     id: 'mat-sd-01',
     title: 'Pedoman Keselamatan Berlalu Lintas untuk Anak Usia Dini',
     level: 'SD',
     type: 'video',
-    typeLabel: 'Video Edukasi',
+    typeLabel: 'Video & Modul Interaktif',
     isNew: true,
     featured: true,
     size: 'featured',
-    badgeTag: 'SD',
+    badgeTag: 'SD / Usia Dini',
     publishStatus: 'published',
     publicAccess: 'allowed',
-    description: 'Modul interaktif yang mengajarkan dasar-dasar keselamatan di jalan raya, pengenalan rambu lalu lintas sederhana, dan cara menyeberang jalan yang aman.',
-    imageUrl: 'https://images.unsplash.com/photo-1577896851231-70ef18881754?auto=format&fit=crop&w=800&q=80',
+    description: 'Panduan keselamatan jalan raya resmi Korlantas Polri & Ditlantas untuk anak usia dini (SD). Memuat prinsip 4T saat menyeberang, arti warna APILL, penggunaan helm SNI anak, dan etika berjalan di trotoar.',
+    imageUrl: 'https://img.youtube.com/vi/VgpNovO2WKY/maxresdefault.jpg',
     imageAlt: 'Pedoman Keselamatan Berlalu Lintas untuk Anak Usia Dini',
-    metadataText: '12 Menit',
+    metadataText: '15 Menit',
     views: 0,
     downloads: 0,
-    readTime: '12 Menit',
-    duration: '12:30',
-    author: 'Korlantas POLRI & Kemendikbudristek',
-    publishDate: '15 Agustus 2026',
-    downloadSize: '18.4 MB (PDF + Video Ringkasan)',
+    readTime: '15 Menit',
+    duration: '15:20',
+    questionsCount: 10,
+    author: 'Subdit Dikmas Korlantas POLRI',
+    publishDate: '2026-08-20',
+    downloadSize: '24.5 MB (Panduan PDF + Video Edukasi)',
     progressPercent: 0,
     status: 'not_started',
     estimatedHours: 1.5,
     certificationAvailable: true,
-    summary: 'Materi ini dirancang khusus untuk mengajarkan etika berlalu lintas sejak dini. Mulai dari aturan menyeberang di Zebra Cross (4T: Tunggu, Tengok kanan, Tengok kiri, Tengok kanan lagi), mengenali warna lampu APILL (Alat Pemberi Isyarat Lalu Lintas), hingga kewajiban menggunakan helm SNI.',
+    passingScore: 70,
+    videoUrl: 'https://www.youtube.com/watch?v=VgpNovO2WKY',
+    summary: 'Materi edukasi keselamatan lalu lintas usia dini (SD) berfokus pada pembentukan karakter disiplin di jalan raya sejak masa kanak-kanak. Anak dibekali keterampilan mengenali bahaya lalu lintas, tata cara menyeberang di Zebra Cross dengan rumus 4T (Tunggu, Tengok Kanan, Tengok Kiri, Tengok Kanan Lagi), kepatuhan memakai helm SNI ukuran anak saat dibonceng motor, serta memahami pentingnya rambu APILL dan trotoar.',
     keyPoints: [
-      'Memahami arti warna lampu lalu lintas (Merah: Berhenti, Kuning: Hati-hati/Bersiap, Hijau: Jalan)',
-      'Prinsip 4T saat menyeberang di Zebra Cross dan Jembatan Penyeberangan Orang (JPO)',
-      'Penggunaan helm berstandar SNI bagi anak yang dibonceng motor',
-      'Etika berjalan di trotoar yang aman dan menjauhi bahaya blind spot kendaraan besar'
+      'Memahami fungsi warna lampu APILL: Merah (Berhenti), Kuning (Hati-hati/Bersiap), Hijau (Berjalan jika aman)',
+      'Prinsip 4T saat menyeberang jalan: Tunggu di trotoar, Tengok kanan, Tengok kiri, Tengok kanan lagi',
+      'Kewajiban mengenakan helm berstandar SNI ukuran anak yang terkunci dengan benar (bunyi klik) saat dibonceng sepeda motor',
+      'Etika berjalan di trotoar atau di sisi kanan jalan menghadap arah datangnya arus kendaraan jika tidak ada trotoar',
+      'Menghindari area titik buta (blind spot) kendaraan besar seperti bus dan truk',
+      'Larangan bermain bola, kejar-kejaran, atau bermain ponsel di pinggir jalan raya'
     ],
     modules: [
       {
-        id: 'mod-1',
-        title: 'Modul 1: Pengenalan Lingkungan Jalan & Trotoar',
+        id: 'mod-sd-1',
+        title: 'Modul 1: Mengenal Lingkungan Jalan, Trotoar & Rambu APILL',
         lessons: [
-          { id: 'les-1-1', title: 'Mengenal Jalur Pejalan Kaki & Trotoar', duration: '03:15', type: 'video', isCompleted: false },
-          { id: 'les-1-2', title: 'Bahaya Bermain di Pinggir Jalan Raya', duration: '04:00', type: 'reading', isCompleted: false }
+          {
+            id: 'les-sd-1-1',
+            title: 'Video Edukasi: Polisi Sahabat Anak & Mengenal Lampu Lalu Lintas',
+            duration: '04:30',
+            type: 'video',
+            videoUrl: 'https://www.youtube.com/watch?v=VgpNovO2WKY',
+            isCompleted: false
+          },
+          {
+            id: 'les-sd-1-2',
+            title: 'Panduan Pejalan Kaki Cilik di Trotoar & JPO',
+            duration: '03:45',
+            type: 'reading',
+            isCompleted: false
+          }
         ]
       },
       {
-        id: 'mod-2',
-        title: 'Modul 2: Rambu APILL & Menyeberang Aman (4T)',
+        id: 'mod-sd-2',
+        title: 'Modul 2: Metode Menyeberang Aman (4T) & Perlengkapan Helm SNI',
         lessons: [
-          { id: 'les-2-1', title: 'Warna Lampu Lalu Lintas dan Artinya', duration: '02:45', type: 'video', isCompleted: false },
-          { id: 'les-2-2', title: 'Praktek Menyeberang Metode 4T di Zebra Cross', duration: '05:10', type: 'video', isCompleted: false }
+          {
+            id: 'les-sd-2-1',
+            title: 'Video Praktik: Cara Menyeberang Jalan Metode 4T di Zebra Cross',
+            duration: '04:15',
+            type: 'video',
+            videoUrl: 'https://www.youtube.com/watch?v=Xe29-QbgL6w',
+            isCompleted: false
+          },
+          {
+            id: 'les-sd-2-2',
+            title: 'Standar Keamanan Helm Anak & Perlindungan Saat Dibonceng',
+            duration: '02:50',
+            type: 'reading',
+            isCompleted: false
+          }
         ]
       },
       {
-        id: 'mod-3',
-        title: 'Modul 3: Evaluasi & Uji Pemahaman',
+        id: 'mod-sd-3',
+        title: 'Modul 3: Evaluasi & Uji Pemahaman Keselamatan Anak (10 Soal)',
         lessons: [
-          { id: 'les-3-1', title: 'Kuis Keselamatan Berlalu Lintas Dasar', duration: '05:00', type: 'quiz', isCompleted: false }
+          {
+            id: 'les-sd-3-1',
+            title: 'Kuis Evaluasi Keselamatan Berlalu Lintas Anak Usia Dini',
+            duration: '10:00',
+            type: 'quiz',
+            isCompleted: false
+          }
         ]
       }
     ],
     quiz: [
       {
         id: 1,
-        question: 'Apa arti dari warna lampu lalu lintas warna KUNING?',
-        options: ['Langsung tancap gas secepatnya', 'Hati-hati dan bersiap berhenti atau memperlambat laju', 'Boleh belok kiri sesuka hati', 'Kendaraan harus mematikan mesin'],
-        correctIndex: 1,
-        explanation: 'Lampu kuning mengisyaratkan pengemudi untuk berhati-hati dan bersiap berhenti jika memungkinkan secara aman.'
+        question: 'Apa arti dari nyala lampu lalu lintas (APILL) berwarna MERAH?',
+        options: [
+          'Kendaraan harus segera berhenti di belakang garis henti',
+          'Kendaraan boleh jalan pelan-pelan',
+          'Kendaraan boleh tancap gas secepatnya',
+          'Kendaraan harus berbelok arah sesuka hati'
+        ],
+        correctIndex: 0,
+        explanation: 'Lampu merah pada APILL mewajibkan seluruh pengendara kendaraan bermotor berhenti di belakang marka garis henti (stop line).'
       },
       {
         id: 2,
-        question: 'Metode menyeberang jalan yang aman menurut edukasi Polisi Sahabat Anak adalah...',
-        options: ['Lari sekencang mungkin tanpa melihat', 'Metode 4T (Tunggu, Tengok kanan, Tengok kiri, Tengok kanan lagi)', 'Menyeberang sambil main ponsel', 'Menyeberang di tikungan tajam'],
+        question: 'Apa kepanjangan dari metode 4T saat menyeberang di Zebra Cross?',
+        options: [
+          'Tunggu, Tengok kanan, Tengok kiri, Tengok kanan lagi',
+          'Tidur, Tenggelam, Terbang, Terjun',
+          'Tancap gas, Terus lari, Tidak lihat, Tolak bantuan',
+          'Tolak rem, Tengok depan, Teriak keras, Terjang jalan'
+        ],
+        correctIndex: 0,
+        explanation: 'Metode 4T adalah singkatan dari: Tunggu (di trotoar/tepi aman), Tengok kanan, Tengok kiri, dan Tengok kanan lagi sebelum melangkah menyeberang.'
+      },
+      {
+        id: 3,
+        question: 'Tempat paling aman bagi pejalan kaki saat berjalan di samping jalan raya adalah...',
+        options: [
+          'Di tengah aspal jalan raya',
+          'Di trotoar atau jalur khusus pejalan kaki',
+          'Di selokan air',
+          'Di pembatas jalan tol'
+        ],
         correctIndex: 1,
-        explanation: 'Metode 4T memastikan lintasan aman dari kendaraan sebelum dan selama menyeberang jalan.'
+        explanation: 'Trotoar dibangun khusus untuk melindungi pejalan kaki dari senggolan kendaraan di badan jalan.'
+      },
+      {
+        id: 4,
+        question: 'Saat anak dibonceng sepeda motor oleh orang tua, perlengkapan keselamatan wajib yang harus dipakai adalah...',
+        options: [
+          'Topi ulang tahun',
+          'Kacamata renang',
+          'Helm berstandar SNI ukuran anak yang terkancing klik',
+          'Headphone musik'
+        ],
+        correctIndex: 2,
+        explanation: 'Helm berstandar SNI (Standar Nasional Indonesia) yang pas di kepala dan terkunci klik melindungi kepala dari benturan saat terjadi kecelakaan.'
+      },
+      {
+        id: 5,
+        question: 'Jika di jalan raya tidak terdapat trotoar, pejalan kaki sebaiknya berjalan di sisi...',
+        options: [
+          'Sisi kanan jalan menghadap arus kendaraan yang datang',
+          'Tepat di tengah jalur cepat',
+          'Sambil menutup mata di sebelah kiri',
+          'Membelakangi kendaraan dengan headphone menyala'
+        ],
+        correctIndex: 0,
+        explanation: 'Berjalan di sisi kanan menghadap arus kendaraan membuat pejalan kaki dapat melihat langsung kendaraan yang datang dari depan.'
+      },
+      {
+        id: 6,
+        question: 'Apa fungsi utama dari jembatan penyeberangan orang (JPO)?',
+        options: [
+          'Tempat bermain petak umpet dan layangan',
+          'Menyeberang jalan ramai tanpa bersinggungan langsung dengan kendaraan',
+          'Tempat menjemur pakaian warga sekitar',
+          'Area berdagang di atas jalan tol'
+        ],
+        correctIndex: 1,
+        explanation: 'JPO (Jembatan Penyeberangan Orang) dirancang untuk memisahkan jalur penyeberang dengan arus kendaraan jalan raya agar 100% aman.'
+      },
+      {
+        id: 7,
+        question: 'Bolehkah anak-anak bermain bola atau kejar-kejaran di pinggir jalan raya?',
+        options: [
+          'Boleh kapan saja karena jalanan milik bersama',
+          'Boleh asal tidak ada polisi yang menjaga',
+          'Sangat berbahaya dan dilarang karena berisiko tertabrak kendaraan melintas',
+          'Boleh jika main bersama teman sekelas'
+        ],
+        correctIndex: 2,
+        explanation: 'Bermain di pinggir jalan sangat berbahaya karena pengemudi kendaraan tidak dapat mengantisipasi gerakan anak secara tiba-tiba.'
+      },
+      {
+        id: 8,
+        question: 'Apa arti warna KUNING pada lampu Alat Pemberi Isyarat Lalu Lintas (APILL)?',
+        options: [
+          'Memacu kecepatan kendaraan secepat-cepatnya',
+          'Hati-hati dan bersiap untuk berhenti',
+          'Boleh menyalakan klakson terus menerus',
+          'Kendaraan bebas parkir di tengah jalan'
+        ],
+        correctIndex: 1,
+        explanation: 'Lampu kuning mengisyaratkan pengemudi untuk menurunkan kecepatan, berhati-hati, dan bersiap berhenti sebelum lampu merah menyala.'
+      },
+      {
+        id: 9,
+        question: 'Apa yang dimaksud dengan area "Blind Spot" (titik buta) pada kendaraan besar seperti bus atau truk?',
+        options: [
+          'Area tempat supir menyalakan lampu kabut',
+          'Area di sekitar kendaraan yang tidak terlihat oleh supir dari kaca spion',
+          'Area tempat mencuci bus dan truk',
+          'Area tempat tidur supir di dalam kabin'
+        ],
+        correctIndex: 1,
+        explanation: 'Blind spot adalah area pandang tertutup bagi supir. Anak-anak dan pejalan kaki dilarang berdiri terlalu dekat dengan badan bus/truk.'
+      },
+      {
+        id: 10,
+        question: 'Sebelum turun dari mobil di pinggir jalan raya, apa yang harus dilakukan anak terlebih dahulu?',
+        options: [
+          'Langsung menendang pintu mobil dan lari ke aspal',
+          'Memastikan situasi di luar aman, kendaraan berhenti total, dan turun melalui pintu sebelah kiri (sisi trotoar)',
+          'Melompat keluar dari jendela belakang',
+          'Membuka pintu kanan ke arah arus kendaraan melaju'
+        ],
+        correctIndex: 1,
+        explanation: 'Turun melalui pintu sisi kiri (trotoar) memastikan penumpang tidak terserempet kendaraan lain yang melintas di sisi kanan.'
       }
     ]
   },
+
+  // ===========================================================================
+  // 2. MODUL SMP: Pedoman Keselamatan Berlalu Lintas untuk Anak Usia Remaja
+  // ===========================================================================
   {
     id: 'mat-smp-01',
-    title: 'Cerdas Bersosial Media: Hindari Cyberbullying & Kejahatan Siber',
+    title: 'Pedoman Keselamatan Berlalu Lintas untuk Anak Usia Remaja',
     level: 'SMP',
-    type: 'infografis',
-    typeLabel: 'Infografis',
+    type: 'video',
+    typeLabel: 'Video & Modul Remaja',
+    isNew: true,
+    featured: true,
     size: 'standard',
-    badgeTag: 'SMP',
+    badgeTag: 'SMP / Usia Remaja',
     publishStatus: 'published',
     publicAccess: 'allowed',
-    description: 'Panduan praktis bagi remaja untuk mengenali, mencegah, dan melaporkan tindakan perundungan di dunia maya.',
-    imageUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80',
-    imageAlt: 'Cerdas Bersosial Media: Hindari Cyberbullying',
-    metadataText: '5 Menit',
-    readTime: '5 Menit',
+    description: 'Panduan keselamatan lalu lintas bagi pelajar tingkat SMP. Membahas batas usia legal SIM, bahaya mengendarai motor di bawah umur (UU No. 22 Th 2009), panduan aman bersepeda, dan etika angkutan umum.',
+    imageUrl: 'https://img.youtube.com/vi/nu6DkIEGIUw/maxresdefault.jpg',
+    imageAlt: 'Pedoman Keselamatan Berlalu Lintas untuk Anak Usia Remaja (SMP)',
+    metadataText: '18 Menit',
     views: 0,
     downloads: 0,
-    progressPercent: 0,
-    status: 'not_started',
-    estimatedHours: 1.0,
-    certificationAvailable: true,
-    author: 'Direktorat Tindak Pidana Siber Bareskrim POLRI',
-    publishDate: '10 Agustus 2026',
-    downloadSize: '4.2 MB (Infografis HD)',
-    summary: 'Infografis edukatif berisi panduan langkah demi langkah saat menghadapi cyberbullying, perlindungan privasi akun media sosial, pemahaman UU ITE yang relevan untuk pelajar, dan saluran hotline pelaporan cybercrime POLRI.',
-    keyPoints: [
-      'Gunakan saring sebelum sharing (THINK: Is it True, Helpful, Inspiring, Necessary, Kind?)',
-      'Lindungi privasi: Jangan pernah membagikan PIN, password, alamat rumah, atau data sensitif',
-      'Tindakan saat dirundung: Jangan membalas dengan emosi, simpan bukti screenshot, blokir pelaku, laporkan ke orang tua/guru dan saluran aduan resmi',
-      'Jadilah netizen yang suportif dan hindari komentar bernada hate speech atau body shaming'
-    ]
-  },
-  {
-    id: 'mat-sma-01',
-    title: 'Bahaya Narkoba & Kenakalan Remaja',
-    level: 'SMA',
-    type: 'modul',
-    typeLabel: 'Modul Pembelajaran',
-    size: 'standard',
-    badgeTag: 'SMA',
-    publishStatus: 'published',
-    publicAccess: 'allowed',
-    description: 'Materi komprehensif mengenai jenis-jenis narkoba, dampaknya bagi masa depan, serta strategi pencegahan di lingkungan sekolah.',
-    imageUrl: 'https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?auto=format&fit=crop&w=800&q=80',
-    imageAlt: 'Bahaya Narkoba & Kenakalan Remaja',
-    metadataText: '12 Halaman',
-    pageCount: 12,
-    views: 0,
-    downloads: 0,
+    readTime: '18 Menit',
+    duration: '18:40',
+    questionsCount: 10,
+    author: 'Ditlantas Polda & Subditkamsel Korlantas POLRI',
+    publishDate: '2026-08-22',
+    downloadSize: '28.1 MB (Panduan PDF + Video Sosialisasi)',
     progressPercent: 0,
     status: 'not_started',
     estimatedHours: 2.0,
     certificationAvailable: true,
-    author: 'Direktorat Tindak Pidana Narkoba Bareskrim POLRI',
-    publishDate: '2 Agustus 2026',
-    downloadSize: '8.7 MB (Modul Lengkap PDF)',
-    summary: 'Buku panduan lengkap pencegahan penyalahgunaan narkotika, zat adiktif, dan tawuran pelajar. Mengulas dampak fisik, psikologis, sosial, dan konsekuensi hukum pidana bagi remaja yang terlibat tindak pelanggaran hukum.',
+    passingScore: 70,
+    videoUrl: 'https://www.youtube.com/watch?v=nu6DkIEGIUw',
+    summary: 'Materi ini dirancang khusus untuk pelajar SMP dalam menghadapi masa transisi mobilitas remaja. Berdasarkan data Ditlantas Polri, kecelakaan lalu lintas pada usia remaja kerap dipicu oleh pengoperasian kendaraan bermotor tanpa SIM, aksi balap liar, dan kurangnya pemahaman etika jalan. Modul ini menekankan batas usia legal berkendara (minimal 17 tahun untuk SIM C), standar aman bersepeda (gowes ke sekolah), penggunaan perlengkapan keselamatan helm, serta etika menggunakan angkutan umum.',
     keyPoints: [
-      'Klasifikasi zat terlarang dan modifikasi baru yang sering menyasar generasi muda',
-      'Faktor pemicu kenakalan remaja: tekanan kelompok sebaya, minimnya komunikasi keluarga, pengaruh digital',
-      'Mekanisme hukum peradilan anak dan sanksi pidana narkotika',
-      'Membangun lingkungan sekolah ramah dan berprestasi bebas narkoba'
-    ]
-  },
-  {
-    id: 'mat-tk-01',
-    title: 'Mengenal Profesi Polisi Sahabat Anak',
-    level: 'TK/PAUD',
-    type: 'video',
-    typeLabel: 'Video Edukasi',
-    size: 'compact',
-    badgeTag: 'TK/PAUD',
-    publishStatus: 'published',
-    publicAccess: 'allowed',
-    description: 'Video animasi ceria memperkenalkan tugas mulia bapak dan ibu polisi dalam membantu masyarakat dan menjaga ketertiban.',
-    imageUrl: 'https://images.unsplash.com/photo-1587654780291-39c9404d746b?auto=format&fit=crop&w=800&q=80',
-    imageAlt: 'Mengenal Profesi Polisi Sahabat Anak',
-    metadataText: '08:15',
-    duration: '08:15',
-    views: 0,
-    downloads: 0,
-    progressPercent: 0,
-    status: 'not_started',
-    estimatedHours: 0.5,
-    certificationAvailable: true,
-    author: 'Ditbinmas Baharkam POLRI',
-    publishDate: '18 Juli 2026',
-    summary: 'Pengenalan profesi polisi melalui lagu, dongeng, dan animasi yang ramah anak. Menumbuhkan rasa aman dan kedekatan anak-anak dengan aparat kepolisian saat membutuhkan bantuan di tempat umum.'
-  },
-  {
-    id: 'mat-sd-02',
-    title: 'Evaluasi Pemahaman Rambu & Marka Jalan Raya',
-    level: 'SD',
-    type: 'kuis',
-    typeLabel: 'Kuis & Evaluasi',
-    size: 'compact',
-    badgeTag: 'SD',
-    publishStatus: 'published',
-    publicAccess: 'allowed',
-    description: 'Tes interaktif pemahaman 10 jenis rambu larangan, peringatan, perintah, dan petunjuk untuk siswa sekolah dasar.',
-    imageUrl: 'https://images.unsplash.com/photo-1606326608606-aa0b62935f2b?auto=format&fit=crop&w=800&q=80',
-    imageAlt: 'Evaluasi Pemahaman Rambu',
-    metadataText: '10 Pertanyaan',
-    questionsCount: 10,
-    views: 0,
-    downloads: 0,
-    progressPercent: 0,
-    status: 'not_started',
-    estimatedHours: 0.5,
-    certificationAvailable: true,
-    author: 'Korlantas POLRI',
-    publishDate: '24 Juli 2026',
+      'Pemahaman UU No. 22 Tahun 2009 Pasal 81 tentang syarat usia minimal kepemilikan SIM C (17 tahun)',
+      'Risiko hukum dan keselamatan berkendara di bawah umur: faktor kematangan emosi, refleks tubuh, dan bahaya kecelakaan fatal',
+      'Aturan emas keselamatan bersepeda ke sekolah: helm sepeda, pakaian cerah/reflektor, bel, dan isyarat tangan saat belok',
+      'Bahaya balap liar, kenalpot bising (brong), dan aksi jumping sepeda motor di jalan raya',
+      'Etika menggunakan transportasi umum (bus sekolah/angkot): menunggu di halte, antre tertib, dan tidak bergelantungan di pintu',
+      'Kewajiban mengenakan helm pengaman SNI baik bagi pengendara maupun penumpang yang dibonceng'
+    ],
+    modules: [
+      {
+        id: 'mod-smp-1',
+        title: 'Modul 1: Batas Usia Legal Berkendara & Bahaya Motor Bawah Umur',
+        lessons: [
+          {
+            id: 'les-smp-1-1',
+            title: 'Video Sosialisasi: Kenapa Remaja SMP Belum Boleh Mengendarai Motor?',
+            duration: '05:20',
+            type: 'video',
+            videoUrl: 'https://www.youtube.com/watch?v=nu6DkIEGIUw',
+            isCompleted: false
+          },
+          {
+            id: 'les-smp-1-2',
+            title: 'Regulasi UU No. 22 Tahun 2009 & Konsekuensi Hukum Pelanggaran',
+            duration: '04:10',
+            type: 'reading',
+            isCompleted: false
+          }
+        ]
+      },
+      {
+        id: 'mod-smp-2',
+        title: 'Modul 2: Panduan Bersepeda Aman & Etika Transportasi Publik',
+        lessons: [
+          {
+            id: 'les-smp-2-1',
+            title: 'Video Praktik: 7 Aturan Emas Bersepeda Aman Menuju Sekolah',
+            duration: '04:50',
+            type: 'video',
+            videoUrl: 'https://www.youtube.com/watch?v=JorUkKwqN6U',
+            isCompleted: false
+          },
+          {
+            id: 'les-smp-2-2',
+            title: 'Etika Penumpang Bus Sekolah, Angkutan Kota & Penyeberangan Remaja',
+            duration: '04:20',
+            type: 'reading',
+            isCompleted: false
+          }
+        ]
+      },
+      {
+        id: 'mod-smp-3',
+        title: 'Modul 3: Uji Evaluasi Pemahaman Keselamatan Remaja (10 Soal)',
+        lessons: [
+          {
+            id: 'les-smp-3-1',
+            title: 'Kuis Evaluasi Keselamatan Berlalu Lintas Usia Remaja (SMP)',
+            duration: '10:00',
+            type: 'quiz',
+            isCompleted: false
+          }
+        ]
+      }
+    ],
     quiz: [
       {
         id: 1,
-        question: 'Rambu dengan lingkaran MERAH dan garis miring menunjukkan...',
-        options: ['Rambu Larangan', 'Rambu Petunjuk', 'Rambu Peringatan', 'Rambu Informasi'],
-        correctIndex: 0,
-        explanation: 'Rambu lingkaran merah dengan garis silang/miring merupakan rambu larangan.'
+        question: 'Berdasarkan UU No. 22 Tahun 2009 Pasal 81, berapakah batas usia minimal untuk memperoleh Surat Izin Mengemudi (SIM C)?',
+        options: [
+          '13 Tahun (Masuk SMP)',
+          '15 Tahun (Lulus SMP)',
+          '17 Tahun',
+          '21 Tahun'
+        ],
+        correctIndex: 2,
+        explanation: 'Pasal 81 ayat 2 UU No. 22 Tahun 2009 menetapkan usia minimal 17 tahun untuk mendapatkan SIM A, SIM C, dan SIM D karena mempertimbangkan kematangan emosional dan fisik.'
       },
       {
         id: 2,
-        question: 'Rambu berbentuk belah ketupat warna KUNING bergambar jalan berliku berfungsi sebagai...',
-        options: ['Peringatan bahaya / kondisi jalan', 'Perintah wajib belok', 'Petunjuk arah kota', 'Larangan melintas'],
+        question: 'Mengapa siswa SMP belum diperbolehkan secara hukum mengendarai sepeda motor di jalan raya umum?',
+        options: [
+          'Karena motor hanya boleh dinaiki orang berseragam dinas',
+          'Karena belum memenuhi syarat usia SIM, emosi labil, dan belum memiliki kompetensi refleks berkendara yang matang',
+          'Karena motor di Indonesia jumlahnya sangat sedikit',
+          'Karena harga sepeda motor terlalu murah'
+        ],
+        correctIndex: 1,
+        explanation: 'Faktor psikologis, kestabilan emosi dalam mengambil keputusan mendadak di jalan, dan postur fisik remaja belum memenuhi standar sertifikasi mengemudi.'
+      },
+      {
+        id: 3,
+        question: 'Saat bersepeda menuju sekolah di pagi hari, perlengkapan keselamatan utama yang wajib dipakai adalah...',
+        options: [
+          'Helm sepeda, pakaian/rompi berwarna terang atau reflektor, dan sepatu tertutup',
+          'Topi koboi dan sandal jepit',
+          'Pakaian serba hitam tanpa lampu sepeda',
+          'Jas hujan ponco yang menjuntai ke jari-jari roda'
+        ],
         correctIndex: 0,
-        explanation: 'Warna dasar kuning menandakan rambu peringatan adanya potensi bahaya di depan.'
+        explanation: 'Helm melindungi kepala dari risiko cedera fatal, dan warna terang membantu pengendara lain melihat pesepeda dari kejauhan.'
+      },
+      {
+        id: 4,
+        question: 'Isyarat tangan apa yang harus diberikan pesepeda sebelum berbelok ke arah KANAN?',
+        options: [
+          'Merentangkan tangan kanan lurus secara horizontal ke samping kanan',
+          'Menutup kedua mata dengan tangan',
+          'Melambaikan kaki ke atas sadel',
+          'Memutar tangan kiri membentuk lingkaran'
+        ],
+        correctIndex: 0,
+        explanation: 'Merentangkan tangan kanan lurus ke samping memberi isyarat visual yang jelas bagi kendaraan di belakang bahwa pesepeda akan membelok ke kanan.'
+      },
+      {
+        id: 5,
+        question: 'Apa bahaya utama dari membonceng lebih dari satu orang (bonceng tiga) di sepeda motor?',
+        options: [
+          'Membuat bensin sepeda motor tidak pernah habis',
+          'Mengurangi keseimbangan kendaraan, memperpanjang jarak pengereman, dan melanggar hukum lalu lintas',
+          'Membuat motor melaju secepat pesawat terbang',
+          'Membuat ban motor bertambah besar'
+        ],
+        correctIndex: 1,
+        explanation: 'Sepeda motor roda dua hanya dirancang membawa satu orang pengemudi dan satu orang penumpang. Beban berlebih membuat stang motor sulit dikendalikan.'
+      },
+      {
+        id: 6,
+        question: 'Mengapa penggunaan knalpot tidak standar (knalpot brong/bising) dilarang oleh pihak Kepolisian?',
+        options: [
+          'Karena membuat motor terlihat terlalu bagus',
+          'Karena menimbulkan polusi suara, mengganggu konsentrasi pengguna jalan lain, dan melanggar ambang batas kebisingan',
+          'Karena dilarang oleh produsen cat motor',
+          'Karena polisi hanya suka knalpot berbentuk kotak'
+        ],
+        correctIndex: 1,
+        explanation: 'Knalpot brong melanggar aturan kebisingan, memicu gesekan emosi antar warga, dan mengalihkan fokus pengemudi dari potensi bahaya jalan.'
+      },
+      {
+        id: 7,
+        question: 'Bagaimana etika yang benar dan aman saat menaiki angkutan umum (bus sekolah/angkot)?',
+        options: [
+          'Bergelantungan di pintu keluar dan melompat saat bus masih berjalan',
+          'Menunggu di halte/halte bus sekolah, mengantre tertib, dan naik/turun saat kendaraan telah berhenti sempurna',
+          'Menerobos pintu masuk sebelum penumpang lain turun',
+          'Duduk di atap mobil angkutan'
+        ],
+        correctIndex: 1,
+        explanation: 'Naik dan turun kendaraan saat berhenti total mencegah terpeleset dan cedera fatal terlindas ban.'
+      },
+      {
+        id: 8,
+        question: 'Apa arti rambu lalu lintas berbentuk lingkaran MERAH dengan huruf "P" dicoret garis diagonal merah?',
+        options: [
+          'Area parkir khusus sepeda motor',
+          'Dilarang parkir kendaraan di area sepanjang rambu tersebut',
+          'Boleh parkir sepuasnya tanpa batas waktu',
+          'Wajib mematikan mesin kendaraan'
+        ],
+        correctIndex: 1,
+        explanation: 'Rambu lingkaran merah bergaris silang pada huruf P adalah rambu larangan parkir (No Parking).'
+      },
+      {
+        id: 9,
+        question: 'Apa risiko keselamatan saat menggunakan headset/earphone dengan volume keras saat bersepeda atau berjalan kaki di jalan raya?',
+        options: [
+          'Baterai handphone menjadi lebih awet',
+          'Tidak dapat mendengar bunyi klakson, sirine ambulans, atau suara mesin kendaraan lain yang mendekat',
+          'Membuat langkah kaki bertambah cepat 10 kali lipat',
+          'Menghilangkan seluruh lampu lalu lintas'
+        ],
+        correctIndex: 1,
+        explanation: 'Suara musik yang keras mematikan kewaspadaan pendengaran terhadap bahaya lingkungan sekitar.'
+      },
+      {
+        id: 10,
+        question: 'Bila melihat teman sebaya melakukan aksi berbahaya (standing/freestyle motor atau balap liar), sikap terbaik Anda adalah...',
+        options: [
+          'Ikut mencoba agar dipuji di media sosial',
+          'Merekam dan menantang teman untuk bertaruh uang',
+          'Menolak untuk ikut serta, menasihati risiko kecelakaan fatal, dan melaporkan ke guru atau pihak kepolisian jika meresahkan',
+          'Menutup jalan raya bersama kelompok teman'
+        ],
+        correctIndex: 2,
+        explanation: 'Menolak dan mengedukasi rekan sebaya membantu memutus rantai korban fatalitas kecelakaan remaja di jalan raya.'
       }
     ]
   },
+
+  // ===========================================================================
+  // 3. MODUL SMA/SMK: Pedoman Keselamatan Berlalu Lintas untuk Usia Dewasa
+  // ===========================================================================
   {
-    id: 'mat-smp-02',
-    title: 'Panduan Aman Bersepeda ke Sekolah',
-    level: 'SMP',
-    type: 'artikel',
-    typeLabel: 'Baca Artikel',
-    size: 'compact',
-    badgeTag: 'SMP',
+    id: 'mat-sma-01',
+    title: 'Pedoman Keselamatan Berlalu Lintas untuk Anak Usia Dewasa',
+    level: 'SMA',
+    type: 'video',
+    typeLabel: 'Video & Modul Dewasa / SMA / SMK',
+    isNew: true,
+    featured: true,
+    size: 'featured',
+    badgeTag: 'SMA / SMK / Usia Dewasa',
     publishStatus: 'published',
     publicAccess: 'allowed',
-    description: 'Tips berkendara sepeda di jalan lingkungan: kelengkapan pelindung, etika belok, dan memilih rute aman.',
-    imageUrl: 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=800&q=80',
-    imageAlt: 'Panduan Aman Bersepeda ke Sekolah',
-    metadataText: 'Baca Artikel',
+    description: 'Panduan komprehensif Defensive Riding & Safety Driving untuk pelajar tingkat SMA, SMK, dan pengendara pemula usia dewasa. Membahas mekanisme SIM, etika marka jalan, batas kecepatan, dan bahaya distraksi ponsel saat berkendara.',
+    imageUrl: 'https://img.youtube.com/vi/AAkX9bbrL78/maxresdefault.jpg',
+    imageAlt: 'Pedoman Keselamatan Berlalu Lintas untuk Usia Dewasa (SMA/SMK)',
+    metadataText: '20 Menit',
     views: 0,
     downloads: 0,
+    readTime: '20 Menit',
+    duration: '20:15',
+    questionsCount: 10,
+    author: 'Korps Lalu Lintas (Korlantas) POLRI',
+    publishDate: '2026-08-25',
+    downloadSize: '32.4 MB (Modul Lengkap PDF + Video Praktik)',
     progressPercent: 0,
     status: 'not_started',
-    estimatedHours: 1.0,
+    estimatedHours: 2.5,
     certificationAvailable: true,
-    author: 'Subditkamsel Korlantas POLRI',
-    publishDate: '5 Agustus 2026',
-    summary: 'Bersepeda merupakan aktivitas sehat dan menyenangkan. Artikel ini memuat 7 aturan emas bersepeda aman: mengenakan helm sepeda terkancing pas, menggunakan pakaian cerah/reflektor, memeriksa rem dan tekanan angin ban sebelum berangkat, serta memberi isyarat tangan saat hendak berbelok.'
+    passingScore: 70,
+    videoUrl: 'https://www.youtube.com/watch?v=AAkX9bbrL78',
+    summary: 'Modul ini adalah pedoman keselamatan berkendara tingkat lanjut (Defensive Driving / Defensive Riding) yang ditujukan bagi siswa SMA, SMK, dan pengemudi pemula usia dewasa. Mengupas tuntas pemahaman UU No. 22 Tahun 2009 tentang Lalu Lintas dan Angkutan Jalan, prosedur resmi penerbitan SIM, penguasaan marka jalan (garis utuh vs putus-putus), teknik pengereman darurat (ABS vs konvensional), jarak aman antar kendaraan (rumus 3 detik), bahaya distracted driving (menggunakan smartphone/gadget saat menyetir), serta pencegahan microsleep pada perjalanan jarak jauh.',
+    keyPoints: [
+      'Konsep Defensive Riding / Driving: berkendara dengan sikap mengantisipasi potensi kesalahan pengguna jalan lain',
+      'Prosedur resmi ujian teori dan praktik pembuatan SIM di Satpas Polres sesuai standar Korlantas Polri',
+      'Arti dan aturan marka jalan: Garis putih utuh (larangan mendahului) vs Garis putih putus-putus (diperbolehkan mendahului jika aman)',
+      'Rumus Jarak Aman 3 Detik (3-second rule) untuk mencegah tabrakan beruntun dari belakang',
+      'Bahaya mematikan penggunaan smartphone saat berkendara (distracted driving) dan sanksi Pasal 283 UU LLAJ',
+      'Pencegahan fenomena microsleep (tertidur sekejap saat mengemudi) dan pentingnya istirahat berkala setiap 2-4 jam',
+      'Pengecekan kelaikan kendaraan sebelum berkendara dengan metode T-CLOCS (Tires, Controls, Lights, Oil, Chassis, Stands)'
+    ],
+    modules: [
+      {
+        id: 'mod-sma-1',
+        title: 'Modul 1: Konsep Defensive Riding & Kelaikan Kendaraan (T-CLOCS)',
+        lessons: [
+          {
+            id: 'les-sma-1-1',
+            title: 'Video Edukasi: Prinsip Defensive Riding & Mengantisipasi Blind Spot',
+            duration: '06:10',
+            type: 'video',
+            videoUrl: 'https://www.youtube.com/watch?v=AAkX9bbrL78',
+            isCompleted: false
+          },
+          {
+            id: 'les-sma-1-2',
+            title: 'Standar Pengecekan Kendaraan Harian (Ban, Rem, Lampu, Spion)',
+            duration: '04:30',
+            type: 'reading',
+            isCompleted: false
+          }
+        ]
+      },
+      {
+        id: 'mod-sma-2',
+        title: 'Modul 2: Marka Jalan, Rumus Jarak Aman 3 Detik & Bahaya Distraksi',
+        lessons: [
+          {
+            id: 'les-sma-2-1',
+            title: 'Video Praktik: Memahami Marka Jalan & Simulasi Jarak Aman 3 Detik',
+            duration: '05:45',
+            type: 'video',
+            videoUrl: 'https://www.youtube.com/watch?v=-TaeJpcmXrc',
+            isCompleted: false
+          },
+          {
+            id: 'les-sma-2-2',
+            title: 'Hukum & Bahaya Penggunaan Handphone Saat Mengemudi (Pasal 283)',
+            duration: '03:50',
+            type: 'reading',
+            isCompleted: false
+          }
+        ]
+      },
+      {
+        id: 'mod-sma-3',
+        title: 'Modul 3: Evaluasi Sertifikasi Defensive Driving Dewasa (10 Soal)',
+        lessons: [
+          {
+            id: 'les-sma-3-1',
+            title: 'Kuis Sertifikasi Keselamatan Berlalu Lintas Usia Dewasa (SMA/SMK)',
+            duration: '10:00',
+            type: 'quiz',
+            isCompleted: false
+          }
+        ]
+      }
+    ],
+    quiz: [
+      {
+        id: 1,
+        question: 'Apa definisi yang paling tepat mengenai konsep "Defensive Riding" / "Defensive Driving"?',
+        options: [
+          'Mengemudi dengan kecepatan setinggi mungkin untuk menghindari macet',
+          'Sikap berkendara yang mengutamakan kewaspadaan, kehati-hatian, dan kemampuan mengantisipasi potensi kesalahan pengendara lain demi keselamatan bersama',
+          'Mengemudi sambil mengandalkan klakson secara agresif di setiap persimpangan',
+          'Memaksa kendaraan lain menepi untuk memberi jalan'
+        ],
+        correctIndex: 1,
+        explanation: 'Defensive Driving menekankan pencegahan kecelakaan meskipun pengguna jalan lain melakukan kesalahan atau kondisi jalan kurang mendukung.'
+      },
+      {
+        id: 2,
+        question: 'Apa arti dari marka garis putih membujur TANPA PUTUS (garis utuh) di tengah badan jalan?',
+        options: [
+          'Pengendara bebas mendahului kendaraan lain kapan saja',
+          'Pengendara dilarang melintasi atau melangkahi garis tersebut untuk mendahului kendaraan di depannya',
+          'Area khusus untuk tempat istirahat darurat di tengah jalan',
+          'Tanda bahwa jalanan tersebut bebas batas kecepatan'
+        ],
+        correctIndex: 1,
+        explanation: 'Garis utuh tanpa putus menandakan area berbahaya (misal tikungan, tanjakan, jembatan) sehingga kendaraan dilarang mendahului/berpindah lajur.'
+      },
+      {
+        id: 3,
+        question: 'Dalam pedoman keselamatan berkendara, apa fungsi dari "Aturan 3 Detik" (3-second rule)?',
+        options: [
+          'Waktu maksimal untuk menyalakan lampu sein sebelum berbelok',
+          'Menjaga jarak aman minimal di belakang kendaraan depan agar tersedia ruang reaksi pengereman darurat',
+          'Batas waktu parkir kendaraan di depan toko',
+          'Waktu tunggu lampu merah berganti menjadi hijau'
+        ],
+        correctIndex: 1,
+        explanation: 'Aturan 3 detik memberikan jeda waktu yang cukup bagi otak untuk merespons dan sistem rem bekerja saat kendaraan di depan berhenti mendadak.'
+      },
+      {
+        id: 4,
+        question: 'Berdasarkan Pasal 283 UU No. 22 Tahun 2009, pengemudi yang mengoperasikan ponsel (gadget) saat mengemudi dapat dikenakan sanksi...',
+        options: [
+          'Hadiah pulsa dari kepolisian',
+          'Pidana kurungan paling lama 3 bulan atau denda paling banyak Rp 750.000',
+          'Bebas dari segala kewajiban pajak',
+          'Kewajiban membeli ponsel baru'
+        ],
+        correctIndex: 1,
+        explanation: 'Pasal 283 mengatur bahwa setiap orang yang mengemudikan kendaraan bermotor di jalan secara tidak wajar dan melakukan kegiatan lain yang mengakibatkan gangguan konsentrasi dipidana kurungan paling lama 3 bulan atau denda paling banyak Rp750.000.'
+      },
+      {
+        id: 5,
+        question: 'Apa yang dimaksud dengan "Microsleep" saat mengemudi dan bagaimana cara mengatasinya?',
+        options: [
+          'Tidur lelap selama berjam-jam di dalam mobil saat mesin mati',
+          'Episode tidur singkat berdurasi 1–15 detik tanpa disadari akibat kelelahan; cara mengatasinya adalah segera menepi dan tidur sejenak (power nap)',
+          'Kondisi mata berkedip normal saat melihat kaca spion',
+          'Mendengarkan musik dengan volume sangat kecil'
+        ],
+        correctIndex: 1,
+        explanation: 'Microsleep sangat berbahaya di kecepatan tinggi karena mobil melaju tanpa kendali pengemudi. Solusi satu-satunya adalah istirahat tidur sejenak.'
+      },
+      {
+        id: 6,
+        question: 'Saat mengendarai sepeda motor dalam kondisi hujan lebat dan jalan tergenang air, potensi bahaya "Aquaplaning" (Hydroplaning) dapat dicegah dengan...',
+        options: [
+          'Menambah kecepatan dan mengunci rem depan sekuat tenaga',
+          'Mengurangi kecepatan, menjaga jarak aman, dan menghindari manuver mendadak agar ban tetap mencengkeram aspal',
+          'Mematikan lampu utama sepeda motor',
+          'Menggunakan ban botak agar air cepat mengalir'
+        ],
+        correctIndex: 1,
+        explanation: 'Aquaplaning terjadi saat lapisan air memisahkan ban dari permukaan aspal. Mengurangi kecepatan menjaga traksi tapak ban.'
+      },
+      {
+        id: 7,
+        question: 'Kapan pengemudi sepeda motor atau mobil wajib menyalakan lampu isyarat peringatan bahaya (Lampu Hazard)?',
+        options: [
+          'Saat berjalan lurus di persimpangan jalan atau saat hujan rintik-rintik',
+          'Hanya saat kendaraan dalam keadaan darurat atau berhenti darurat di tepi jalan',
+          'Saat konvoi bersama teman-teman komunitas di jalan tol',
+          'Saat ingin melaju dengan kecepatan tinggi'
+        ],
+        correctIndex: 1,
+        explanation: 'Lampu hazard hanya diaktifkan ketika kendaraan berhenti dalam kondisi darurat di jalan (mogok, kecelakaan, ganti ban), bukan saat bergerak.'
+      },
+      {
+        id: 8,
+        question: 'Sebelum melakukan perjalanan jarak jauh, pengecekan kelaikan fisik sepeda motor mencakup apa saja?',
+        options: [
+          'Kondisi tekanan dan ketebalan ban, sistem rem, lampu sein/utama/rem, spion, oli mesin, dan rantai/vanbelt',
+          'Hanya memeriksa warna cat bodi motor dan stiker',
+          'Cukup memastikan audio speaker menyala keras',
+          'Memeriksa apakah plat nomor sudah dicopot'
+        ],
+        correctIndex: 0,
+        explanation: 'Pemeriksaan rutin komponen vital (Ban, Rem, Kemudi, Penerangan, Pelumasan) menjamin kendaraan layak jalan dan mencegah kegagalan mekanis.'
+      },
+      {
+        id: 9,
+        question: 'Saat hendak berpindah lajur atau mendahului kendaraan lain di jalan tol, urutan prosedur yang benar adalah...',
+        options: [
+          'Langsung belok setir tanpa melihat spion',
+          'Periksa kaca spion & blind spot, nyalakan lampu sein minimal 30 meter sebelumnya, pastikan lajur kosong aman, lalu berpindah secara perlahan',
+          'Membunyikan klakson panjang lalu memotong jalur secara agresif',
+          'Mematikan lampu sein agar pengendara lain terkejut'
+        ],
+        correctIndex: 1,
+        explanation: 'Prosedur Spion-Sein-Manuver (Mirror-Signal-Manoeuvre) memastikan pengendara lain memahami niat berpindah lajur tanpa menimbulkan kepanikan.'
+      },
+      {
+        id: 10,
+        question: 'Apa fungsi utama dari helm bersertifikasi SNI tipe Full Face atau Open Face dengan pengunci Microlock / Double D-Ring?',
+        options: [
+          'Menghindari tilang kamera ETLE semata',
+          'Menyerap energi benturan benturan keras, melindungi tempurung kepala serta rahang, dan mencegah helm terlepas saat terjadi benturan',
+          'Sebagai tempat menyimpan uang koin kembalian',
+          'Sebagai hiasan kepala saat berkendara lambat'
+        ],
+        correctIndex: 1,
+        explanation: 'Helm berstandar SNI dirancang tahan impak dan sistem penguncian Double D-Ring atau Microlock mencegah helm terlempar lepas saat benturan terjadi.'
+      }
+    ]
   }
 ];

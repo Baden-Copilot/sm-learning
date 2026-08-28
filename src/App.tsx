@@ -139,7 +139,11 @@ export default function App() {
     return menuPerm.actions.includes(action);
   };
 
-  const isExecutive = activeRole.id === 'role-executive';
+  const isExecutive =
+    activeRole.id === 'role-executive' ||
+    activeRole.id === 'role-executive-1' ||
+    activeRole.id === 'role-executive-2' ||
+    activeRole.id === 'role-executive-3';
   /** Where "back to home" lands. A pimpinan has no Beranda — their home is the dashboard. */
   const homeTab = isExecutive ? 'executive' : 'beranda';
   // Every gate below is derived from the role's actual permissions. Hardcoding
@@ -580,19 +584,10 @@ export default function App() {
                 />
               </div>
               <div>
-                <h2 className="font-black text-slate-900 text-sm tracking-tight">SM-LEARNING DIKMAS POLRI</h2>
+                <h2 className="font-black text-slate-900 text-sm tracking-tight">DIKMAS POLRI</h2>
                 <p className="text-[10px] text-slate-500 font-semibold uppercase">Portal Edukasi Terbuka</p>
               </div>
             </div>
-            <button
-              onClick={() => {
-                window.history.pushState({}, '', '/');
-                setIsPublicPortalMode(false);
-              }}
-              className="px-4 py-2 bg-[#0a1d37] text-white text-xs font-bold rounded-xl hover:bg-slate-800 transition cursor-pointer"
-            >
-              Masuk Personel DIKMAS POLRI
-            </button>
           </div>
 
           <PublicLearningPortal

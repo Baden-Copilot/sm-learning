@@ -4,137 +4,29 @@ import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import { INITIAL_MATERIALS } from './src/data/materials';
 import { MaterialItem } from './src/types';
+import {
+  initDb,
+  readOutreachSessions,
+  writeOutreachSessions,
+  readOutreachReports,
+  writeOutreachReports,
+  readLearningEvents,
+  writeLearningEvents,
+  readSessionParticipants,
+  writeSessionParticipants,
+  readMaterialsData,
+  writeMaterialsData,
+  readLearningRecords,
+  writeLearningRecords,
+  readUserData,
+  writeUserData,
+  getPoldaList,
+  getPolresList,
+} from './src/db';
 
-const USER_DATA_PATH = path.join(process.cwd(), 'data', 'user-data.json');
-const MATERIALS_DATA_PATH = path.join(process.cwd(), 'data', 'materials.json');
-const LEARNING_RECORDS_PATH = path.join(process.cwd(), 'data', 'learning-records.json');
-const OUTREACH_SESSIONS_PATH = path.join(process.cwd(), 'data', 'outreach-sessions.json');
-const OUTREACH_REPORTS_PATH = path.join(process.cwd(), 'data', 'outreach-reports.json');
-const LEARNING_EVENTS_PATH = path.join(process.cwd(), 'data', 'learning-events.json');
-const SESSION_PARTICIPANTS_PATH = path.join(process.cwd(), 'data', 'session-participants.json');
-
-function readOutreachSessions(): any[] {
-  try {
-    if (fs.existsSync(OUTREACH_SESSIONS_PATH)) {
-      const raw = fs.readFileSync(OUTREACH_SESSIONS_PATH, 'utf-8');
-      return JSON.parse(raw);
-    }
-  } catch (err) {
-    console.error('Error reading outreach-sessions.json');
-  }
-  return [];
-}
-
-function writeOutreachSessions(data: any[]) {
-  try {
-    const dir = path.dirname(OUTREACH_SESSIONS_PATH);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(OUTREACH_SESSIONS_PATH, JSON.stringify(data, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Error writing outreach-sessions.json');
-  }
-}
-
-function readOutreachReports(): any[] {
-  try {
-    if (fs.existsSync(OUTREACH_REPORTS_PATH)) {
-      const raw = fs.readFileSync(OUTREACH_REPORTS_PATH, 'utf-8');
-      return JSON.parse(raw);
-    }
-  } catch (err) {
-    console.error('Error reading outreach-reports.json');
-  }
-  return [];
-}
-
-function writeOutreachReports(data: any[]) {
-  try {
-    const dir = path.dirname(OUTREACH_REPORTS_PATH);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(OUTREACH_REPORTS_PATH, JSON.stringify(data, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Error writing outreach-reports.json');
-  }
-}
-
-function readLearningEvents(): any[] {
-  try {
-    if (fs.existsSync(LEARNING_EVENTS_PATH)) {
-      const raw = fs.readFileSync(LEARNING_EVENTS_PATH, 'utf-8');
-      return JSON.parse(raw);
-    }
-  } catch (err) {
-    console.error('Error reading learning-events.json');
-  }
-  return [];
-}
-
-function writeLearningEvents(data: any[]) {
-  try {
-    const dir = path.dirname(LEARNING_EVENTS_PATH);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(LEARNING_EVENTS_PATH, JSON.stringify(data, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Error writing learning-events.json');
-  }
-}
-
-function readSessionParticipants(): any[] {
-  try {
-    if (fs.existsSync(SESSION_PARTICIPANTS_PATH)) {
-      const raw = fs.readFileSync(SESSION_PARTICIPANTS_PATH, 'utf-8');
-      return JSON.parse(raw);
-    }
-  } catch (err) {
-    console.error('Error reading session-participants.json');
-  }
-  return [];
-}
-
-function writeSessionParticipants(data: any[]) {
-  try {
-    const dir = path.dirname(SESSION_PARTICIPANTS_PATH);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(SESSION_PARTICIPANTS_PATH, JSON.stringify(data, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Error writing session-participants.json');
-  }
-}
-
-function readMaterialsData(): MaterialItem[] {
-  try {
-    if (fs.existsSync(MATERIALS_DATA_PATH)) {
-      const raw = fs.readFileSync(MATERIALS_DATA_PATH, 'utf-8');
-      return JSON.parse(raw);
-    }
-  } catch (err) {
-    console.error('Error reading materials.json');
-  }
-  return [...INITIAL_MATERIALS];
-}
-
-function writeMaterialsData(data: MaterialItem[]) {
-  try {
-    const dir = path.dirname(MATERIALS_DATA_PATH);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    fs.writeFileSync(MATERIALS_DATA_PATH, JSON.stringify(data, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Error writing materials.json');
-  }
-}
-
-// In-memory synced data store
+// Module-level pointer to materials (synced with db cache)
 let materialsStore: MaterialItem[] = readMaterialsData();
 let notificationsStore: any[] = [];
-
-// Ensure all published materials default to publicAccess = 'allowed' if undefined
-materialsStore = materialsStore.map(m => ({
-  ...m,
-  publicAccess: m.publicAccess || 'allowed',
-  publishStatus: m.publishStatus || 'published'
-}));
 
 /**
  * Resolves the caller to a real, active account. Every personal record —
@@ -149,38 +41,6 @@ function resolveCaller(req: any): { id: string; user: any } | null {
   const user = data.users.find((u: any) => u.id === userId);
   if (!user || !user.isActive) return null;
   return { id: userId, user };
-}
-
-function readLearningRecords() {
-  try {
-    if (fs.existsSync(LEARNING_RECORDS_PATH)) {
-      const raw = fs.readFileSync(LEARNING_RECORDS_PATH, 'utf-8');
-      return JSON.parse(raw);
-    }
-  } catch (err) {
-    console.error('Error reading learning-records.json');
-  }
-  return {
-    userProgress: [],
-    quizAttempts: [],
-    certificates: [],
-    userBookmarks: [],
-    userHistory: [],
-    auditLogs: [],
-    notifications: []
-  };
-}
-
-function writeLearningRecords(data: any) {
-  try {
-    const dir = path.dirname(LEARNING_RECORDS_PATH);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    fs.writeFileSync(LEARNING_RECORDS_PATH, JSON.stringify(data, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Error writing learning-records.json');
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -687,30 +547,6 @@ ${CERTIFICATE_SHARED_CSS}
 </html>`;
 }
 
-function readUserData() {
-  try {
-    if (fs.existsSync(USER_DATA_PATH)) {
-      const raw = fs.readFileSync(USER_DATA_PATH, 'utf-8');
-      return JSON.parse(raw);
-    }
-  } catch (err) {
-    console.error('Error reading user-data.json');
-  }
-  return { roles: [], users: [] };
-}
-
-function writeUserData(data: any) {
-  try {
-    const dir = path.dirname(USER_DATA_PATH);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    fs.writeFileSync(USER_DATA_PATH, JSON.stringify(data, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Error writing user-data.json');
-  }
-}
-
 // RBAC Middleware Helper
 function verifyAuthAndRole(menuId: string, requiredAction: 'view' | 'add' | 'edit' | 'delete') {
   return (req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -758,6 +594,14 @@ function verifyAuthAndRole(menuId: string, requiredAction: 'view' | 'add' | 'edi
 }
 
 async function startServer() {
+  // Inisialisasi pool MySQL & hidrasi cache
+  try {
+    await initDb();
+    materialsStore = readMaterialsData();
+  } catch (err) {
+    console.error('[DB] Gagal inisialisasi database MySQL:', err);
+  }
+
   const app = express();
   const PORT = 4003;
 
@@ -768,8 +612,21 @@ async function startServer() {
     res.json({
       status: 'ok',
       service: 'E-Learning Safety Education POLRI Server',
+      db: 'mysql',
       timestamp: new Date().toISOString()
     });
+  });
+
+  // Master Data Wilayah (Polda & Polres dari data_polda & data_polres)
+  app.get('/api/wilayah/polda', (_req, res) => {
+    const poldas = getPoldaList();
+    res.json({ success: true, data: poldas });
+  });
+
+  app.get('/api/wilayah/polres', (req, res) => {
+    const poldaId = req.query.poldaId ? String(req.query.poldaId) : undefined;
+    const polres = getPolresList(poldaId);
+    res.json({ success: true, data: polres });
   });
 
   // Public Catalog for Umum (/umum portal)
@@ -2591,25 +2448,32 @@ ${CERTIFICATE_SHARED_CSS}
     });
   });
 
-  // Polda the program is meant to cover. Mirrors POLDA_LIST on the client and
-  // exists so the dashboard can name regions with *no* activity — absence is
-  // invisible to any ranking built only from sessions that happened.
-  const POLDA_REFERENCE = [
-    'Polda Metro Jaya',
-    'Polda Jawa Barat',
-    'Polda Jawa Tengah',
-    'Polda Jawa Timur',
-    'Polda Banten',
-    'Polda Bali',
-    'Polda Sumatera Utara',
-    'Polda Sumatera Selatan',
-    'Polda Sulawesi Selatan',
-    'Polda Kalimantan Timur'
-  ];
-
   // === EXECUTIVE ANALYTICS (REAL COMPUTED DATA ONLY) ===
   app.get('/api/executive/analytics', verifyAuthAndRole('executive', 'view'), (req, res) => {
-    const { polda, polres, trainerId, level, startDate, endDate } = req.query;
+    const caller = resolveCaller(req);
+    const callerUser = caller?.user || {};
+    const callerRole = callerUser.roleId;
+    const callerExecLevel = callerUser.executiveLevel as 'nasional' | 'polda' | 'polres' | undefined;
+
+    // Master 34 Polda kewilayahan resmi
+    const poldaMaster = getPoldaList().filter(p => p.isWilayah);
+    const POLDA_REFERENCE = poldaMaster.map(p => p.nama);
+
+    // Tentukan lingkup wilayah efektif (enforce scope eksekutif)
+    let effectivePolda: string | undefined = req.query.polda ? String(req.query.polda) : undefined;
+    let effectivePolres: string | undefined = req.query.polres ? String(req.query.polres) : undefined;
+
+    // Eksekutif level Polda / Polres terkunci ke wilayahnya sendiri
+    if (callerRole === 'role-executive') {
+      if (callerExecLevel === 'polda' && callerUser.polda) {
+        effectivePolda = callerUser.polda;
+      } else if (callerExecLevel === 'polres' && callerUser.polda) {
+        effectivePolda = callerUser.polda;
+        if (callerUser.polres) effectivePolres = callerUser.polres;
+      }
+    }
+
+    const { trainerId, level, startDate, endDate } = req.query;
 
     let materials = [...materialsStore];
     let sessions = readOutreachSessions();
@@ -2620,8 +2484,7 @@ ${CERTIFICATE_SHARED_CSS}
     let userData = readUserData();
 
     // Level filter: narrow the material set first, then keep only the sessions that
-    // presented one of those materials. Previously `level` was parsed and ignored,
-    // so changing the Jenjang dropdown produced identical numbers every time.
+    // presented one of those materials.
     if (level && String(level) !== 'ALL') {
       materials = materials.filter(m => String(m.level).toUpperCase() === String(level).toUpperCase());
       const levelMaterialIds = new Set(materials.map(m => m.id));
@@ -2629,21 +2492,35 @@ ${CERTIFICATE_SHARED_CSS}
       reports = reports.filter((r: any) => levelMaterialIds.has(r.materialId));
     }
 
-    // Filter by Polda & Polres
-    if (polda && String(polda) !== 'ALL') {
-      sessions = sessions.filter((s: any) => s.polda === String(polda));
-      reports = reports.filter((r: any) => r.polda === String(polda));
+    // Filter by Polda & Polres (case-insensitive + id matching)
+    if (effectivePolda && String(effectivePolda) !== 'ALL') {
+      const targetPolda = String(effectivePolda).toLowerCase();
+      sessions = sessions.filter((s: any) =>
+        (s.polda && s.polda.toLowerCase() === targetPolda) ||
+        (s.poldaId && callerUser.poldaId && s.poldaId === callerUser.poldaId)
+      );
+      reports = reports.filter((r: any) =>
+        (r.polda && r.polda.toLowerCase() === targetPolda) ||
+        (r.poldaId && callerUser.poldaId && r.poldaId === callerUser.poldaId)
+      );
     }
-    if (polres && String(polres) !== 'ALL') {
-      sessions = sessions.filter((s: any) => s.polres === String(polres));
-      reports = reports.filter((r: any) => r.polres === String(polres));
+    if (effectivePolres && String(effectivePolres) !== 'ALL') {
+      const targetPolres = String(effectivePolres).toLowerCase();
+      sessions = sessions.filter((s: any) =>
+        (s.polres && s.polres.toLowerCase() === targetPolres) ||
+        (s.polresId && callerUser.polresId && s.polresId === callerUser.polresId)
+      );
+      reports = reports.filter((r: any) =>
+        (r.polres && r.polres.toLowerCase() === targetPolres) ||
+        (r.polresId && callerUser.polresId && r.polresId === callerUser.polresId)
+      );
     }
     if (trainerId && String(trainerId) !== 'ALL') {
       sessions = sessions.filter((s: any) => s.trainerId === String(trainerId));
       reports = reports.filter((r: any) => r.trainerId === String(trainerId));
     }
 
-    // Date range on the activity date (also previously parsed and ignored)
+    // Date range on the activity date
     const sessionDate = (s: any) => String(s.date || s.createdAt || '').slice(0, 10);
     if (startDate) {
       sessions = sessions.filter((s: any) => sessionDate(s) >= String(startDate));
@@ -3053,9 +2930,18 @@ ${CERTIFICATE_SHARED_CSS}
         inactivePolda,
         kpiWeights: KPI_WEIGHTS,
         generatedAt: new Date().toISOString(),
+        executiveScope: {
+          level: callerExecLevel || (callerRole === 'role-admin' ? 'nasional' : 'nasional'),
+          polda: callerUser.polda || null,
+          polres: callerUser.polres || null,
+          poldaId: callerUser.poldaId || null,
+          polresId: callerUser.polresId || null,
+          isLockedToPolda: callerRole === 'role-executive' && callerExecLevel === 'polda',
+          isLockedToPolres: callerRole === 'role-executive' && callerExecLevel === 'polres',
+        },
         appliedFilters: {
-          polda: polda ? String(polda) : 'ALL',
-          polres: polres ? String(polres) : 'ALL',
+          polda: effectivePolda || 'ALL',
+          polres: effectivePolres || 'ALL',
           level: level ? String(level) : 'ALL',
           trainerId: trainerId ? String(trainerId) : 'ALL',
           startDate: startDate ? String(startDate) : null,

@@ -23,8 +23,8 @@ import {
   Eye
 } from 'lucide-react';
 import { MaterialItem, EducationLevel, ExecutiveAnalyticsData, KpiRow } from '../types';
-import { POLDA_LIST, POLRES_MAP } from './TrainerOutreachPage';
 import { ActivityResultModal } from './Modals/ActivityResultModal';
+import { fetchPoldaList, fetchPolresByPolda, WilayahPoldaItem, WilayahPolresItem, DEFAULT_34_POLDA } from '../utils/wilayah';
 
 interface ExecutiveDashboardPageProps {
   materials: MaterialItem[];
@@ -105,7 +105,9 @@ export function ExecutiveDashboardPage({
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
 
-  const [analyticsData, setAnalyticsData] = useState<ExecutiveAnalyticsData | null>(null);
+  const [poldaList, setPoldaList] = useState<WilayahPoldaItem[]>([]);
+  const [polresList, setPolresList] = useState<WilayahPolresItem[]>([]);
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedPolda, setExpandedPolda] = useState<string | null>(null);
@@ -113,6 +115,25 @@ export function ExecutiveDashboardPage({
   const [previewSessionId, setPreviewSessionId] = useState<string | null>(null);
   const [kpiScope, setKpiScope] = useState<'polda' | 'polres' | 'trainer'>('polda');
   const [expandedKpiKey, setExpandedKpiKey] = useState<string | null>(null);
+
+  // Load master 34 polda saat komponen mount
+  useEffect(() => {
+    fetchPoldaList().then(list => {
+      const filtered = list.filter(p => p.isWilayah);
+      setPoldaList(filtered);
+    });
+  }, []);
+
+  // Load polres dari DB saat selectedPolda berubah
+  useEffect(() => {
+    if (selectedPolda === 'ALL') {
+      setPolresList([]);
+      return;
+    }
+    fetchPolresByPolda(selectedPolda).then(list => {
+      setPolresList(list);
+    });
+  }, [selectedPolda]);
 
   const fetchAnalytics = () => {
     setIsLoading(true);
@@ -128,11 +149,19 @@ export function ExecutiveDashboardPage({
     fetch(`/api/executive/analytics?${params.toString()}`, { headers: authHeaders || {} })
       .then(res => res.json().then(body => ({ ok: res.ok, body })))
       .then(({ ok, body }) => {
-        // Surface the server's own reason (e.g. 403 RBAC) instead of a generic message
         if (!ok || !body.success) {
           throw new Error(body.message || 'Gagal memuat analitik eksekutif dari server.');
         }
         setAnalyticsData(body.data);
+
+        // Jika server mengunci scope (Kapolda / Kapolres), sinkronkan state dropdown
+        const scope = body.data?.executiveScope;
+        if (scope?.isLockedToPolda && scope?.polda && selectedPolda === 'ALL') {
+          setSelectedPolda(scope.polda);
+        } else if (scope?.isLockedToPolres && scope?.polda && selectedPolda === 'ALL') {
+          setSelectedPolda(scope.polda);
+          if (scope?.polres) setSelectedPolres(scope.polres);
+        }
       })
       .catch(err => {
         setError(err.message || 'Terjadi kesalahan sistem.');
@@ -237,12 +266,34 @@ export function ExecutiveDashboardPage({
       <section className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs">
         <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0a1d37] text-amber-300 text-xs font-bold">
-              <ShieldCheck className="w-4 h-4 text-amber-400" />
-              <span>Eksekutif Strategic Dashboard • Korlantas POLRI</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0a1d37] text-amber-300 text-xs font-bold">
+                <ShieldCheck className="w-4 h-4 text-amber-400" />
+                <span>Eksekutif Strategic Dashboard • Korlantas POLRI</span>
+              </div>
+              {kpi?.executiveScope && (
+                <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
+                  kpi.executiveScope.level === 'nasional'
+                    ? 'bg-blue-50 text-blue-800 border-blue-200'
+                    : kpi.executiveScope.level === 'polda'
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                    : 'bg-purple-50 text-purple-800 border-purple-200'
+                }`}>
+                  <Building className="w-3.5 h-3.5" />
+                  <span>
+                    Lingkup: {
+                      kpi.executiveScope.level === 'nasional'
+                        ? 'Tingkat Nasional (Seluruh Indonesia)'
+                        : kpi.executiveScope.level === 'polda'
+                        ? `Polda — ${kpi.executiveScope.polda || 'Wilayah'}`
+                        : `Polres — ${kpi.executiveScope.polres || 'Wilayah'}`
+                    }
+                  </span>
+                </div>
+              )}
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-              Laporan Kinerja & Analitik Edukasi Nasional
+              Laporan Kinerja & Analitik Edukasi {kpi?.executiveScope?.level === 'polda' && kpi?.executiveScope?.polda ? kpi.executiveScope.polda : 'Nasional'}
             </h1>
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
               Seluruh angka dihitung langsung dari kegiatan lapangan yang tercatat — tidak ada nilai contoh.
@@ -277,33 +328,40 @@ export function ExecutiveDashboardPage({
         <div className="mt-6 pt-5 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <div>
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-              Wilayah Polda
+              Wilayah Polda {kpi?.executiveScope?.isLockedToPolda && '(Terkunci)'}
             </label>
             <select
               value={selectedPolda}
               onChange={(e) => handlePoldaChange(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              disabled={Boolean(kpi?.executiveScope?.isLockedToPolda || kpi?.executiveScope?.isLockedToPolres)}
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 disabled:bg-slate-100 disabled:cursor-not-allowed text-xs font-bold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500 cursor-pointer"
             >
-              <option value="ALL">Semua Polda (Nasional)</option>
-              {POLDA_LIST.map(p => (
-                <option key={p} value={p}>{p}</option>
-              ))}
+              {!kpi?.executiveScope?.isLockedToPolda && (
+                <option value="ALL">Semua Polda (Nasional)</option>
+              )}
+              {poldaList.length > 0
+                ? poldaList.map(p => (
+                    <option key={p.poldaId} value={p.nama}>{p.nama}</option>
+                  ))
+                : DEFAULT_34_POLDA.map(p => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
             </select>
           </div>
 
           <div>
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-              Polres / Satlantas
+              Polres / Satlantas {kpi?.executiveScope?.isLockedToPolres && '(Terkunci)'}
             </label>
             <select
               value={selectedPolres}
               onChange={(e) => setSelectedPolres(e.target.value)}
-              disabled={selectedPolda === 'ALL'}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 disabled:opacity-50 text-xs font-bold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              disabled={selectedPolda === 'ALL' || Boolean(kpi?.executiveScope?.isLockedToPolres)}
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-bold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500 cursor-pointer"
             >
               <option value="ALL">Semua Polres</option>
-              {polresOptions.map(p => (
-                <option key={p} value={p}>{p}</option>
+              {polresList.map(p => (
+                <option key={`${p.poldaId}-${p.polresId}`} value={p.nama}>{p.nama}</option>
               ))}
             </select>
           </div>

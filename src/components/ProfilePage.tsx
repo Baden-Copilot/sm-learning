@@ -16,7 +16,7 @@ import {
   Save
 } from 'lucide-react';
 import { UserAccount, Role } from '../types';
-import { POLDA_LIST, POLRES_MAP } from './TrainerOutreachPage';
+import { DEFAULT_34_POLDA, fetchPoldaList, fetchPolresByPolda, WilayahPoldaItem, WilayahPolresItem } from '../utils/wilayah';
 
 interface ProfilePageProps {
   currentUser: any;
@@ -44,10 +44,12 @@ export function ProfilePage({
   const [isSaved, setIsSaved] = useState(false);
 
   // Kedinasan State
+  const [poldaList, setPoldaList] = useState<WilayahPoldaItem[]>([]);
+  const [polresList, setPolresList] = useState<WilayahPolresItem[]>([]);
   const [kedPosition, setKedPosition] = useState(user?.position || '');
   const [kedUnit, setKedUnit] = useState(user?.unit || '');
-  const [kedPolda, setKedPolda] = useState(user?.polda || POLDA_LIST[0]);
-  const [kedPolres, setKedPolres] = useState(user?.polres || (POLRES_MAP[POLDA_LIST[0]]?.[0] || ''));
+  const [kedPolda, setKedPolda] = useState(user?.polda || 'POLDA METRO JAYA');
+  const [kedPolres, setKedPolres] = useState(user?.polres || '');
   const [kedSaving, setKedSaving] = useState(false);
   const [kedMsg, setKedMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -59,6 +61,33 @@ export function ProfilePage({
 
   const userId = user?.id || 'user-1';
   const roleId = currentRole?.id || 'role-admin';
+
+  // Load daftar polda dari DB
+  useEffect(() => {
+    fetchPoldaList().then(list => {
+      const active = list.filter(p => p.isWilayah);
+      setPoldaList(active);
+      if (active.length > 0 && !kedPolda) {
+        setKedPolda(active[0].nama);
+      }
+    });
+  }, []);
+
+  // Load polres saat kedPolda berubah
+  useEffect(() => {
+    if (!kedPolda) return;
+    fetchPolresByPolda(kedPolda).then(list => {
+      setPolresList(list);
+      if (list.length > 0) {
+        setKedPolres(prev => {
+          const exists = list.some(item => item.nama === prev);
+          return exists ? prev : list[0].nama;
+        });
+      } else {
+        setKedPolres('');
+      }
+    });
+  }, [kedPolda]);
 
   // Load latest profile data on mount
   useEffect(() => {
@@ -376,10 +405,10 @@ export function ProfilePage({
                 </label>
                 <select
                   value={kedPolda}
-                  onChange={e => handlePoldaChange(e.target.value)}
+                  onChange={e => setKedPolda(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-800 bg-white font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600"
                 >
-                  {POLDA_LIST.map(p => (
+                  {(poldaList.length > 0 ? poldaList.map(p => p.nama) : DEFAULT_34_POLDA).map(p => (
                     <option key={p} value={p}>{p}</option>
                   ))}
                 </select>
@@ -395,9 +424,13 @@ export function ProfilePage({
                   onChange={e => setKedPolres(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-800 bg-white font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600"
                 >
-                  {(POLRES_MAP[kedPolda] || []).map(p => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
+                  {polresList.length > 0 ? (
+                    polresList.map(p => (
+                      <option key={`${p.poldaId}-${p.polresId}`} value={p.nama}>{p.nama}</option>
+                    ))
+                  ) : (
+                    <option value="">Tidak ada polres</option>
+                  )}
                 </select>
               </div>
             </div>

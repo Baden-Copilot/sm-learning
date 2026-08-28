@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { MaterialItem, OutreachSession, Role } from '../types';
 import { ActivityResultModal } from './Modals/ActivityResultModal';
+import { DEFAULT_34_POLDA, fetchPoldaList, fetchPolresByPolda, WilayahPoldaItem, WilayahPolresItem } from '../utils/wilayah';
 
 interface TrainerOutreachPageProps {
   currentUser: any;
@@ -33,18 +34,7 @@ interface TrainerOutreachPageProps {
   onOpenReportModal: (session: OutreachSession) => void;
 }
 
-export const POLDA_LIST = [
-  'Polda Metro Jaya',
-  'Polda Jawa Barat',
-  'Polda Jawa Tengah',
-  'Polda Jawa Timur',
-  'Polda Banten',
-  'Polda Bali',
-  'Polda Sumatera Utara',
-  'Polda Sumatera Selatan',
-  'Polda Sulawesi Selatan',
-  'Polda Kalimantan Timur'
-];
+export const POLDA_LIST = DEFAULT_34_POLDA;
 
 export const POLRES_MAP: Record<string, string[]> = {
   'Polda Metro Jaya': ['Polres Metro Jakarta Pusat', 'Polres Metro Jakarta Selatan', 'Polres Metro Jakarta Barat', 'Polres Metro Jakarta Timur', 'Polres Metro Jakarta Utara', 'Polres Metro Bekasi'],
@@ -87,8 +77,10 @@ export function TrainerOutreachPage({
   // Form Fields
   const [selectedMaterialId, setSelectedMaterialId] = useState<string>('');
   const [activityName, setActivityName] = useState<string>('');
-  const [selectedPolda, setSelectedPolda] = useState<string>(POLDA_LIST[0]);
-  const [selectedPolres, setSelectedPolres] = useState<string>(POLRES_MAP[POLDA_LIST[0]][0]);
+  const [poldaList, setPoldaList] = useState<WilayahPoldaItem[]>([]);
+  const [polresList, setPolresList] = useState<WilayahPolresItem[]>([]);
+  const [selectedPolda, setSelectedPolda] = useState<string>('POLDA METRO JAYA');
+  const [selectedPolres, setSelectedPolres] = useState<string>('');
   const [location, setLocation] = useState<string>('');
   const [date, setDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [startTime, setStartTime] = useState<string>('09:00 WIB');
@@ -97,6 +89,33 @@ export function TrainerOutreachPage({
 
   const trainerId = currentUser?.user?.id || currentUser?.id || 'user-2';
   const currentRoleId = currentRole?.id || 'role-trainer';
+
+  // Load daftar polda dari DB
+  useEffect(() => {
+    fetchPoldaList().then(list => {
+      const active = list.filter(p => p.isWilayah);
+      setPoldaList(active);
+      if (active.length > 0 && !selectedPolda) {
+        setSelectedPolda(active[0].nama);
+      }
+    });
+  }, []);
+
+  // Load polres saat selectedPolda berubah
+  useEffect(() => {
+    if (!selectedPolda) return;
+    fetchPolresByPolda(selectedPolda).then(list => {
+      setPolresList(list);
+      if (list.length > 0) {
+        setSelectedPolres(prev => {
+          const exists = list.some(item => item.nama === prev);
+          return exists ? prev : list[0].nama;
+        });
+      } else {
+        setSelectedPolres('');
+      }
+    });
+  }, [selectedPolda]);
 
   // Load trainer kedinasan profile for auto-populate
   useEffect(() => {
@@ -112,13 +131,10 @@ export function TrainerOutreachPage({
       .then(data => {
         if (data && data.success && data.data?.user) {
           const u = data.data.user;
-          if (u.polda && POLDA_LIST.includes(u.polda)) {
+          if (u.polda) {
             setSelectedPolda(u.polda);
-            const polresList = POLRES_MAP[u.polda] || [];
-            if (u.polres && polresList.includes(u.polres)) {
+            if (u.polres) {
               setSelectedPolres(u.polres);
-            } else if (polresList.length > 0) {
-              setSelectedPolres(polresList[0]);
             }
           }
         }
@@ -606,11 +622,11 @@ export function TrainerOutreachPage({
                   </label>
                   <select
                     value={selectedPolda}
-                    onChange={(e) => handlePoldaChange(e.target.value)}
+                    onChange={(e) => setSelectedPolda(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     required
                   >
-                    {POLDA_LIST.map(p => (
+                    {(poldaList.length > 0 ? poldaList.map(p => p.nama) : POLDA_LIST).map(p => (
                       <option key={p} value={p}>{p}</option>
                     ))}
                   </select>
@@ -626,9 +642,13 @@ export function TrainerOutreachPage({
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     required
                   >
-                    {(POLRES_MAP[selectedPolda] || []).map(p => (
-                      <option key={p} value={p}>{p}</option>
-                    ))}
+                    {polresList.length > 0 ? (
+                      polresList.map(p => (
+                        <option key={`${p.poldaId}-${p.polresId}`} value={p.nama}>{p.nama}</option>
+                      ))
+                    ) : (
+                      <option value="">Tidak ada polres</option>
+                    )}
                   </select>
                 </div>
               </div>

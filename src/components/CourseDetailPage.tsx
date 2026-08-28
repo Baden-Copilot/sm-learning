@@ -114,7 +114,7 @@ export function CourseDetailPage({
             className="inline-flex items-center gap-1.5 font-bold text-slate-700 hover:text-blue-600 transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Learning</span>
+            <span>{isGuestMode ? 'Portal Edukasi' : 'Learning'}</span>
           </button>
           <span className="text-slate-400">/</span>
           <span className="font-semibold text-slate-600">{material.level}</span>

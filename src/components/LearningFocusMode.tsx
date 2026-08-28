@@ -523,12 +523,9 @@ export function LearningFocusMode({
                   (() => {
                     const vUrl = currentLesson.videoUrl || material.videoUrl || '';
                     let embedUrl = vUrl;
-                    if (vUrl.includes('youtube.com/watch?v=')) {
-                      const videoId = vUrl.split('v=')[1]?.split('&')[0];
-                      embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`;
-                    } else if (vUrl.includes('youtu.be/')) {
-                      const videoId = vUrl.split('youtu.be/')[1]?.split('?')[0];
-                      embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`;
+                    const ytMatch = vUrl.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
+                    if (ytMatch && ytMatch[1]) {
+                      embedUrl = `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1&rel=0&playsinline=1`;
                     }
 
                     return (

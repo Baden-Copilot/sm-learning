@@ -31,6 +31,7 @@ import {
   AVAILABLE_MENUS,
   ALL_ACTIONS
 } from '../types';
+import { DEFAULT_34_POLDA, fetchPoldaList, fetchPolresByPolda, WilayahPoldaItem, WilayahPolresItem } from '../utils/wilayah';
 
 interface UserAccessPageProps {
   users: UserAccount[];
@@ -63,6 +64,8 @@ export function UserAccessPage({
   // User modal state
   const [showUserModal, setShowUserModal] = useState(false);
   const [editingUser, setEditingUser] = useState<UserAccount | null>(null);
+  const [poldaList, setPoldaList] = useState<WilayahPoldaItem[]>([]);
+  const [polresList, setPolresList] = useState<WilayahPolresItem[]>([]);
   const [userForm, setUserForm] = useState({
     username: '',
     password: '',
@@ -74,6 +77,25 @@ export function UserAccessPage({
     polda: '',
     polres: ''
   });
+
+  // Load daftar polda dari DB
+  React.useEffect(() => {
+    fetchPoldaList().then(list => {
+      const active = list.filter(p => p.isWilayah);
+      setPoldaList(active);
+    });
+  }, []);
+
+  // Load polres saat userForm.polda berubah
+  React.useEffect(() => {
+    if (!userForm.polda) {
+      setPolresList([]);
+      return;
+    }
+    fetchPolresByPolda(userForm.polda).then(list => {
+      setPolresList(list);
+    });
+  }, [userForm.polda]);
 
   // Role modal state
   const [showRoleModal, setShowRoleModal] = useState(false);
@@ -727,7 +749,7 @@ export function UserAccessPage({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {AVAILABLE_MENUS.slice(0, 7).map((menu) => {
+                      {AVAILABLE_MENUS.map((menu) => {
                         const perm = role.permissions.find(p => p.menuId === menu.id);
                         return (
                           <tr key={menu.id}>
@@ -902,23 +924,33 @@ export function UserAccessPage({
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="font-bold text-slate-700 block mb-1 text-[11px]">Polda</label>
-                    <input
-                      type="text"
+                    <select
                       value={userForm.polda}
-                      onChange={e => setUserForm({ ...userForm, polda: e.target.value })}
-                      placeholder="e.g. Polda Metro Jaya"
-                      className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none text-xs"
-                    />
+                      onChange={e => {
+                        const polda = e.target.value;
+                        setUserForm({ ...userForm, polda, polres: '' });
+                      }}
+                      className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none text-xs cursor-pointer"
+                    >
+                      <option value="">Pilih Polda</option>
+                      {(poldaList.length > 0 ? poldaList.map(p => p.nama) : DEFAULT_34_POLDA).map(p => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="font-bold text-slate-700 block mb-1 text-[11px]">Polres</label>
-                    <input
-                      type="text"
+                    <select
                       value={userForm.polres}
                       onChange={e => setUserForm({ ...userForm, polres: e.target.value })}
-                      placeholder="e.g. Polres Jaksel"
-                      className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none text-xs"
-                    />
+                      disabled={!userForm.polda}
+                      className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 disabled:opacity-50 focus:ring-2 focus:ring-blue-600 focus:outline-none text-xs cursor-pointer"
+                    >
+                      <option value="">Pilih Polres</option>
+                      {polresList.map(p => (
+                        <option key={`${p.poldaId}-${p.polresId}`} value={p.nama}>{p.nama}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>

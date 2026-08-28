@@ -113,8 +113,8 @@ export function BerandaPage({
             </h1>
 
             <p className="text-sm text-slate-600 leading-relaxed">
-              {currentRole?.id === 'role-executive'
-                ? 'Pantau indikator keselamatan lalu lintas nasional, partisipasi siswa, dan evaluasi kurikulum terpadu.'
+              {currentRole?.id?.startsWith('role-executive')
+                ? 'Pantau indikator keselamatan lalu lintas, partisipasi sosialisasi, dan evaluasi kurikulum terpadu.'
                 : currentRole?.id === 'role-trainer'
                 ? 'Kelola materi pembelajaran, kuis evaluasi, dan pantau perkembangan pemahaman peserta didik.'
                 : 'Selamat datang di pusat kendali edukasi keselamatan. Kelola kurikulum, pengguna, dan materi pembelajaran.'}

@@ -120,6 +120,8 @@ export interface Role {
   permissions: MenuPermission[];
 }
 
+export type ExecutiveLevel = 'nasional' | 'polda' | 'polres';
+
 export interface UserAccount {
   id: string;
   username: string;
@@ -129,16 +131,21 @@ export interface UserAccount {
   roleId: string;
   isActive: boolean;
   createdAt: string;
-  // Informasi Kedinasan (Trainer Organization Profile)
-  position?: string;       // Jabatan (e.g., "Kanit Dikyasa")
-  unit?: string;           // Satuan / Unit Kerja (e.g., "Satlantas")
-  polda?: string;          // Polda (e.g., "Polda Metro Jaya")
-  polres?: string;         // Polres (e.g., "Polres Metro Jakarta Selatan")
+  // Lingkup kewilayahan & eksekutif
+  executiveLevel?: ExecutiveLevel;
+  poldaId?: string;
+  polresId?: string;
+  // Informasi Kedinasan (Trainer & Executive Profile)
+  position?: string;       // Jabatan (e.g., "Kanit Dikyasa", "Kapolda Metro Jaya")
+  unit?: string;           // Satuan / Unit Kerja (e.g., "Ditlantas Polda Metro Jaya")
+  polda?: string;          // Nama Polda (e.g., "POLDA METRO JAYA")
+  polres?: string;         // Nama Polres (e.g., "POLRES METRO JAKARTA SELATAN")
 }
 
 // Daftar menu lengkap (kompatibel penuh dengan User Akses yang ada)
 export const AVAILABLE_MENUS: { id: string; label: string }[] = [
   { id: 'beranda', label: 'Beranda' },
+  { id: 'public-portal', label: 'Portal Edukasi Publik (/umum)' },
   { id: 'learning', label: 'Learning' },
   { id: 'my-learning', label: 'My Learning' },
   { id: 'progress', label: 'Capaian & Sertifikat' },
@@ -190,9 +197,51 @@ export const DEFAULT_ROLES: Role[] = [
     ],
   },
   {
-    id: 'role-executive',
-    name: 'Executive (Kapolri / Kapolda / Atasan)',
-    description: 'Pimpinan tingkat tinggi — akses khusus pemantauan performa nasional, statistik kelulusan, dan laporan eksekutif',
+    id: 'role-executive-1',
+    name: 'Eksekutif 1 (Level Polres / Kapolres)',
+    description: 'Pimpinan tingkat Polres — akses pemantauan performa & laporan kegiatan khusus di wilayah Polres terdaftar',
+    permissions: [
+      { menuId: 'beranda', menuLabel: 'Beranda', actions: ['view'] },
+      { menuId: 'executive', menuLabel: 'Eksekutif Dashboard', actions: ['view'] },
+      { menuId: 'reports', menuLabel: 'Laporan & Ekspor', actions: ['view'] },
+      { menuId: 'learning', menuLabel: 'Learning', actions: ['view'] },
+      { menuId: 'my-learning', menuLabel: 'My Learning', actions: ['view'] },
+      { menuId: 'progress', menuLabel: 'Capaian & Sertifikat', actions: ['view'] },
+      { menuId: 'katalog', menuLabel: 'Katalog Materi', actions: ['view'] },
+      { menuId: 'jenjang', menuLabel: 'Jenjang Pendidikan', actions: ['view'] },
+      { menuId: 'video', menuLabel: 'Video', actions: ['view'] },
+      { menuId: 'dokumen', menuLabel: 'Dokumen', actions: ['view'] },
+      { menuId: 'infografis', menuLabel: 'Infografis', actions: ['view'] },
+      { menuId: 'kuis', menuLabel: 'Kuis & Evaluasi', actions: ['view'] },
+      { menuId: 'favorit', menuLabel: 'Favorit', actions: ['view'] },
+      { menuId: 'riwayat', menuLabel: 'Riwayat', actions: ['view'] },
+    ],
+  },
+  {
+    id: 'role-executive-2',
+    name: 'Eksekutif 2 (Level Polda / Kapolda)',
+    description: 'Pimpinan tingkat Polda — akses pemantauan performa & laporan seluruh Polres di wilayah Polda terdaftar',
+    permissions: [
+      { menuId: 'beranda', menuLabel: 'Beranda', actions: ['view'] },
+      { menuId: 'executive', menuLabel: 'Eksekutif Dashboard', actions: ['view'] },
+      { menuId: 'reports', menuLabel: 'Laporan & Ekspor', actions: ['view'] },
+      { menuId: 'learning', menuLabel: 'Learning', actions: ['view'] },
+      { menuId: 'my-learning', menuLabel: 'My Learning', actions: ['view', 'add', 'edit'] },
+      { menuId: 'progress', menuLabel: 'Capaian & Sertifikat', actions: ['view'] },
+      { menuId: 'katalog', menuLabel: 'Katalog Materi', actions: ['view'] },
+      { menuId: 'jenjang', menuLabel: 'Jenjang Pendidikan', actions: ['view'] },
+      { menuId: 'video', menuLabel: 'Video', actions: ['view'] },
+      { menuId: 'dokumen', menuLabel: 'Dokumen', actions: ['view'] },
+      { menuId: 'infografis', menuLabel: 'Infografis', actions: ['view'] },
+      { menuId: 'kuis', menuLabel: 'Kuis & Evaluasi', actions: ['view'] },
+      { menuId: 'favorit', menuLabel: 'Favorit', actions: ['view'] },
+      { menuId: 'riwayat', menuLabel: 'Riwayat', actions: ['view'] },
+    ],
+  },
+  {
+    id: 'role-executive-3',
+    name: 'Eksekutif 3 (Level Nasional / Kapolri)',
+    description: 'Pimpinan tingkat Mabes Polri / Korlantas — akses penuh pemantauan seluruh 34 Polda se-Indonesia',
     permissions: [
       { menuId: 'beranda', menuLabel: 'Beranda', actions: ['view'] },
       { menuId: 'executive', menuLabel: 'Eksekutif Dashboard', actions: ['view'] },
@@ -227,19 +276,33 @@ export const DEFAULT_USERS: UserAccount[] = [
     createdAt: '2026-01-01',
   },
   {
+    id: 'user-kapolri',
+    username: 'kapolri',
+    fullName: 'Jenderal Polisi Drs. Listyo Sigit Prabowo, M.Si. (Kapolri)',
+    roleId: 'role-executive-3',
+    isActive: true,
+    executiveLevel: 'nasional',
+    createdAt: '2026-01-01',
+  },
+  {
     id: 'user-2',
     username: 'trainer1',
     fullName: 'Kompol Budi Santoso, S.H.',
     roleId: 'role-trainer',
     isActive: true,
+    poldaId: '12',
+    polda: 'POLDA METRO JAYA',
     createdAt: '2026-01-15',
   },
   {
     id: 'user-3',
     username: 'executive',
-    fullName: 'Irjen Pol. Drs. Ahmad Fauzi, M.Si. (Kapolda)',
-    roleId: 'role-executive',
+    fullName: 'Irjen Pol. Drs. Ahmad Fauzi, M.Si. (Kapolda Metro Jaya)',
+    roleId: 'role-executive-2',
     isActive: true,
+    executiveLevel: 'polda',
+    poldaId: '12',
+    polda: 'POLDA METRO JAYA',
     createdAt: '2026-02-01',
   },
 ];
