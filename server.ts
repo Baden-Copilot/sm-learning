@@ -1,7 +1,10 @@
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
+import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
+
+dotenv.config();
 import { INITIAL_MATERIALS } from './src/data/materials';
 import { MaterialItem } from './src/types';
 import {

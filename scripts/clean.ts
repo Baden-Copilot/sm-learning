@@ -4,6 +4,9 @@
  */
 
 import mysql from 'mysql2/promise';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const DB_CONFIG = {
   host: process.env.DB_HOST || '127.0.0.1',
