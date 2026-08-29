@@ -161,16 +161,21 @@ export function UserAccessPage({
     if (!editingUser && !userForm.password.trim()) return;
 
     if (editingUser) {
+      const selectedPoldaObj = poldaList.find(p => p.nama === userForm.polda);
+      const selectedPolresObj = polresList.find(p => p.nama === userForm.polres);
+
       const updated = users.map(u => u.id === editingUser.id ? {
         ...u,
-        username: userForm.username,
-        fullName: userForm.fullName,
+        username: userForm.username.trim(),
+        fullName: userForm.fullName.trim(),
         roleId: userForm.roleId,
         isActive: userForm.isActive,
-        position: userForm.position,
-        unit: userForm.unit,
-        polda: userForm.polda,
-        polres: userForm.polres,
+        position: userForm.position?.trim() || undefined,
+        unit: userForm.unit?.trim() || undefined,
+        poldaId: selectedPoldaObj?.poldaId || u.poldaId,
+        polresId: selectedPolresObj?.polresId || u.polresId,
+        polda: userForm.polda || undefined,
+        polres: userForm.polres || undefined,
         ...(userForm.password.trim() ? { password: userForm.password } : {}),
       } : u);
       onUpdateUsers(updated);
@@ -187,17 +192,22 @@ export function UserAccessPage({
         ...prev
       ]);
     } else {
+      const selectedPoldaObj = poldaList.find(p => p.nama === userForm.polda);
+      const selectedPolresObj = polresList.find(p => p.nama === userForm.polres);
+
       const newUser: UserAccount = {
         id: `user-${Date.now()}`,
-        username: userForm.username,
+        username: userForm.username.trim(),
         password: userForm.password,
-        fullName: userForm.fullName,
+        fullName: userForm.fullName.trim(),
         roleId: userForm.roleId,
         isActive: userForm.isActive,
-        position: userForm.position,
-        unit: userForm.unit,
-        polda: userForm.polda,
-        polres: userForm.polres,
+        position: userForm.position?.trim() || undefined,
+        unit: userForm.unit?.trim() || undefined,
+        poldaId: selectedPoldaObj?.poldaId || undefined,
+        polresId: selectedPolresObj?.polresId || undefined,
+        polda: userForm.polda || undefined,
+        polres: userForm.polres || undefined,
         createdAt: new Date().toISOString().slice(0, 10),
       };
       onUpdateUsers([...users, newUser]);
