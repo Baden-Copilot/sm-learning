@@ -1050,7 +1050,7 @@ async function startServer() {
   });
 
   // Save all users (Requires edit permission on user-akses or role-admin)
-  app.post('/api/user-access/users', verifyAuthAndRole('user-akses', 'edit'), (req, res) => {
+  app.post('/api/user-access/users', verifyAuthAndRole('user-akses', 'edit'), async (req, res) => {
     const { users } = req.body;
     if (!Array.isArray(users)) {
       return res.status(400).json({ success: false, message: 'Data pengguna tidak valid.' });
@@ -1078,12 +1078,17 @@ async function startServer() {
     });
 
     data.users = updatedUsers;
-    writeUserData(data);
-    res.json({ success: true, message: 'Daftar pengguna berhasil disimpan.' });
+    try {
+      await writeUserData(data);
+      res.json({ success: true, message: 'Daftar pengguna berhasil disimpan.' });
+    } catch (err: any) {
+      console.error('[API] Gagal menyimpan daftar pengguna:', err);
+      res.status(500).json({ success: false, message: err?.message || 'Gagal menyimpan ke basis data MySQL.' });
+    }
   });
 
   // Save all roles (Requires edit permission on user-akses or role-admin)
-  app.post('/api/user-access/roles', verifyAuthAndRole('user-akses', 'edit'), (req, res) => {
+  app.post('/api/user-access/roles', verifyAuthAndRole('user-akses', 'edit'), async (req, res) => {
     const { roles } = req.body;
     if (!Array.isArray(roles)) {
       return res.status(400).json({ success: false, message: 'Data role tidak valid.' });
@@ -1100,8 +1105,13 @@ async function startServer() {
 
     const data = readUserData();
     data.roles = roles;
-    writeUserData(data);
-    res.json({ success: true, message: 'Daftar role berhasil disimpan.' });
+    try {
+      await writeUserData(data);
+      res.json({ success: true, message: 'Daftar role berhasil disimpan.' });
+    } catch (err: any) {
+      console.error('[API] Gagal menyimpan daftar role:', err);
+      res.status(500).json({ success: false, message: err?.message || 'Gagal menyimpan ke basis data MySQL.' });
+    }
   });
 
   // === LEARNING RECORDS & REAL PERSISTENCE API ===

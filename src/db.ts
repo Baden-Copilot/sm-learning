@@ -1072,15 +1072,18 @@ export function readUserData(): UserDataState {
   return userDataCache;
 }
 
-export function writeUserData(data: any): void {
+export async function writeUserData(data: any): Promise<void> {
   userDataCache = {
     roles: data.roles || [],
     users: data.users || [],
   };
   if (!pool) return;
-  persistUserData(userDataCache).catch(err => {
+  try {
+    await persistUserData(userDataCache);
+  } catch (err) {
     console.error('Gagal menyimpan users/roles ke MySQL:', err);
-  });
+    throw err;
+  }
 }
 
 // Lookup Master Wilayah

@@ -157,8 +157,25 @@ export function UserAccessPage({
   };
 
   const handleSaveUser = () => {
-    if (!userForm.username.trim() || !userForm.fullName.trim() || !userForm.roleId) return;
+    const trimmedUsername = userForm.username.trim();
+    const trimmedFullName = userForm.fullName.trim();
+    if (!trimmedUsername || !trimmedFullName || !userForm.roleId) return;
     if (!editingUser && !userForm.password.trim()) return;
+
+    // Check duplicate username
+    if (!editingUser) {
+      const isDuplicate = users.some(u => u.username.toLowerCase() === trimmedUsername.toLowerCase());
+      if (isDuplicate) {
+        alert(`Username "${trimmedUsername}" sudah digunakan. Silakan gunakan username lain.`);
+        return;
+      }
+    } else {
+      const isDuplicate = users.some(u => u.id !== editingUser.id && u.username.toLowerCase() === trimmedUsername.toLowerCase());
+      if (isDuplicate) {
+        alert(`Username "${trimmedUsername}" sudah digunakan oleh akun lain.`);
+        return;
+      }
+    }
 
     if (editingUser) {
       const selectedPoldaObj = poldaList.find(p => p.nama === userForm.polda);
@@ -166,8 +183,8 @@ export function UserAccessPage({
 
       const updated = users.map(u => u.id === editingUser.id ? {
         ...u,
-        username: userForm.username.trim(),
-        fullName: userForm.fullName.trim(),
+        username: trimmedUsername,
+        fullName: trimmedFullName,
         roleId: userForm.roleId,
         isActive: userForm.isActive,
         position: userForm.position?.trim() || undefined,
@@ -176,7 +193,7 @@ export function UserAccessPage({
         polresId: selectedPolresObj?.polresId || u.polresId,
         polda: userForm.polda || undefined,
         polres: userForm.polres || undefined,
-        ...(userForm.password.trim() ? { password: userForm.password } : {}),
+        ...(userForm.password.trim() ? { password: userForm.password.trim() } : {}),
       } : u);
       onUpdateUsers(updated);
 
@@ -187,7 +204,7 @@ export function UserAccessPage({
           time: 'Baru saja',
           actor: 'Admin',
           action: 'Update User',
-          target: userForm.username
+          target: trimmedUsername
         },
         ...prev
       ]);
@@ -197,9 +214,9 @@ export function UserAccessPage({
 
       const newUser: UserAccount = {
         id: `user-${Date.now()}`,
-        username: userForm.username.trim(),
-        password: userForm.password,
-        fullName: userForm.fullName.trim(),
+        username: trimmedUsername,
+        password: userForm.password.trim(),
+        fullName: trimmedFullName,
         roleId: userForm.roleId,
         isActive: userForm.isActive,
         position: userForm.position?.trim() || undefined,
@@ -219,7 +236,7 @@ export function UserAccessPage({
           time: 'Baru saja',
           actor: 'Admin',
           action: 'Create User',
-          target: userForm.username
+          target: trimmedUsername
         },
         ...prev
       ]);

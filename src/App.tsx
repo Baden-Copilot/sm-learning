@@ -291,36 +291,50 @@ export default function App() {
     }).catch(() => {});
   };
 
-  // Sync users to backend json
+  // Sync users to backend MySQL / express
   const handleUpdateUsers = (newUsers: UserAccount[]) => {
-    setUserAccounts(newUsers);
     fetch('/api/user-access/users', {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ users: newUsers }),
     })
-      .then(res => {
-        if (!res.ok) throw new Error('Forbidden');
-        return res.json();
+      .then(async res => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.message || 'Gagal menyimpan ke basis data');
+        }
+        return data;
       })
-      .then(() => addToast('success', 'Data Disimpan', 'Daftar user berhasil diperbarui di user-data.json'))
-      .catch(() => addToast('warning', 'Gagal Simpan', 'Perubahan user gagal disimpan ke backend.'));
+      .then(() => {
+        setUserAccounts(newUsers);
+        addToast('success', 'Data Disimpan', 'Daftar user berhasil diperbarui dan tersimpan ke MySQL.');
+      })
+      .catch((err) => {
+        addToast('warning', 'Gagal Simpan', err.message || 'Perubahan user gagal disimpan ke backend.');
+      });
   };
 
-  // Sync roles to backend json
+  // Sync roles to backend MySQL / express
   const handleUpdateRoles = (newRoles: Role[]) => {
-    setUserRoles(newRoles);
     fetch('/api/user-access/roles', {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ roles: newRoles }),
     })
-      .then(res => {
-        if (!res.ok) throw new Error('Forbidden');
-        return res.json();
+      .then(async res => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.message || 'Gagal menyimpan role ke basis data');
+        }
+        return data;
       })
-      .then(() => addToast('success', 'Data Disimpan', 'Daftar role berhasil diperbarui di user-data.json'))
-      .catch(() => addToast('warning', 'Gagal Simpan', 'Perubahan role gagal disimpan ke backend.'));
+      .then(() => {
+        setUserRoles(newRoles);
+        addToast('success', 'Data Disimpan', 'Daftar role berhasil diperbarui dan tersimpan ke MySQL.');
+      })
+      .catch((err) => {
+        addToast('warning', 'Gagal Simpan', err.message || 'Perubahan role gagal disimpan ke backend.');
+      });
   };
 
   // Save (Create or Update) Material from Authoring Workspace
