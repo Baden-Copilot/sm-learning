@@ -23,6 +23,11 @@ import {
   writeLearningRecords,
   readUserData,
   writeUserData,
+  createSingleUser,
+  updateSingleUser,
+  deleteSingleUser,
+  createOrUpdateRole,
+  deleteSingleRole,
   getPoldaList,
   getPolresList,
 } from './src/db';
@@ -1050,7 +1055,139 @@ async function startServer() {
     res.json({ success: true, data: { ...data, users: sanitizedUsers } });
   });
 
-  // Save all users (Requires edit permission on user-akses or role-admin)
+  // === INDIVIDUAL REST ENDPOINTS FOR USERS & ROLES ===
+
+  // Create single user
+  app.post('/api/user-access/user', verifyAuthAndRole('user-akses', 'add'), async (req, res) => {
+    const u = req.body;
+    if (!u.username || !u.fullName || !u.roleId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username, nama lengkap, dan role wajib diisi.'
+      });
+    }
+
+    const trimmedUsername = String(u.username).trim();
+    const data = readUserData();
+    const isDuplicate = data.users.some((existing: any) => existing.username.toLowerCase() === trimmedUsername.toLowerCase());
+    if (isDuplicate) {
+      return res.status(400).json({
+        success: false,
+        message: `Username "${trimmedUsername}" sudah digunakan.`
+      });
+    }
+
+    const payload = {
+      id: u.id || `user-${Date.now()}`,
+      username: trimmedUsername,
+      password: u.password && String(u.password).trim() ? String(u.password).trim() : '123456',
+      fullName: String(u.fullName).trim(),
+      roleId: u.roleId,
+      isActive: typeof u.isActive === 'boolean' ? u.isActive : true,
+      executiveLevel: u.executiveLevel || null,
+      poldaId: u.poldaId || null,
+      polresId: u.polresId || null,
+      position: u.position?.trim() || null,
+      unit: u.unit?.trim() || null,
+      polda: u.polda || null,
+      polres: u.polres || null,
+      createdAt: u.createdAt || new Date().toISOString().slice(0, 10),
+    };
+
+    try {
+      const created = await createSingleUser(payload);
+      const { password: _, ...safeUser } = created;
+      res.json({ success: true, message: 'Akun pengguna berhasil ditambahkan.', data: safeUser });
+    } catch (err: any) {
+      console.error('[API] Gagal membuat pengguna baru:', err);
+      res.status(500).json({ success: false, message: err?.message || 'Gagal menyimpan user ke MySQL.' });
+    }
+  });
+
+  // Update single user
+  app.put('/api/user-access/user/:id', verifyAuthAndRole('user-akses', 'edit'), async (req, res) => {
+    const { id } = req.params;
+    const u = req.body;
+    if (!u.username || !u.fullName || !u.roleId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username, nama lengkap, dan role wajib diisi.'
+      });
+    }
+
+    const trimmedUsername = String(u.username).trim();
+    const data = readUserData();
+    const isDuplicate = data.users.some((existing: any) => existing.id !== id && existing.username.toLowerCase() === trimmedUsername.toLowerCase());
+    if (isDuplicate) {
+      return res.status(400).json({
+        success: false,
+        message: `Username "${trimmedUsername}" sudah digunakan oleh akun lain.`
+      });
+    }
+
+    try {
+      const updated = await updateSingleUser(id, {
+        ...u,
+        username: trimmedUsername,
+        fullName: String(u.fullName).trim(),
+        position: u.position?.trim() || null,
+        unit: u.unit?.trim() || null,
+      });
+      const { password: _, ...safeUser } = updated;
+      res.json({ success: true, message: 'Akun pengguna berhasil diperbarui.', data: safeUser });
+    } catch (err: any) {
+      console.error('[API] Gagal memperbarui pengguna:', err);
+      res.status(500).json({ success: false, message: err?.message || 'Gagal memperbarui user di MySQL.' });
+    }
+  });
+
+  // Delete single user
+  app.delete('/api/user-access/user/:id', verifyAuthAndRole('user-akses', 'delete'), async (req, res) => {
+    const { id } = req.params;
+    try {
+      await deleteSingleUser(id);
+      res.json({ success: true, message: 'Akun pengguna berhasil dihapus.' });
+    } catch (err: any) {
+      console.error('[API] Gagal menghapus pengguna:', err);
+      res.status(500).json({ success: false, message: err?.message || 'Gagal menghapus user di MySQL.' });
+    }
+  });
+
+  // Create or Update single role
+  app.post('/api/user-access/role', verifyAuthAndRole('user-akses', 'edit'), async (req, res) => {
+    const r = req.body;
+    if (!r.id || !r.name || !Array.isArray(r.permissions)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Format data role tidak lengkap: id, name, dan permissions wajib ada.'
+      });
+    }
+
+    try {
+      const saved = await createOrUpdateRole(r);
+      res.json({ success: true, message: 'Role berhasil disimpan.', data: saved });
+    } catch (err: any) {
+      console.error('[API] Gagal menyimpan role:', err);
+      res.status(500).json({ success: false, message: err?.message || 'Gagal menyimpan role ke MySQL.' });
+    }
+  });
+
+  // Delete single role
+  app.delete('/api/user-access/role/:id', verifyAuthAndRole('user-akses', 'delete'), async (req, res) => {
+    const { id } = req.params;
+    if (id === 'role-admin') {
+      return res.status(400).json({ success: false, message: 'Role Admin / Superuser tidak boleh dihapus.' });
+    }
+    try {
+      await deleteSingleRole(id);
+      res.json({ success: true, message: 'Role berhasil dihapus.' });
+    } catch (err: any) {
+      console.error('[API] Gagal menghapus role:', err);
+      res.status(500).json({ success: false, message: err?.message || 'Gagal menghapus role di MySQL.' });
+    }
+  });
+
+  // Save all users (Legacy Bulk endpoint)
   app.post('/api/user-access/users', verifyAuthAndRole('user-akses', 'edit'), async (req, res) => {
     const { users } = req.body;
     if (!Array.isArray(users)) {

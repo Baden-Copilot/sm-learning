@@ -1072,6 +1072,134 @@ export function readUserData(): UserDataState {
   return userDataCache;
 }
 
+export async function createSingleUser(u: any): Promise<any> {
+  const p = getPool();
+  await p.query(
+    `INSERT INTO users (
+       id, username, password, full_name, role_id, is_active,
+       executive_level, polda_id, polres_id, position, unit, polda, polres, created_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      u.id,
+      u.username,
+      u.password || '123456',
+      u.fullName,
+      u.roleId,
+      u.isActive ? 1 : 0,
+      u.executiveLevel || null,
+      u.poldaId || null,
+      u.polresId || null,
+      u.position || null,
+      u.unit || null,
+      u.polda || null,
+      u.polres || null,
+      u.createdAt || new Date().toISOString().slice(0, 10),
+    ]
+  );
+
+  // Update in-memory cache
+  const existingIdx = userDataCache.users.findIndex(x => x.id === u.id);
+  const safeUser = {
+    ...u,
+    password: u.password || '123456',
+    isActive: Boolean(u.isActive),
+    createdAt: u.createdAt || new Date().toISOString().slice(0, 10),
+  };
+  if (existingIdx !== -1) {
+    userDataCache.users[existingIdx] = safeUser;
+  } else {
+    userDataCache.users.unshift(safeUser);
+  }
+  return safeUser;
+}
+
+export async function updateSingleUser(userId: string, u: any): Promise<any> {
+  const p = getPool();
+  const existing = userDataCache.users.find(x => x.id === userId);
+  const finalPassword = u.password && u.password.trim() ? u.password.trim() : (existing?.password || '123456');
+
+  await p.query(
+    `UPDATE users SET
+       username = ?,
+       password = ?,
+       full_name = ?,
+       role_id = ?,
+       is_active = ?,
+       executive_level = ?,
+       polda_id = ?,
+       polres_id = ?,
+       position = ?,
+       unit = ?,
+       polda = ?,
+       polres = ?
+     WHERE id = ?`,
+    [
+      u.username,
+      finalPassword,
+      u.fullName,
+      u.roleId,
+      u.isActive ? 1 : 0,
+      u.executiveLevel || null,
+      u.poldaId || null,
+      u.polresId || null,
+      u.position || null,
+      u.unit || null,
+      u.polda || null,
+      u.polres || null,
+      userId,
+    ]
+  );
+
+  // Update cache
+  const idx = userDataCache.users.findIndex(x => x.id === userId);
+  const updated = {
+    ...(existing || {}),
+    ...u,
+    id: userId,
+    password: finalPassword,
+    isActive: Boolean(u.isActive),
+  };
+  if (idx !== -1) {
+    userDataCache.users[idx] = updated;
+  } else {
+    userDataCache.users.unshift(updated);
+  }
+  return updated;
+}
+
+export async function deleteSingleUser(userId: string): Promise<void> {
+  const p = getPool();
+  await p.query('DELETE FROM users WHERE id = ?', [userId]);
+  userDataCache.users = userDataCache.users.filter(x => x.id !== userId);
+}
+
+export async function createOrUpdateRole(role: any): Promise<any> {
+  const p = getPool();
+  await p.query(
+    `INSERT INTO roles (id, name, description, permissions)
+     VALUES (?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       name = VALUES(name),
+       description = VALUES(description),
+       permissions = VALUES(permissions)`,
+    [role.id, role.name, role.description || null, JSON.stringify(role.permissions || [])]
+  );
+
+  const idx = userDataCache.roles.findIndex(r => r.id === role.id);
+  if (idx !== -1) {
+    userDataCache.roles[idx] = role;
+  } else {
+    userDataCache.roles.push(role);
+  }
+  return role;
+}
+
+export async function deleteSingleRole(roleId: string): Promise<void> {
+  const p = getPool();
+  await p.query('DELETE FROM roles WHERE id = ?', [roleId]);
+  userDataCache.roles = userDataCache.roles.filter(r => r.id !== roleId);
+}
+
 export async function writeUserData(data: any): Promise<void> {
   userDataCache = {
     roles: data.roles || [],

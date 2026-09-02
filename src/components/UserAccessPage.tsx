@@ -36,6 +36,11 @@ import { DEFAULT_34_POLDA, fetchPoldaList, fetchPolresByPolda, WilayahPoldaItem,
 interface UserAccessPageProps {
   users: UserAccount[];
   roles: Role[];
+  onCreateUser?: (user: UserAccount) => Promise<boolean>;
+  onUpdateUser?: (user: UserAccount) => Promise<boolean>;
+  onDeleteUser?: (userId: string) => Promise<boolean>;
+  onSaveRole?: (role: Role) => Promise<boolean>;
+  onDeleteRole?: (roleId: string) => Promise<boolean>;
   onUpdateUsers: (users: UserAccount[]) => void;
   onUpdateRoles: (roles: Role[]) => void;
   materialsCount?: number;
@@ -53,6 +58,11 @@ const ACTION_LABELS: Record<PermissionAction, { label: string; icon: React.React
 export function UserAccessPage({
   users,
   roles,
+  onCreateUser,
+  onUpdateUser,
+  onDeleteUser,
+  onSaveRole,
+  onDeleteRole,
   onUpdateUsers,
   onUpdateRoles,
   materialsCount = 6,
@@ -60,6 +70,7 @@ export function UserAccessPage({
   const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('ALL');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // User modal state
   const [showUserModal, setShowUserModal] = useState(false);
@@ -156,7 +167,7 @@ export function UserAccessPage({
     setShowUserModal(true);
   };
 
-  const handleSaveUser = () => {
+  const handleSaveUser = async () => {
     const trimmedUsername = userForm.username.trim();
     const trimmedFullName = userForm.fullName.trim();
     if (!trimmedUsername || !trimmedFullName || !userForm.roleId) return;
@@ -177,76 +188,95 @@ export function UserAccessPage({
       }
     }
 
-    if (editingUser) {
+    setIsSubmitting(true);
+    try {
       const selectedPoldaObj = poldaList.find(p => p.nama === userForm.polda);
       const selectedPolresObj = polresList.find(p => p.nama === userForm.polres);
 
-      const updated = users.map(u => u.id === editingUser.id ? {
-        ...u,
-        username: trimmedUsername,
-        fullName: trimmedFullName,
-        roleId: userForm.roleId,
-        isActive: userForm.isActive,
-        position: userForm.position?.trim() || undefined,
-        unit: userForm.unit?.trim() || undefined,
-        poldaId: selectedPoldaObj?.poldaId || u.poldaId,
-        polresId: selectedPolresObj?.polresId || u.polresId,
-        polda: userForm.polda || undefined,
-        polres: userForm.polres || undefined,
-        ...(userForm.password.trim() ? { password: userForm.password.trim() } : {}),
-      } : u);
-      onUpdateUsers(updated);
+      if (editingUser) {
+        const payload: UserAccount = {
+          ...editingUser,
+          username: trimmedUsername,
+          fullName: trimmedFullName,
+          roleId: userForm.roleId,
+          isActive: userForm.isActive,
+          position: userForm.position?.trim() || undefined,
+          unit: userForm.unit?.trim() || undefined,
+          poldaId: selectedPoldaObj?.poldaId || editingUser.poldaId,
+          polresId: selectedPolresObj?.polresId || editingUser.polresId,
+          polda: userForm.polda || undefined,
+          polres: userForm.polres || undefined,
+          ...(userForm.password.trim() ? { password: userForm.password.trim() } : {}),
+        };
 
-      // Add audit log
-      setAuditLogs(prev => [
-        {
-          id: String(Date.now()),
-          time: 'Baru saja',
-          actor: 'Admin',
-          action: 'Update User',
-          target: trimmedUsername
-        },
-        ...prev
-      ]);
-    } else {
-      const selectedPoldaObj = poldaList.find(p => p.nama === userForm.polda);
-      const selectedPolresObj = polresList.find(p => p.nama === userForm.polres);
+        if (onUpdateUser) {
+          const success = await onUpdateUser(payload);
+          if (!success) return;
+        } else {
+          onUpdateUsers(users.map(u => u.id === editingUser.id ? payload : u));
+        }
 
-      const newUser: UserAccount = {
-        id: `user-${Date.now()}`,
-        username: trimmedUsername,
-        password: userForm.password.trim(),
-        fullName: trimmedFullName,
-        roleId: userForm.roleId,
-        isActive: userForm.isActive,
-        position: userForm.position?.trim() || undefined,
-        unit: userForm.unit?.trim() || undefined,
-        poldaId: selectedPoldaObj?.poldaId || undefined,
-        polresId: selectedPolresObj?.polresId || undefined,
-        polda: userForm.polda || undefined,
-        polres: userForm.polres || undefined,
-        createdAt: new Date().toISOString().slice(0, 10),
-      };
-      onUpdateUsers([...users, newUser]);
+        // Add audit log
+        setAuditLogs(prev => [
+          {
+            id: String(Date.now()),
+            time: 'Baru saja',
+            actor: 'Admin',
+            action: 'Update User',
+            target: trimmedUsername
+          },
+          ...prev
+        ]);
+      } else {
+        const newUser: UserAccount = {
+          id: `user-${Date.now()}`,
+          username: trimmedUsername,
+          password: userForm.password.trim(),
+          fullName: trimmedFullName,
+          roleId: userForm.roleId,
+          isActive: userForm.isActive,
+          position: userForm.position?.trim() || undefined,
+          unit: userForm.unit?.trim() || undefined,
+          poldaId: selectedPoldaObj?.poldaId || undefined,
+          polresId: selectedPolresObj?.polresId || undefined,
+          polda: userForm.polda || undefined,
+          polres: userForm.polres || undefined,
+          createdAt: new Date().toISOString().slice(0, 10),
+        };
 
-      // Add audit log
-      setAuditLogs(prev => [
-        {
-          id: String(Date.now()),
-          time: 'Baru saja',
-          actor: 'Admin',
-          action: 'Create User',
-          target: trimmedUsername
-        },
-        ...prev
-      ]);
+        if (onCreateUser) {
+          const success = await onCreateUser(newUser);
+          if (!success) return;
+        } else {
+          onUpdateUsers([...users, newUser]);
+        }
+
+        // Add audit log
+        setAuditLogs(prev => [
+          {
+            id: String(Date.now()),
+            time: 'Baru saja',
+            actor: 'Admin',
+            action: 'Create User',
+            target: trimmedUsername
+          },
+          ...prev
+        ]);
+      }
+      setShowUserModal(false);
+    } finally {
+      setIsSubmitting(false);
     }
-    setShowUserModal(false);
   };
 
-  const handleDeleteUser = (id: string) => {
+  const handleDeleteUser = async (id: string) => {
     const target = users.find(u => u.id === id);
-    onUpdateUsers(users.filter(u => u.id !== id));
+    if (onDeleteUser) {
+      const success = await onDeleteUser(id);
+      if (!success) return;
+    } else {
+      onUpdateUsers(users.filter(u => u.id !== id));
+    }
     if (target) {
       setAuditLogs(prev => [
         {
@@ -305,56 +335,81 @@ export function UserAccessPage({
     }));
   };
 
-  const handleSaveRole = () => {
+  const handleSaveRole = async () => {
     if (!roleForm.name.trim()) return;
 
-    if (editingRole) {
-      const updated = roles.map(r => r.id === editingRole.id ? {
-        ...r,
-        name: roleForm.name,
-        description: roleForm.description,
-        permissions: roleForm.permissions.filter(p => p.actions.length > 0),
-      } : r);
-      onUpdateRoles(updated);
+    setIsSubmitting(true);
+    try {
+      if (editingRole) {
+        const payload: Role = {
+          ...editingRole,
+          name: roleForm.name.trim(),
+          description: roleForm.description?.trim() || '',
+          permissions: roleForm.permissions.filter(p => p.actions.length > 0),
+        };
 
-      setAuditLogs(prev => [
-        {
-          id: String(Date.now()),
-          time: 'Baru saja',
-          actor: 'Admin',
-          action: 'Update Role Permissions',
-          target: roleForm.name
-        },
-        ...prev
-      ]);
-    } else {
-      const newRole: Role = {
-        id: `role-${Date.now()}`,
-        name: roleForm.name,
-        description: roleForm.description,
-        permissions: roleForm.permissions.filter(p => p.actions.length > 0),
-      };
-      onUpdateRoles([...roles, newRole]);
+        if (onSaveRole) {
+          const success = await onSaveRole(payload);
+          if (!success) return;
+        } else {
+          onUpdateRoles(roles.map(r => r.id === editingRole.id ? payload : r));
+        }
 
-      setAuditLogs(prev => [
-        {
-          id: String(Date.now()),
-          time: 'Baru saja',
-          actor: 'Admin',
-          action: 'Create Role',
-          target: roleForm.name
-        },
-        ...prev
-      ]);
+        setAuditLogs(prev => [
+          {
+            id: String(Date.now()),
+            time: 'Baru saja',
+            actor: 'Admin',
+            action: 'Update Role Permissions',
+            target: roleForm.name
+          },
+          ...prev
+        ]);
+      } else {
+        const newRole: Role = {
+          id: `role-${Date.now()}`,
+          name: roleForm.name.trim(),
+          description: roleForm.description?.trim() || '',
+          permissions: roleForm.permissions.filter(p => p.actions.length > 0),
+        };
+
+        if (onSaveRole) {
+          const success = await onSaveRole(newRole);
+          if (!success) return;
+        } else {
+          onUpdateRoles([...roles, newRole]);
+        }
+
+        setAuditLogs(prev => [
+          {
+            id: String(Date.now()),
+            time: 'Baru saja',
+            actor: 'Admin',
+            action: 'Create Role',
+            target: roleForm.name
+          },
+          ...prev
+        ]);
+      }
+      setShowRoleModal(false);
+    } finally {
+      setIsSubmitting(false);
     }
-    setShowRoleModal(false);
   };
 
-  const handleDeleteRole = (id: string) => {
+  const handleDeleteRole = async (id: string) => {
     const usersWithRole = users.filter(u => u.roleId === id);
-    if (usersWithRole.length > 0) return;
+    if (usersWithRole.length > 0) {
+      alert('Tidak dapat menghapus role yang sedang digunakan oleh akun pengguna.');
+      return;
+    }
     const target = roles.find(r => r.id === id);
-    onUpdateRoles(roles.filter(r => r.id !== id));
+    if (onDeleteRole) {
+      const success = await onDeleteRole(id);
+      if (!success) return;
+    } else {
+      onUpdateRoles(roles.filter(r => r.id !== id));
+    }
     if (target) {
       setAuditLogs(prev => [
         {
@@ -1005,9 +1060,10 @@ export function UserAccessPage({
               </button>
               <button
                 onClick={handleSaveUser}
-                className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-[#0a1d37] hover:bg-[#162c4e] transition-colors cursor-pointer shadow-xs"
+                disabled={isSubmitting}
+                className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-[#0a1d37] hover:bg-[#162c4e] disabled:opacity-50 transition-colors cursor-pointer shadow-xs"
               >
-                Simpan Akun
+                {isSubmitting ? 'Menyimpan...' : 'Simpan Akun'}
               </button>
             </div>
           </div>
@@ -1107,9 +1163,10 @@ export function UserAccessPage({
               </button>
               <button
                 onClick={handleSaveRole}
-                className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-[#0a1d37] hover:bg-[#162c4e] transition-colors cursor-pointer shadow-xs"
+                disabled={isSubmitting}
+                className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-[#0a1d37] hover:bg-[#162c4e] disabled:opacity-50 transition-colors cursor-pointer shadow-xs"
               >
-                Simpan Matriks Role
+                {isSubmitting ? 'Menyimpan...' : 'Simpan Matriks Role'}
               </button>
             </div>
           </div>

@@ -291,7 +291,113 @@ export default function App() {
     }).catch(() => {});
   };
 
-  // Sync users to backend MySQL / express
+  // === REST User Management Handlers (Per-item efficient persistence) ===
+
+  const handleCreateUserSingle = async (newUser: UserAccount): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/user-access/user', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(newUser),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Gagal menambahkan akun ke basis data.');
+      }
+      const created = data.data || newUser;
+      setUserAccounts(prev => [created, ...prev]);
+      addToast('success', 'Akun Dibuat', `Akun "${newUser.username}" berhasil dibuat dan aktif di database.`);
+      return true;
+    } catch (err: any) {
+      addToast('warning', 'Gagal Tambah Akun', err.message || 'Terjadi kesalahan saat menyimpan akun.');
+      return false;
+    }
+  };
+
+  const handleUpdateUserSingle = async (updatedUser: UserAccount): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/user-access/user/${encodeURIComponent(updatedUser.id)}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(updatedUser),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Gagal memperbarui akun di basis data.');
+      }
+      const saved = data.data || updatedUser;
+      setUserAccounts(prev => prev.map(u => u.id === updatedUser.id ? { ...u, ...saved } : u));
+      addToast('success', 'Akun Diperbarui', `Perubahan akun "${updatedUser.username}" berhasil disimpan.`);
+      return true;
+    } catch (err: any) {
+      addToast('warning', 'Gagal Edit Akun', err.message || 'Terjadi kesalahan saat menyimpan perubahan.');
+      return false;
+    }
+  };
+
+  const handleDeleteUserSingle = async (userId: string): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/user-access/user/${encodeURIComponent(userId)}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Gagal menghapus akun di basis data.');
+      }
+      setUserAccounts(prev => prev.filter(u => u.id !== userId));
+      addToast('success', 'Akun Dihapus', 'Akun pengguna berhasil dihapus dari database.');
+      return true;
+    } catch (err: any) {
+      addToast('warning', 'Gagal Hapus Akun', err.message || 'Terjadi kesalahan saat menghapus akun.');
+      return false;
+    }
+  };
+
+  const handleSaveRoleSingle = async (role: Role): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/user-access/role', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(role),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Gagal menyimpan role di basis data.');
+      }
+      const saved = data.data || role;
+      setUserRoles(prev => {
+        const exists = prev.some(r => r.id === role.id);
+        return exists ? prev.map(r => r.id === role.id ? saved : r) : [...prev, saved];
+      });
+      addToast('success', 'Role Disimpan', `Matriks izin role "${role.name}" berhasil disimpan.`);
+      return true;
+    } catch (err: any) {
+      addToast('warning', 'Gagal Simpan Role', err.message || 'Terjadi kesalahan saat menyimpan role.');
+      return false;
+    }
+  };
+
+  const handleDeleteRoleSingle = async (roleId: string): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/user-access/role/${encodeURIComponent(roleId)}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Gagal menghapus role di basis data.');
+      }
+      setUserRoles(prev => prev.filter(r => r.id !== roleId));
+      addToast('success', 'Role Dihapus', 'Role berhasil dihapus dari database.');
+      return true;
+    } catch (err: any) {
+      addToast('warning', 'Gagal Hapus Role', err.message || 'Terjadi kesalahan saat menghapus role.');
+      return false;
+    }
+  };
+
+  // Sync users to backend MySQL / express (Bulk Fallback)
   const handleUpdateUsers = (newUsers: UserAccount[]) => {
     fetch('/api/user-access/users', {
       method: 'POST',
@@ -314,7 +420,7 @@ export default function App() {
       });
   };
 
-  // Sync roles to backend MySQL / express
+  // Sync roles to backend MySQL / express (Bulk Fallback)
   const handleUpdateRoles = (newRoles: Role[]) => {
     fetch('/api/user-access/roles', {
       method: 'POST',
@@ -920,6 +1026,11 @@ export default function App() {
               <UserAccessPage
                 users={userAccounts}
                 roles={userRoles}
+                onCreateUser={handleCreateUserSingle}
+                onUpdateUser={handleUpdateUserSingle}
+                onDeleteUser={handleDeleteUserSingle}
+                onSaveRole={handleSaveRoleSingle}
+                onDeleteRole={handleDeleteRoleSingle}
                 onUpdateUsers={handleUpdateUsers}
                 onUpdateRoles={handleUpdateRoles}
                 materialsCount={materials.length}
