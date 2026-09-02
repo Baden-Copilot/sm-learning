@@ -85,6 +85,13 @@ export interface WilayahPolres {
 let poldaCache: WilayahPolda[] = [];
 let polresCache: WilayahPolres[] = [];
 
+function toMySqlDatetime(val: any): string | null {
+  if (!val) return null;
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return null;
+  return d.toISOString().slice(0, 19).replace('T', ' ');
+}
+
 // -----------------------------------------------------------------------------
 // Inisialisasi Pool & Auto-Bootstrap
 // -----------------------------------------------------------------------------
@@ -1453,8 +1460,8 @@ async function persistOutreachSessions(sessions: any[]): Promise<void> {
           s.publicAccessUrl || null,
           s.targetParticipants || null,
           s.description || null,
-          s.createdAt || null,
-          s.closedAt || null,
+          toMySqlDatetime(s.createdAt),
+          toMySqlDatetime(s.closedAt),
         ]
       );
     }
@@ -1534,7 +1541,7 @@ async function persistOutreachReports(reports: any[]): Promise<void> {
           r.location || null,
           r.date || null,
           r.startTime || null,
-          r.closedAt || null,
+          toMySqlDatetime(r.closedAt),
           r.totalParticipants || 0,
           r.totalViews || 0,
           r.totalQuizAttempts || 0,
@@ -1543,7 +1550,7 @@ async function persistOutreachReports(reports: any[]): Promise<void> {
           r.passingRate || 0,
           r.notes || null,
           r.evidenceImages ? JSON.stringify(r.evidenceImages) : null,
-          r.createdAt || null,
+          toMySqlDatetime(r.createdAt),
           JSON.stringify(extra),
         ]
       );
@@ -1580,7 +1587,7 @@ async function persistSessionParticipants(participants: any[]): Promise<void> {
            name = VALUES(name),
            place = VALUES(place),
            joined_at = VALUES(joined_at)`,
-        [pt.id, pt.sessionId, pt.name, pt.place || null, pt.joinedAt || null]
+        [pt.id, pt.sessionId, pt.name, pt.place || null, toMySqlDatetime(pt.joinedAt)]
       );
     }
 
@@ -1627,7 +1634,7 @@ async function persistLearningEvents(events: any[]): Promise<void> {
           e.materialId || null,
           e.eventType,
           e.details ? JSON.stringify(e.details) : null,
-          e.timestamp || null,
+          toMySqlDatetime(e.timestamp),
         ]
       );
     }
@@ -1667,7 +1674,7 @@ async function persistLearningRecords(records: LearningRecordsState): Promise<vo
           pr.progressPercent || 0,
           pr.status || 'not_started',
           JSON.stringify(pr.completedLessonIds || []),
-          pr.lastAccessedAt || null,
+          toMySqlDatetime(pr.lastAccessedAt),
         ]
       );
     }
@@ -1677,7 +1684,7 @@ async function persistLearningRecords(records: LearningRecordsState): Promise<vo
     for (const b of records.userBookmarks) {
       await conn.query(
         'INSERT INTO user_bookmarks (user_id, material_id, created_at) VALUES (?, ?, ?)',
-        [b.userId, b.materialId, b.createdAt || null]
+        [b.userId, b.materialId, toMySqlDatetime(b.createdAt)]
       );
     }
 
@@ -1686,7 +1693,7 @@ async function persistLearningRecords(records: LearningRecordsState): Promise<vo
     for (const h of records.userHistory) {
       await conn.query(
         'INSERT INTO user_history (user_id, material_id, accessed_at) VALUES (?, ?, ?)',
-        [h.userId, h.materialId, h.accessedAt || null]
+        [h.userId, h.materialId, toMySqlDatetime(h.accessedAt)]
       );
     }
 
@@ -1728,8 +1735,8 @@ async function persistLearningRecords(records: LearningRecordsState): Promise<vo
           q.correctAnswers || null,
           q.answers ? JSON.stringify(q.answers) : null,
           q.completed ? 1 : 0,
-          q.startedAt || null,
-          q.submittedAt || q.completedAt || null,
+          toMySqlDatetime(q.startedAt),
+          toMySqlDatetime(q.submittedAt || q.completedAt),
         ]
       );
     }
@@ -1789,7 +1796,7 @@ async function persistLearningRecords(records: LearningRecordsState): Promise<vo
           c.polres || null,
           c.completedAt || null,
           c.issuedAt || null,
-          c.issuedAtIso || null,
+          toMySqlDatetime(c.issuedAtIso),
           c.isValid ? 1 : 0,
         ]
       );
@@ -1803,13 +1810,13 @@ async function persistLearningRecords(records: LearningRecordsState): Promise<vo
             `INSERT INTO audit_logs (id, actor_id, actor_name, action, target, created_at)
              VALUES (?, ?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE action = VALUES(action)`,
-            [a.id, a.actorId || null, a.actorName || null, a.action, a.target || null, a.createdAt || null]
+            [a.id, a.actorId || null, a.actorName || null, a.action, a.target || null, toMySqlDatetime(a.createdAt)]
           );
         } else {
           await conn.query(
             `INSERT INTO audit_logs (actor_id, actor_name, action, target, created_at)
              VALUES (?, ?, ?, ?, ?)`,
-            [a.actorId || null, a.actorName || null, a.action, a.target || null, a.createdAt || null]
+            [a.actorId || null, a.actorName || null, a.action, a.target || null, toMySqlDatetime(a.createdAt)]
           );
         }
       }
@@ -1823,13 +1830,13 @@ async function persistLearningRecords(records: LearningRecordsState): Promise<vo
             `INSERT INTO notifications (id, user_id, title, message, is_read, created_at)
              VALUES (?, ?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE is_read = VALUES(is_read)`,
-            [n.id, n.userId || null, n.title || null, n.message || null, n.isRead ? 1 : 0, n.createdAt || null]
+            [n.id, n.userId || null, n.title || null, n.message || null, n.isRead ? 1 : 0, toMySqlDatetime(n.createdAt)]
           );
         } else {
           await conn.query(
             `INSERT INTO notifications (user_id, title, message, is_read, created_at)
              VALUES (?, ?, ?, ?, ?)`,
-            [n.userId || null, n.title || null, n.message || null, n.isRead ? 1 : 0, n.createdAt || null]
+            [n.userId || null, n.title || null, n.message || null, n.isRead ? 1 : 0, toMySqlDatetime(n.createdAt)]
           );
         }
       }
