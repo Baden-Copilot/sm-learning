@@ -33,7 +33,8 @@ import { ContentAuthoringPage } from './components/ContentAuthoringPage';
 import { ProfilePage } from './components/ProfilePage';
 import { ReportsPage } from './components/ReportsPage';
 import { BottomNav } from './components/BottomNav';
-import { AskAiWidget } from './components/AskAiWidget';
+import { AleshaKioskModal } from './components/AleshaKioskModal';
+import { Bot } from 'lucide-react';
 import { NotFoundPage } from './components/NotFoundPage';
 import { ForbiddenPage } from './components/ForbiddenPage';
 import { readGuestMaterialProgress, saveGuestLessonProgress } from './utils/guestProgress';
@@ -71,6 +72,7 @@ export default function App() {
   // Outreach & Public Sesi State
   const [activePresentationSession, setActivePresentationSession] = useState<any>(null);
   const [activeReportSession, setActiveReportSession] = useState<any>(null);
+  const [isAleshaModalOpen, setIsAleshaModalOpen] = useState<boolean>(false);
 
   const [isInvalidRoute, setIsInvalidRoute] = useState<boolean>(() => {
     const path = window.location.pathname;
@@ -1257,11 +1259,53 @@ export default function App() {
         />
       )}
 
-      {/* ASK AI FLOATING COPILOT WIDGET */}
-      <AskAiWidget
-        materials={materials}
-        onSelectMaterial={handleOpenCourseDetail}
+      {/* Alesha AI Kiosk Virtual Assistant Modal with Live Context Awareness */}
+      <AleshaKioskModal
+        isOpen={isAleshaModalOpen}
+        onClose={() => setIsAleshaModalOpen(false)}
+        kioskUrl={(import.meta as any).env?.VITE_ALESHA_KIOSK_URL || "https://alesha.djalu.co.id/kiosk-public"}
+        activeMenu={currentTab}
+        selectedMaterial={activeFocusMaterial || selectedCourseDetail || activeQuizMaterial}
+        currentUser={currentUser}
       />
+
+      {/* Floating Alesha AI Kiosk Trigger Button (Icon-only with rich hover tooltip) */}
+      <div className="fixed bottom-6 right-6 z-40 flex items-center group">
+        {/* Hover Tooltip to the left */}
+        <div className="absolute right-full mr-3.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 ease-out z-50">
+          <div className="relative flex items-center gap-2.5 px-3.5 py-2.5 bg-slate-900/95 backdrop-blur-md text-white text-xs rounded-2xl shadow-2xl border border-indigo-500/40 whitespace-nowrap">
+            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
+            <div>
+              <p className="font-extrabold text-white flex items-center gap-1.5 leading-none">
+                <span>Alesha AI Kiosk</span>
+                <span className="text-[9px] px-1.5 py-0.5 bg-indigo-500/30 text-indigo-300 rounded font-semibold border border-indigo-400/30">
+                  Virtual Assistant
+                </span>
+              </p>
+              <p className="text-[10px] text-indigo-200/70 mt-1">
+                Interaksi Suara & Tanya Jawab Edukasi
+              </p>
+            </div>
+            {/* Tooltip pointer arrow */}
+            <div className="absolute top-1/2 -right-1.5 -translate-y-1/2 w-3 h-3 bg-slate-900 border-t border-r border-indigo-500/40 rotate-45"></div>
+          </div>
+        </div>
+
+        {/* Circular Icon Button */}
+        <button
+          onClick={() => setIsAleshaModalOpen(true)}
+          className="relative w-14 h-14 rounded-full bg-gradient-to-tr from-violet-600 via-indigo-600 to-blue-600 hover:from-violet-500 hover:to-indigo-500 text-white flex items-center justify-center shadow-2xl hover:shadow-indigo-500/50 border border-indigo-300/40 transition-all duration-300 transform hover:scale-110 active:scale-95 cursor-pointer group-hover:ring-4 group-hover:ring-indigo-500/25"
+          aria-label="Alesha AI Kiosk"
+        >
+          {/* Glowing Ping Indicator */}
+          <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 ring-2 ring-white"></span>
+          </span>
+
+          <Bot className="w-6 h-6 text-white drop-shadow-md transition-transform duration-300 group-hover:rotate-6" />
+        </button>
+      </div>
 
       {/* MOBILE BOTTOM NAVIGATION */}
       <BottomNav
