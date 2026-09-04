@@ -131,15 +131,24 @@ export interface UserAccount {
   roleId: string;
   isActive: boolean;
   createdAt: string;
+  // Kontak & Foto
+  phone?: string;
+  email?: string;
+  photoUrl?: string;
+  // Identitas & Kedinasan Lengkap
+  nip?: string;            // NRP/NIP
+  position?: string;       // Pangkat / Jabatan
+  unit?: string;           // Satuan / Unit Kerja
+  instansi?: string;       // Instansi
+  organisasi?: string;     // Organisasi
+  subOrg?: string;         // Sub Organisasi
+  satker?: string;         // Satker
+  polda?: string;          // Daerah / Polda
+  polres?: string;         // Wilayah / Polres
   // Lingkup kewilayahan & eksekutif
   executiveLevel?: ExecutiveLevel;
   poldaId?: string;
   polresId?: string;
-  // Informasi Kedinasan (Trainer & Executive Profile)
-  position?: string;       // Jabatan (e.g., "Kanit Dikyasa", "Kapolda Metro Jaya")
-  unit?: string;           // Satuan / Unit Kerja (e.g., "Ditlantas Polda Metro Jaya")
-  polda?: string;          // Nama Polda (e.g., "POLDA METRO JAYA")
-  polres?: string;         // Nama Polres (e.g., "POLRES METRO JAKARTA SELATAN")
 }
 
 // Daftar menu lengkap (kompatibel penuh dengan User Akses yang ada)
@@ -149,7 +158,7 @@ export const AVAILABLE_MENUS: { id: string; label: string }[] = [
   { id: 'learning', label: 'Learning' },
   { id: 'my-learning', label: 'My Learning' },
   { id: 'progress', label: 'Capaian & Sertifikat' },
-  { id: 'trainer-outreach', label: 'Kegiatan Lapangan (Trainer)' },
+  { id: 'trainer-outreach', label: 'Lap Giat' },
   { id: 'content-management', label: 'Manajemen Konten' },
   { id: 'executive', label: 'Eksekutif Dashboard' },
   { id: 'reports', label: 'Laporan & Ekspor' },
@@ -183,7 +192,7 @@ export const DEFAULT_ROLES: Role[] = [
       { menuId: 'learning', menuLabel: 'Learning', actions: ['view', 'add', 'edit'] },
       { menuId: 'my-learning', menuLabel: 'My Learning', actions: ['view', 'add', 'edit'] },
       { menuId: 'progress', menuLabel: 'Capaian & Sertifikat', actions: ['view'] },
-      { menuId: 'trainer-outreach', menuLabel: 'Kegiatan Lapangan (Trainer)', actions: ['view', 'add', 'edit'] },
+      { menuId: 'trainer-outreach', menuLabel: 'Lap Giat', actions: ['view', 'add', 'edit'] },
       { menuId: 'content-management', menuLabel: 'Manajemen Konten', actions: ['view', 'add', 'edit'] },
       { menuId: 'reports', menuLabel: 'Laporan & Ekspor', actions: ['view'] },
       { menuId: 'katalog', menuLabel: 'Katalog Materi', actions: ['view', 'add', 'edit'] },
@@ -329,6 +338,8 @@ export interface OutreachSession {
   publicAccessCode: string;
   publicAccessUrl: string;
   targetParticipants?: number;
+  audienceType?: string;
+  evidenceImages?: string[];
   description?: string;
   createdAt: string;
   closedAt?: string;

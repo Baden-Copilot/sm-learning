@@ -36,7 +36,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       return { id: 'executive', label: 'Eksekutif', icon: BarChart3 };
     }
     if (isTrainer) {
-      return { id: 'trainer-outreach', label: 'Lapangan', icon: Layers };
+      return { id: 'trainer-outreach', label: 'Lap Giat', icon: Layers };
     }
     if (canAccessContentManagement) {
       return { id: 'content-management', label: 'Kelola', icon: Layers };

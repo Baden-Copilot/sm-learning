@@ -149,6 +149,57 @@ export async function initDb(configOverride?: DbConfig): Promise<void> {
     conn.release();
   }
 
+  // Pastikan tabel-tabel master kedinasan sudah ada (idempotent CREATE)
+  try {
+    await conn.query(`
+      CREATE TABLE IF NOT EXISTS \`master_instansi\` (
+        \`id\`   VARCHAR(50)  NOT NULL,
+        \`nama\` VARCHAR(255) NOT NULL,
+        PRIMARY KEY (\`id\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+      CREATE TABLE IF NOT EXISTS \`master_organisasi\` (
+        \`id\`   VARCHAR(50)  NOT NULL,
+        \`nama\` VARCHAR(255) NOT NULL,
+        PRIMARY KEY (\`id\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+      CREATE TABLE IF NOT EXISTS \`master_sub_org\` (
+        \`id\`   VARCHAR(50)  NOT NULL,
+        \`nama\` VARCHAR(255) NOT NULL,
+        PRIMARY KEY (\`id\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+      CREATE TABLE IF NOT EXISTS \`master_satker\` (
+        \`id\`   VARCHAR(50)  NOT NULL,
+        \`nama\` VARCHAR(255) NOT NULL,
+        PRIMARY KEY (\`id\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+  } catch (err) {
+    // Ignore if already exist
+  }
+
+  // Pastikan kolom baru di tabel users sudah ada (idempotent ALTER)
+  try {
+    const [cols]: any = await conn.query('SHOW COLUMNS FROM users LIKE "phone"');
+    if (!cols || cols.length === 0) {
+      await conn.query(`
+        ALTER TABLE users
+          ADD COLUMN \`phone\` VARCHAR(50) NULL AFTER \`is_active\`,
+          ADD COLUMN \`email\` VARCHAR(150) NULL AFTER \`phone\`,
+          ADD COLUMN \`photo_url\` LONGTEXT NULL AFTER \`email\`,
+          ADD COLUMN \`nip\` VARCHAR(100) NULL AFTER \`photo_url\`,
+          ADD COLUMN \`instansi\` VARCHAR(200) NULL AFTER \`unit\`,
+          ADD COLUMN \`organisasi\` VARCHAR(200) NULL AFTER \`instansi\`,
+          ADD COLUMN \`sub_org\` VARCHAR(200) NULL AFTER \`organisasi\`,
+          ADD COLUMN \`satker\` VARCHAR(200) NULL AFTER \`sub_org\`
+      `);
+    }
+  } catch (err) {
+    // Ignore if columns already exist or non-critical
+  }
+
   await hydrateAllFromDb();
   isInitialized = true;
   console.log(`[DB] MySQL terhubung ke "${config.database}" (${userDataCache.users.length} akun, ${poldaCache.length} polda, ${materialsCache.length} materi).`);
@@ -235,7 +286,7 @@ async function autoBootstrapIfEmpty(conn: mysql.PoolConnection): Promise<void> {
         { menuId: 'learning', menuLabel: 'Learning', actions: ['view', 'add', 'edit', 'delete'] },
         { menuId: 'my-learning', menuLabel: 'My Learning', actions: ['view', 'add', 'edit', 'delete'] },
         { menuId: 'progress', menuLabel: 'Capaian & Sertifikat', actions: ['view', 'add', 'edit', 'delete'] },
-        { menuId: 'trainer-outreach', menuLabel: 'Kegiatan Lapangan (Trainer)', actions: ['view', 'add', 'edit', 'delete'] },
+        { menuId: 'trainer-outreach', menuLabel: 'Lap Giat', actions: ['view', 'add', 'edit', 'delete'] },
         { menuId: 'content-management', menuLabel: 'Manajemen Konten', actions: ['view', 'add', 'edit', 'delete'] },
         { menuId: 'executive', menuLabel: 'Eksekutif Dashboard', actions: ['view', 'add', 'edit', 'delete'] },
         { menuId: 'reports', menuLabel: 'Laporan & Ekspor', actions: ['view', 'add', 'edit', 'delete'] },
@@ -260,7 +311,7 @@ async function autoBootstrapIfEmpty(conn: mysql.PoolConnection): Promise<void> {
         { menuId: 'learning', menuLabel: 'Learning', actions: ['view', 'add', 'edit'] },
         { menuId: 'my-learning', menuLabel: 'My Learning', actions: ['view', 'add', 'edit'] },
         { menuId: 'progress', menuLabel: 'Capaian & Sertifikat', actions: ['view'] },
-        { menuId: 'trainer-outreach', menuLabel: 'Kegiatan Lapangan (Trainer)', actions: ['view', 'add', 'edit'] },
+        { menuId: 'trainer-outreach', menuLabel: 'Lap Giat', actions: ['view', 'add', 'edit'] },
         { menuId: 'content-management', menuLabel: 'Manajemen Konten', actions: ['view', 'add', 'edit'] },
         { menuId: 'reports', menuLabel: 'Laporan & Ekspor', actions: ['view'] },
         { menuId: 'katalog', menuLabel: 'Katalog Materi', actions: ['view', 'add', 'edit'] },
@@ -728,23 +779,35 @@ export async function hydrateAllFromDb(): Promise<void> {
     permissions: typeof r.permissions === 'string' ? JSON.parse(r.permissions) : r.permissions,
   }));
 
-  const [userRows]: any = await p.query('SELECT id, username, password, full_name, role_id, is_active, executive_level, polda_id, polres_id, position, unit, polda, polres, created_at FROM users');
-  const users = userRows.map((u: any) => ({
-    id: u.id,
-    username: u.username,
-    password: u.password,
-    fullName: u.full_name,
-    roleId: u.role_id,
-    isActive: Boolean(u.is_active),
-    executiveLevel: u.executive_level || undefined,
-    poldaId: u.polda_id || undefined,
-    polresId: u.polres_id || undefined,
-    position: u.position || undefined,
-    unit: u.unit || undefined,
-    polda: u.polda || undefined,
-    polres: u.polres || undefined,
-    createdAt: u.created_at,
-  }));
+  const [userRows]: any = await p.query('SELECT * FROM users');
+  const users = userRows.map((u: any) => {
+    const parse = (v: any) => (typeof v === 'string' ? (v ? JSON.parse(v) : undefined) : v);
+    const extra = parse(u.extra) || {};
+    return {
+      id: u.id,
+      username: u.username,
+      password: u.password,
+      fullName: u.full_name,
+      roleId: u.role_id,
+      isActive: Boolean(u.is_active),
+      phone: u.phone || extra.phone,
+      email: u.email || extra.email,
+      photoUrl: u.photo_url || extra.photoUrl,
+      nip: u.nip || extra.nip,
+      position: u.position || extra.position,
+      unit: u.unit || extra.unit,
+      instansi: u.instansi || extra.instansi,
+      organisasi: u.organisasi || extra.organisasi,
+      subOrg: u.sub_org || extra.subOrg,
+      satker: u.satker || extra.satker,
+      polda: u.polda || extra.polda,
+      polres: u.polres || extra.polres,
+      executiveLevel: u.executive_level || undefined,
+      poldaId: u.polda_id || undefined,
+      polresId: u.polres_id || undefined,
+      createdAt: u.created_at,
+    };
+  });
 
   userDataCache = { roles, users };
 
@@ -815,6 +878,8 @@ export async function hydrateAllFromDb(): Promise<void> {
       publicAccessCode: s.public_access_code,
       publicAccessUrl: s.public_access_url,
       targetParticipants: s.target_participants ? Number(s.target_participants) : undefined,
+      audienceType: s.audience_type || parse(s.extra)?.audienceType,
+      evidenceImages: parse(s.evidence_images) || parse(s.extra)?.evidenceImages || [],
       description: s.description,
       createdAt: s.created_at,
       closedAt: s.closed_at,
@@ -1081,33 +1146,69 @@ export function readUserData(): UserDataState {
 
 export async function createSingleUser(u: any): Promise<any> {
   const p = getPool();
-  await p.query(
-    `INSERT INTO users (
-       id, username, password, full_name, role_id, is_active,
-       executive_level, polda_id, polres_id, position, unit, polda, polres, created_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      u.id,
-      u.username,
-      u.password || '123456',
-      u.fullName,
-      u.roleId,
-      u.isActive ? 1 : 0,
-      u.executiveLevel || null,
-      u.poldaId || null,
-      u.polresId || null,
-      u.position || null,
-      u.unit || null,
-      u.polda || null,
-      u.polres || null,
-      u.createdAt || new Date().toISOString().slice(0, 10),
-    ]
-  );
+  try {
+    await p.query(
+      `INSERT INTO users (
+         id, username, password, full_name, role_id, is_active,
+         phone, email, photo_url, nip, position, unit, instansi, organisasi, sub_org, satker,
+         executive_level, polda_id, polres_id, polda, polres, created_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        u.id,
+        u.username,
+        u.password || '123456',
+        u.fullName,
+        u.roleId || 'role-trainer',
+        u.isActive ? 1 : 0,
+        u.phone || null,
+        u.email || null,
+        u.photoUrl || null,
+        u.nip || null,
+        u.position || null,
+        u.unit || null,
+        u.instansi || null,
+        u.organisasi || null,
+        u.subOrg || null,
+        u.satker || null,
+        u.executiveLevel || null,
+        u.poldaId || null,
+        u.polresId || null,
+        u.polda || null,
+        u.polres || null,
+        u.createdAt || new Date().toISOString().slice(0, 10),
+      ]
+    );
+  } catch (err) {
+    // Fallback if schema doesn't have all columns yet
+    await p.query(
+      `INSERT INTO users (
+         id, username, password, full_name, role_id, is_active,
+         executive_level, polda_id, polres_id, position, unit, polda, polres, created_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        u.id,
+        u.username,
+        u.password || '123456',
+        u.fullName,
+        u.roleId || 'role-trainer',
+        u.isActive ? 1 : 0,
+        u.executiveLevel || null,
+        u.poldaId || null,
+        u.polresId || null,
+        u.position || null,
+        u.unit || null,
+        u.polda || null,
+        u.polres || null,
+        u.createdAt || new Date().toISOString().slice(0, 10),
+      ]
+    );
+  }
 
   // Update in-memory cache
   const existingIdx = userDataCache.users.findIndex(x => x.id === u.id);
   const safeUser = {
     ...u,
+    roleId: u.roleId || 'role-trainer',
     password: u.password || '123456',
     isActive: Boolean(u.isActive),
     createdAt: u.createdAt || new Date().toISOString().slice(0, 10),
@@ -1125,37 +1226,87 @@ export async function updateSingleUser(userId: string, u: any): Promise<any> {
   const existing = userDataCache.users.find(x => x.id === userId);
   const finalPassword = u.password && u.password.trim() ? u.password.trim() : (existing?.password || '123456');
 
-  await p.query(
-    `UPDATE users SET
-       username = ?,
-       password = ?,
-       full_name = ?,
-       role_id = ?,
-       is_active = ?,
-       executive_level = ?,
-       polda_id = ?,
-       polres_id = ?,
-       position = ?,
-       unit = ?,
-       polda = ?,
-       polres = ?
-     WHERE id = ?`,
-    [
-      u.username,
-      finalPassword,
-      u.fullName,
-      u.roleId,
-      u.isActive ? 1 : 0,
-      u.executiveLevel || null,
-      u.poldaId || null,
-      u.polresId || null,
-      u.position || null,
-      u.unit || null,
-      u.polda || null,
-      u.polres || null,
-      userId,
-    ]
-  );
+  try {
+    await p.query(
+      `UPDATE users SET
+         username = ?,
+         password = ?,
+         full_name = ?,
+         role_id = ?,
+         is_active = ?,
+         phone = ?,
+         email = ?,
+         photo_url = ?,
+         nip = ?,
+         position = ?,
+         unit = ?,
+         instansi = ?,
+         organisasi = ?,
+         sub_org = ?,
+         satker = ?,
+         executive_level = ?,
+         polda_id = ?,
+         polres_id = ?,
+         polda = ?,
+         polres = ?
+       WHERE id = ?`,
+      [
+        u.username,
+        finalPassword,
+        u.fullName,
+        u.roleId || existing?.roleId || 'role-trainer',
+        u.isActive ? 1 : 0,
+        u.phone || null,
+        u.email || null,
+        u.photoUrl || null,
+        u.nip || null,
+        u.position || null,
+        u.unit || null,
+        u.instansi || null,
+        u.organisasi || null,
+        u.subOrg || null,
+        u.satker || null,
+        u.executiveLevel || null,
+        u.poldaId || null,
+        u.polresId || null,
+        u.polda || null,
+        u.polres || null,
+        userId,
+      ]
+    );
+  } catch (err) {
+    await p.query(
+      `UPDATE users SET
+         username = ?,
+         password = ?,
+         full_name = ?,
+         role_id = ?,
+         is_active = ?,
+         executive_level = ?,
+         polda_id = ?,
+         polres_id = ?,
+         position = ?,
+         unit = ?,
+         polda = ?,
+         polres = ?
+       WHERE id = ?`,
+      [
+        u.username,
+        finalPassword,
+        u.fullName,
+        u.roleId || existing?.roleId || 'role-trainer',
+        u.isActive ? 1 : 0,
+        u.executiveLevel || null,
+        u.poldaId || null,
+        u.polresId || null,
+        u.position || null,
+        u.unit || null,
+        u.polda || null,
+        u.polres || null,
+        userId,
+      ]
+    );
+  }
 
   // Update cache
   const idx = userDataCache.users.findIndex(x => x.id === userId);

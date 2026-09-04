@@ -101,3 +101,60 @@ export async function fetchPolresByPolda(poldaIdOrNama?: string): Promise<Wilaya
   }
   return [];
 }
+
+/** Master Data Tambahan untuk Profil & Organisasi Kedinasan */
+export const MASTER_INSTANSI = [
+  'Kepolisian Negara Republik Indonesia (POLRI)',
+  'Kementerian Perhubungan Republik Indonesia',
+  'Kementerian Pendidikan, Kebudayaan, Riset, dan Teknologi',
+  'Kementerian Dalam Negeri Republik Indonesia',
+  'Dinas Perhubungan Provinsi / Kabupaten / Kota',
+  'Jasa Raharja',
+  'Instansi Pendidikan / Sekolah / Kampus',
+  'Komunitas / Mitra Keselamatan Publik'
+];
+
+export const MASTER_ORGANISASI = [
+  'Korps Lalu Lintas (Korlantas POLRI)',
+  'Direktorat Keamanan dan Keselamatan (Ditkamsel)',
+  'Direktorat Penegakan Hukum (Ditgakkum)',
+  'Direktorat Registrasi dan Identifikasi (Ditregident)',
+  'Direktorat Lalu Lintas Polda (Ditlantas)',
+  'Satuan Lalu Lintas Polres (Satlantas)',
+  'Unit Keamanan dan Keselamatan (Unit Kamsel / Dikyasa)',
+  'Polsek Jajaran',
+  'Biro Operasi (Roops)',
+  'Biro SDM'
+];
+
+export const MASTER_SUB_ORG = [
+  'Subdit Pendidikan Masyarakat (Subdit Dikmas)',
+  'Subdit Standar Cegah & Tindak (Subdit Kamsel)',
+  'Subdit Patroli Pengawalan (Subdit Wal)',
+  'Subdit Gakkum & Tilang',
+  'Subdit Sim & Stnk (Regident)',
+  'Unit Kamsel Satlantas',
+  'Unit Turjawali Satlantas',
+  'Unit Gakkum Satlantas',
+  'Bagian Operasional (Bagops)',
+  'Seksi Humas & Edukasi'
+];
+
+export const MASTER_SATKER = [
+  'Korlantas Mabes Polri',
+  'Ditlantas Polda Metro Jaya',
+  'Ditlantas Polda Jawa Barat',
+  'Ditlantas Polda Jawa Tengah',
+  'Ditlantas Polda Jawa Timur',
+  'Satlantas Polres Metro Jakarta Pusat',
+  'Satlantas Polres Metro Jakarta Selatan',
+  'Satlantas Polres Metro Jakarta Barat',
+  'Satlantas Polres Metro Jakarta Timur',
+  'Satlantas Polres Metro Jakarta Utara',
+  'Satlantas Polrestabes Bandung',
+  'Satlantas Polrestabes Semarang',
+  'Satlantas Polrestabes Surabaya',
+  'Satlantas Polres Bogor',
+  'Satlantas Polresta Tangerang'
+];
+

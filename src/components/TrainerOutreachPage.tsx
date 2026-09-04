@@ -20,7 +20,10 @@ import {
   Building,
   Radio,
   X,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Upload,
+  Trash2,
+  Image as ImageIcon
 } from 'lucide-react';
 import { MaterialItem, OutreachSession, Role } from '../types';
 import { ActivityResultModal } from './Modals/ActivityResultModal';
@@ -84,7 +87,11 @@ export function TrainerOutreachPage({
   const [location, setLocation] = useState<string>('');
   const [date, setDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [startTime, setStartTime] = useState<string>('09:00 WIB');
+  const [audienceType, setAudienceType] = useState<string>('SD');
   const [targetParticipants, setTargetParticipants] = useState<number>(50);
+  const [evidenceImages, setEvidenceImages] = useState<string[]>([]);
+  const [isUploadingFile, setIsUploadingFile] = useState<boolean>(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [description, setDescription] = useState<string>('');
 
   const trainerId = currentUser?.user?.id || currentUser?.id || 'user-2';
@@ -221,6 +228,56 @@ export function TrainerOutreachPage({
     setSelectedPolres(polresList[0] || '');
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError('Ukuran file foto maksimal 5 MB.');
+      return;
+    }
+
+    setIsUploadingFile(true);
+    setUploadError(null);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = reader.result as string;
+
+      fetch('/api/outreach/evidence/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageBase64: base64,
+          filename: file.name
+        })
+      })
+        .then(res => {
+          if (!res.ok) throw new Error('Gagal mengunggah foto ke server.');
+          return res.json();
+        })
+        .then(data => {
+          if (data.success && data.url) {
+            setEvidenceImages(prev => [...prev, data.url]);
+          } else {
+            throw new Error(data.message || 'Gagal menyimpan foto.');
+          }
+        })
+        .catch(err => {
+          setUploadError(err.message || 'Gagal upload file.');
+        })
+        .finally(() => {
+          setIsUploadingFile(false);
+        });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveEvidence = (index: number) => {
+    setEvidenceImages(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleCreateSession = (e: React.FormEvent) => {
     e.preventDefault();
     if (eligibleMaterials.length === 0) {
@@ -257,6 +314,8 @@ export function TrainerOutreachPage({
         date,
         startTime,
         targetParticipants,
+        audienceType,
+        evidenceImages,
         description
       })
     })
@@ -280,6 +339,8 @@ export function TrainerOutreachPage({
           // Reset Form
           setActivityName('');
           setLocation('');
+          setEvidenceImages([]);
+          setUploadError(null);
           setDescription('');
           fetchSessions();
           // Directly open presentation room
@@ -601,6 +662,29 @@ export function TrainerOutreachPage({
                 )}
               </div>
 
+              {/* NAMA / PROFIL TRAINER (OTOMATIS) */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Identitas Trainer / Instruktur (Otomatis dari Profil)
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <span className="text-[11px] text-slate-400 block font-medium">Nama Lengkap</span>
+                    <span className="font-bold text-slate-900">
+                      {currentUser?.user?.fullName || currentUser?.fullName || 'Instruktur Dikmas POLRI'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[11px] text-slate-400 block font-medium">Polda</span>
+                    <span className="font-bold text-slate-900">{selectedPolda || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-[11px] text-slate-400 block font-medium">Polres / Wilayah</span>
+                    <span className="font-bold text-slate-900">{selectedPolres || '-'}</span>
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1.5">
                   Nama Kegiatan Edukasi *
@@ -618,7 +702,7 @@ export function TrainerOutreachPage({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                    Polda *
+                    Polda (Daerah) *
                   </label>
                   <select
                     value={selectedPolda}
@@ -634,7 +718,7 @@ export function TrainerOutreachPage({
 
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                    Polres / Satlantas *
+                    Polres (Wilayah) *
                   </label>
                   <select
                     value={selectedPolres}
@@ -655,7 +739,7 @@ export function TrainerOutreachPage({
 
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                  Lokasi Fisik Pelaksanaan *
+                  Lokasi Belajar (Fisik) *
                 </label>
                 <input
                   type="text"
@@ -696,17 +780,83 @@ export function TrainerOutreachPage({
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                    Audiens *
+                  </label>
+                  <select
+                    value={audienceType}
+                    onChange={(e) => setAudienceType(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                    required
+                  >
+                    <option value="SD">SD</option>
+                    <option value="SMP">SMP</option>
+                    <option value="SMA">SMA</option>
+                    <option value="Kampus">Kampus</option>
+                    <option value="Umum">Umum</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                    Jumlah Audiens (Target Peserta) *
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={targetParticipants}
+                    onChange={(e) => setTargetParticipants(parseInt(e.target.value, 10) || 0)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* DOKUMENTASI / FILE */}
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                  Estimasi Target Jumlah Peserta (Orang)
+                  Dokumentasi / File Kegiatan (Opsional)
                 </label>
-                <input
-                  type="number"
-                  min="1"
-                  value={targetParticipants}
-                  onChange={(e) => setTargetParticipants(parseInt(e.target.value, 10) || 0)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                />
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-blue-300 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition">
+                      <Upload className="w-4 h-4" />
+                      <span>{isUploadingFile ? 'Mengunggah...' : 'Pilih Foto / Dokumen'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileUpload}
+                        disabled={isUploadingFile}
+                        className="hidden"
+                      />
+                    </label>
+                    <span className="text-[10px] text-slate-400">JPG, PNG maks 5MB</span>
+                  </div>
+
+                  {uploadError && (
+                    <p className="text-[11px] text-red-600 font-semibold">{uploadError}</p>
+                  )}
+
+                  {evidenceImages.length > 0 && (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                      {evidenceImages.map((imgUrl, i) => (
+                        <div key={i} className="relative group rounded-xl overflow-hidden border border-slate-200 aspect-video bg-slate-100">
+                          <img src={imgUrl} alt={`Dokumentasi ${i + 1}`} className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveEvidence(i)}
+                            className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                            title="Hapus file"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div>

@@ -23,8 +23,36 @@ USE `sm_learning`;
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- =============================================================================
---  1. MASTER WILAYAH (sumber: data_polda, data_polres)
+--  1. MASTER WILAYAH & ORGANISASI KEDINASAN
 -- =============================================================================
+
+DROP TABLE IF EXISTS `master_instansi`;
+CREATE TABLE `master_instansi` (
+  `id`   VARCHAR(50)  NOT NULL,
+  `nama` VARCHAR(255) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+DROP TABLE IF EXISTS `master_organisasi`;
+CREATE TABLE `master_organisasi` (
+  `id`   VARCHAR(50)  NOT NULL,
+  `nama` VARCHAR(255) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+DROP TABLE IF EXISTS `master_sub_org`;
+CREATE TABLE `master_sub_org` (
+  `id`   VARCHAR(50)  NOT NULL,
+  `nama` VARCHAR(255) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+DROP TABLE IF EXISTS `master_satker`;
+CREATE TABLE `master_satker` (
+  `id`   VARCHAR(50)  NOT NULL,
+  `nama` VARCHAR(255) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 DROP TABLE IF EXISTS `polda`;
 CREATE TABLE `polda` (
@@ -74,12 +102,20 @@ CREATE TABLE `users` (
   `full_name`       VARCHAR(200) NOT NULL,
   `role_id`         VARCHAR(50)  NOT NULL,
   `is_active`       TINYINT(1)   NOT NULL DEFAULT 1,
+  `phone`           VARCHAR(50)  NULL,
+  `email`           VARCHAR(150) NULL,
+  `photo_url`       LONGTEXT     NULL,
+  `nip`             VARCHAR(100) NULL COMMENT 'NRP/NIP personel',
+  `instansi`        VARCHAR(200) NULL,
+  `organisasi`      VARCHAR(200) NULL,
+  `sub_org`         VARCHAR(200) NULL,
+  `satker`          VARCHAR(200) NULL,
+  `position`        VARCHAR(150) NULL COMMENT 'Jabatan / Pangkat',
+  `unit`            VARCHAR(150) NULL COMMENT 'Satuan kerja / Unit',
   `executive_level` ENUM('nasional','polda','polres') NULL
                     COMMENT 'Hanya untuk role-executive. NULL untuk peran lain',
   `polda_id`        VARCHAR(2)   NULL COMMENT 'Wajib bila executive_level = polda/polres',
   `polres_id`       VARCHAR(3)   NULL COMMENT 'Wajib bila executive_level = polres',
-  `position`        VARCHAR(150) NULL COMMENT 'Jabatan, mis. Kanit Dikyasa',
-  `unit`            VARCHAR(150) NULL COMMENT 'Satuan kerja, mis. Satlantas',
   `polda`           VARCHAR(150) NULL COMMENT 'Nama Polda untuk tampilan',
   `polres`          VARCHAR(150) NULL COMMENT 'Nama Polres untuk tampilan',
   `created_at`      DATE         NOT NULL DEFAULT '2026-01-01',

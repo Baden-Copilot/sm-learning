@@ -638,6 +638,66 @@ async function startServer() {
     res.json({ success: true, data: polres });
   });
 
+  // Master Data Kedinasan (Instansi, Organisasi, Sub Org, Satker)
+  app.get('/api/master/kedinasan', (_req, res) => {
+    res.json({
+      success: true,
+      data: {
+        instansi: [
+          'Kepolisian Negara Republik Indonesia (POLRI)',
+          'Kementerian Perhubungan Republik Indonesia',
+          'Kementerian Pendidikan, Kebudayaan, Riset, dan Teknologi',
+          'Kementerian Dalam Negeri Republik Indonesia',
+          'Dinas Perhubungan Provinsi / Kabupaten / Kota',
+          'Jasa Raharja',
+          'Instansi Pendidikan / Sekolah / Kampus',
+          'Komunitas / Mitra Keselamatan Publik'
+        ],
+        organisasi: [
+          'Korps Lalu Lintas (Korlantas POLRI)',
+          'Direktorat Keamanan dan Keselamatan (Ditkamsel)',
+          'Direktorat Penegakan Hukum (Ditgakkum)',
+          'Direktorat Registrasi dan Identifikasi (Ditregident)',
+          'Direktorat Lalu Lintas Polda (Ditlantas)',
+          'Satuan Lalu Lintas Polres (Satlantas)',
+          'Unit Keamanan dan Keselamatan (Unit Kamsel / Dikyasa)',
+          'Polsek Jajaran',
+          'Biro Operasi (Roops)',
+          'Biro SDM'
+        ],
+        subOrg: [
+          'Subdit Pendidikan Masyarakat (Subdit Dikmas)',
+          'Subdit Standar Cegah & Tindak (Subdit Kamsel)',
+          'Subdit Patroli Pengawalan (Subdit Wal)',
+          'Subdit Gakkum & Tilang',
+          'Subdit Sim & Stnk (Regident)',
+          'Unit Kamsel Satlantas',
+          'Unit Turjawali Satlantas',
+          'Unit Gakkum Satlantas',
+          'Bagian Operasional (Bagops)',
+          'Seksi Humas & Edukasi'
+        ],
+        satker: [
+          'Korlantas Mabes Polri',
+          'Ditlantas Polda Metro Jaya',
+          'Ditlantas Polda Jawa Barat',
+          'Ditlantas Polda Jawa Tengah',
+          'Ditlantas Polda Jawa Timur',
+          'Satlantas Polres Metro Jakarta Pusat',
+          'Satlantas Polres Metro Jakarta Selatan',
+          'Satlantas Polres Metro Jakarta Barat',
+          'Satlantas Polres Metro Jakarta Timur',
+          'Satlantas Polres Metro Jakarta Utara',
+          'Satlantas Polrestabes Bandung',
+          'Satlantas Polrestabes Semarang',
+          'Satlantas Polrestabes Surabaya',
+          'Satlantas Polres Bogor',
+          'Satlantas Polresta Tangerang'
+        ]
+      }
+    });
+  });
+
   // Public Catalog for Umum (/umum portal)
   app.get('/api/public/materials', (req, res) => {
     const { level, type, q, sort, limit } = req.query;
@@ -1014,7 +1074,10 @@ async function startServer() {
     }
 
     if (!user.isActive) {
-      return res.status(403).json({ success: false, message: 'Akun Anda dinonaktifkan. Hubungi Super Admin.' });
+      return res.status(403).json({
+        success: false,
+        message: 'Akun Anda belum diaktifkan/disetujui oleh Super Admin. Harap tunggu persetujuan admin.'
+      });
     }
 
     const role = data.roles.find((r: any) => r.id === user.roleId);
@@ -1022,6 +1085,68 @@ async function startServer() {
     // Return safe user data (without password)
     const { password: _, ...safeUser } = user;
     res.json({ success: true, data: { user: safeUser, role } });
+  });
+
+  // Public Self-Registration (Default Role: role-trainer)
+  app.post('/api/auth/register', async (req, res) => {
+    const {
+      username,
+      password,
+      fullName,
+      phone,
+      email,
+      photoUrl,
+      polda,
+      polres,
+      roleId
+    } = req.body;
+
+    if (!username || !password || !fullName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username, password, dan nama lengkap wajib diisi.'
+      });
+    }
+
+    const trimmedUsername = String(username).trim();
+    const data = readUserData();
+    const isDuplicate = data.users.some((existing: any) => existing.username.toLowerCase() === trimmedUsername.toLowerCase());
+    if (isDuplicate) {
+      return res.status(400).json({
+        success: false,
+        message: `Username "${trimmedUsername}" sudah terdaftar. Silakan pilih username lain.`
+      });
+    }
+
+    const assignedRole = 'role-trainer'; // Registrasi mandiri hanya untuk role trainer
+    const payload = {
+      id: `user-${Date.now()}`,
+      username: trimmedUsername,
+      password: String(password).trim(),
+      fullName: String(fullName).trim(),
+      roleId: assignedRole,
+      isActive: false, // Menunggu persetujuan / aktivasi oleh Super Admin
+      phone: phone ? String(phone).trim() : null,
+      email: email ? String(email).trim() : null,
+      photoUrl: photoUrl || null,
+      polda: polda || null,
+      polres: polres || null,
+      createdAt: new Date().toISOString().slice(0, 10),
+    };
+
+    try {
+      const created = await createSingleUser(payload);
+      const role = data.roles.find((r: any) => r.id === assignedRole);
+      const { password: _, ...safeUser } = created;
+      res.json({
+        success: true,
+        message: 'Pendaftaran akun Trainer berhasil! Akun Anda sedang menunggu persetujuan/aktivasi dari Super Admin.',
+        data: { user: safeUser, role }
+      });
+    } catch (err: any) {
+      console.error('[API] Gagal registrasi user:', err);
+      res.status(500).json({ success: false, message: err?.message || 'Gagal registrasi pengguna ke MySQL.' });
+    }
   });
 
   // Role definitions only, for any signed-in account. The client needs live
@@ -1084,11 +1209,19 @@ async function startServer() {
       fullName: String(u.fullName).trim(),
       roleId: u.roleId,
       isActive: typeof u.isActive === 'boolean' ? u.isActive : true,
+      phone: u.phone?.trim() || null,
+      email: u.email?.trim() || null,
+      photoUrl: u.photoUrl || null,
+      nip: u.nip?.trim() || null,
+      position: u.position?.trim() || null,
+      unit: u.unit?.trim() || null,
+      instansi: u.instansi?.trim() || null,
+      organisasi: u.organisasi?.trim() || null,
+      subOrg: u.subOrg?.trim() || null,
+      satker: u.satker?.trim() || null,
       executiveLevel: u.executiveLevel || null,
       poldaId: u.poldaId || null,
       polresId: u.polresId || null,
-      position: u.position?.trim() || null,
-      unit: u.unit?.trim() || null,
       polda: u.polda || null,
       polres: u.polres || null,
       createdAt: u.createdAt || new Date().toISOString().slice(0, 10),
@@ -1568,13 +1701,27 @@ async function startServer() {
   });
 
   // Update current user profile / kedinasan
-  app.put('/api/profile', (req, res) => {
+  app.put('/api/profile', async (req, res) => {
     const caller = resolveCaller(req);
     if (!caller) {
       return res.status(403).json({ success: false, message: 'Akses ditolak. Silakan login terlebih dahulu.' });
     }
     const userId = caller.id;
-    const { fullName, position, unit, polda, polres } = req.body;
+    const {
+      fullName,
+      phone,
+      email,
+      photoUrl,
+      nip,
+      position,
+      unit,
+      instansi,
+      organisasi,
+      subOrg,
+      satker,
+      polda,
+      polres
+    } = req.body;
 
     const data = readUserData();
     const userIndex = data.users.findIndex((u: any) => u.id === userId);
@@ -1584,18 +1731,31 @@ async function startServer() {
     }
 
     const currentUser = data.users[userIndex];
-    data.users[userIndex] = {
+    const updatedPayload = {
       ...currentUser,
       fullName: fullName && typeof fullName === 'string' ? fullName.trim() : currentUser.fullName,
+      phone: phone !== undefined ? String(phone).trim() : currentUser.phone,
+      email: email !== undefined ? String(email).trim() : currentUser.email,
+      photoUrl: photoUrl !== undefined ? photoUrl : currentUser.photoUrl,
+      nip: nip !== undefined ? String(nip).trim() : currentUser.nip,
       position: position !== undefined ? String(position).trim() : currentUser.position,
       unit: unit !== undefined ? String(unit).trim() : currentUser.unit,
+      instansi: instansi !== undefined ? String(instansi).trim() : currentUser.instansi,
+      organisasi: organisasi !== undefined ? String(organisasi).trim() : currentUser.organisasi,
+      subOrg: subOrg !== undefined ? String(subOrg).trim() : currentUser.subOrg,
+      satker: satker !== undefined ? String(satker).trim() : currentUser.satker,
       polda: polda !== undefined ? String(polda).trim() : currentUser.polda,
       polres: polres !== undefined ? String(polres).trim() : currentUser.polres
     };
 
-    writeUserData(data);
-    const { password: _, ...safeUser } = data.users[userIndex];
-    res.json({ success: true, data: { user: safeUser }, message: 'Profil dan data kedinasan berhasil diperbarui.' });
+    try {
+      const savedUser = await updateSingleUser(userId, updatedPayload);
+      const { password: _, ...safeUser } = savedUser;
+      res.json({ success: true, data: { user: safeUser }, message: 'Profil dan data kedinasan berhasil diperbarui.' });
+    } catch (err: any) {
+      console.error('[API] Gagal memperbarui profil:', err);
+      res.status(500).json({ success: false, message: 'Gagal memperbarui profil di database.' });
+    }
   });
 
   // Change password
@@ -1774,6 +1934,8 @@ async function startServer() {
       date,
       startTime,
       targetParticipants,
+      audienceType,
+      evidenceImages,
       description
     } = req.body;
 
@@ -1835,6 +1997,8 @@ async function startServer() {
       publicAccessCode: accessCode,
       publicAccessUrl,
       targetParticipants: targetParticipants ? Number(targetParticipants) : 0,
+      audienceType: audienceType || 'Umum',
+      evidenceImages: Array.isArray(evidenceImages) ? evidenceImages : [],
       description: description || '',
       createdAt: new Date().toISOString()
     };

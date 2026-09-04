@@ -21,7 +21,11 @@ import {
   Lock,
   Database,
   RefreshCw,
-  KeyRound
+  KeyRound,
+  Upload,
+  Phone,
+  Mail,
+  Image as ImageIcon
 } from 'lucide-react';
 import {
   UserAccount,
@@ -81,13 +85,18 @@ export function UserAccessPage({
     username: '',
     password: '',
     fullName: '',
+    phone: '',
+    email: '',
+    photoUrl: '',
     roleId: '',
     isActive: true,
+    nip: '',
     position: '',
     unit: '',
     polda: '',
     polres: ''
   });
+  const [isUploadingUserPhoto, setIsUploadingUserPhoto] = useState(false);
 
   // Load daftar polda dari DB
   React.useEffect(() => {
@@ -134,15 +143,44 @@ export function UserAccessPage({
   const activeUsersCount = users.filter(u => u.isActive).length;
   const totalRoles = roles.length;
 
-  // === USER CRUD ===
+  const handleToggleUserStatus = async (user: UserAccount) => {
+    const updatedUser: UserAccount = {
+      ...user,
+      isActive: !user.isActive
+    };
+    setIsSubmitting(true);
+    try {
+      if (onUpdateUser) {
+        await onUpdateUser(updatedUser);
+      } else {
+        onUpdateUsers(users.map(u => u.id === user.id ? updatedUser : u));
+      }
+      setAuditLogs(prev => [
+        {
+          id: String(Date.now()),
+          time: 'Baru saja',
+          actor: 'Admin',
+          action: user.isActive ? 'Nonaktifkan Akun' : 'Aktivasi / Setujui Akun',
+          target: user.username
+        },
+        ...prev
+      ]);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   const openCreateUser = () => {
     setEditingUser(null);
     setUserForm({
       username: '',
       password: '',
       fullName: '',
+      phone: '',
+      email: '',
+      photoUrl: '',
       roleId: roles[0]?.id || 'role-trainer',
       isActive: true,
+      nip: '',
       position: '',
       unit: '',
       polda: '',
@@ -157,14 +195,54 @@ export function UserAccessPage({
       username: user.username,
       password: '',
       fullName: user.fullName,
+      phone: user.phone || '',
+      email: user.email || '',
+      photoUrl: user.photoUrl || '',
       roleId: user.roleId,
       isActive: user.isActive,
+      nip: user.nip || '',
       position: user.position || '',
       unit: user.unit || '',
       polda: user.polda || '',
       polres: user.polres || ''
     });
     setShowUserModal(true);
+  };
+
+  const handleUserPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Ukuran foto maksimal 5 MB.');
+      return;
+    }
+    setIsUploadingUserPhoto(true);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = reader.result as string;
+      fetch('/api/outreach/evidence/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageBase64: base64,
+          filename: file.name
+        })
+      })
+        .then(r => r.json())
+        .then(d => {
+          if (d.success && d.url) {
+            setUserForm(prev => ({ ...prev, photoUrl: d.url }));
+          } else {
+            setUserForm(prev => ({ ...prev, photoUrl: base64 }));
+          }
+        })
+        .catch(() => {
+          setUserForm(prev => ({ ...prev, photoUrl: base64 }));
+        })
+        .finally(() => setIsUploadingUserPhoto(false));
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSaveUser = async () => {
@@ -198,6 +276,10 @@ export function UserAccessPage({
           ...editingUser,
           username: trimmedUsername,
           fullName: trimmedFullName,
+          phone: userForm.phone.trim() || undefined,
+          email: userForm.email.trim() || undefined,
+          photoUrl: userForm.photoUrl || undefined,
+          nip: userForm.nip.trim() || undefined,
           roleId: userForm.roleId,
           isActive: userForm.isActive,
           position: userForm.position?.trim() || undefined,
@@ -233,6 +315,10 @@ export function UserAccessPage({
           username: trimmedUsername,
           password: userForm.password.trim(),
           fullName: trimmedFullName,
+          phone: userForm.phone.trim() || undefined,
+          email: userForm.email.trim() || undefined,
+          photoUrl: userForm.photoUrl || undefined,
+          nip: userForm.nip.trim() || undefined,
           roleId: userForm.roleId,
           isActive: userForm.isActive,
           position: userForm.position?.trim() || undefined,
@@ -663,13 +749,16 @@ export function UserAccessPage({
                     <p className="font-bold text-sm text-slate-900">{user.fullName}</p>
                     <p className="text-xs text-slate-500 font-mono">@{user.username}</p>
                   </div>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                    user.isActive
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                      : 'bg-red-50 text-red-700 border border-red-200'
-                  }`}>
-                    {user.isActive ? 'Aktif' : 'Nonaktif'}
-                  </span>
+                  <button
+                    onClick={() => handleToggleUserStatus(user)}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer ${
+                      user.isActive
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-amber-50 text-amber-800 border border-amber-300 animate-pulse'
+                    }`}
+                  >
+                    {user.isActive ? 'Aktif' : 'Menunggu ACC / Nonaktif'}
+                  </button>
                 </div>
 
                 <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
@@ -731,13 +820,18 @@ export function UserAccessPage({
                       </span>
                     </td>
                     <td className="px-4 py-3.5">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        user.isActive
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : 'bg-red-50 text-red-700 border border-red-200'
-                      }`}>
-                        {user.isActive ? 'Aktif' : 'Nonaktif'}
-                      </span>
+                      <button
+                        onClick={() => handleToggleUserStatus(user)}
+                        title={user.isActive ? 'Klik untuk nonaktifkan akun' : 'Klik untuk menyetujui / aktifkan akun'}
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold cursor-pointer transition flex items-center gap-1 ${
+                          user.isActive
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-red-50 hover:text-red-700 hover:border-red-200'
+                            : 'bg-amber-50 text-amber-800 border border-amber-300 hover:bg-emerald-100 hover:text-emerald-800 animate-pulse'
+                        }`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${user.isActive ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                        <span>{user.isActive ? 'Aktif' : 'Menunggu ACC / Nonaktif'}</span>
+                      </button>
                     </td>
                     <td className="px-4 py-3.5 text-slate-500">
                       {user.createdAt || '2026-01-01'}
@@ -976,14 +1070,77 @@ export function UserAccessPage({
                 </select>
               </div>
 
+              {/* Kontak & Foto Profil */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1 text-[11px]">No. Telp / WA</label>
+                  <input
+                    type="text"
+                    value={userForm.phone}
+                    onChange={e => setUserForm({ ...userForm, phone: e.target.value })}
+                    placeholder="08xxxxxxxxxx"
+                    className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1 text-[11px]">Email</label>
+                  <input
+                    type="email"
+                    value={userForm.email}
+                    onChange={e => setUserForm({ ...userForm, email: e.target.value })}
+                    placeholder="nama@polri.go.id"
+                    className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none text-xs"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1 text-[11px]">Foto Profil</label>
+                <div className="flex items-center gap-2">
+                  <label className="cursor-pointer inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-dashed border-blue-300 bg-blue-50 hover:bg-blue-100 text-blue-700 text-[11px] font-bold">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>{isUploadingUserPhoto ? 'Upload...' : 'Pilih Foto'}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleUserPhotoUpload}
+                      disabled={isUploadingUserPhoto}
+                      className="hidden"
+                    />
+                  </label>
+                  {userForm.photoUrl && (
+                    <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-slate-200">
+                      <img src={userForm.photoUrl} alt="Foto" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setUserForm({ ...userForm, photoUrl: '' })}
+                        className="absolute top-0 right-0 bg-red-600 text-white p-0.5 rounded"
+                      >
+                        <X className="w-2 h-2" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Informasi Kedinasan (Jabatan, Satuan, Wilayah) */}
               <div className="pt-2 border-t border-slate-100 space-y-2">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
                   Informasi Kedinasan (Opsional)
                 </span>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1 text-[11px]">NRP / NIP</label>
+                  <input
+                    type="text"
+                    value={userForm.nip}
+                    onChange={e => setUserForm({ ...userForm, nip: e.target.value })}
+                    placeholder="e.g. 19840212 200801 1 002"
+                    className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none text-xs"
+                  />
+                </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="font-bold text-slate-700 block mb-1 text-[11px]">Jabatan</label>
+                    <label className="font-bold text-slate-700 block mb-1 text-[11px]">Pangkat / Jabatan</label>
                     <input
                       type="text"
                       value={userForm.position}
@@ -993,7 +1150,7 @@ export function UserAccessPage({
                     />
                   </div>
                   <div>
-                    <label className="font-bold text-slate-700 block mb-1 text-[11px]">Satuan</label>
+                    <label className="font-bold text-slate-700 block mb-1 text-[11px]">Satuan / Unit</label>
                     <input
                       type="text"
                       value={userForm.unit}

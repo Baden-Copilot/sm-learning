@@ -177,7 +177,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     `}
                   >
                     <Users className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span>Kegiatan Lapangan (Trainer)</span>
+                    <span>Lap Giat</span>
                   </button>
                 )}
 
