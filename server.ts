@@ -2614,22 +2614,47 @@ ${CERTIFICATE_SHARED_CSS}
   // Get All Outreach Reports (Executive / Trainer / Admin)
   app.get('/api/outreach/reports', (req, res) => {
     // Field activity reports are internal reporting material, not public data.
-    if (!resolveCaller(req)) {
+    const caller = resolveCaller(req);
+    if (!caller) {
       return res.status(403).json({ success: false, message: 'Akses ditolak. Silakan login terlebih dahulu.' });
     }
-    const { polda, polres, trainerId, materialId } = req.query;
+
+    const callerUser = caller.user || {};
+    const callerRole = callerUser.roleId;
+    const callerExecLevel = callerUser.executiveLevel;
+
+    let { polda, polres, trainerId, materialId } = req.query;
     let reports = readOutreachReports();
 
-    if (polda) {
-      reports = reports.filter((r: any) => r.polda === String(polda));
+    // Enforce territorial scope for Regional Executives & Trainers
+    if (callerRole === 'role-executive-1' || (callerRole === 'role-executive' && callerExecLevel === 'polres')) {
+      if (callerUser.polres) polres = callerUser.polres;
+      if (callerUser.polda) polda = callerUser.polda;
+    } else if (callerRole === 'role-executive-2' || (callerRole === 'role-executive' && callerExecLevel === 'polda')) {
+      if (callerUser.polda) polda = callerUser.polda;
+    } else if (callerRole === 'role-trainer') {
+      // Trainer only sees their own or their polres/polda reports
+      if (callerUser.polda) polda = callerUser.polda;
     }
-    if (polres) {
-      reports = reports.filter((r: any) => r.polres === String(polres));
+
+    if (polda && String(polda) !== 'ALL') {
+      const targetPolda = String(polda).toLowerCase();
+      reports = reports.filter((r: any) =>
+        (r.polda && r.polda.toLowerCase() === targetPolda) ||
+        (r.poldaId && callerUser.poldaId && r.poldaId === callerUser.poldaId)
+      );
     }
-    if (trainerId) {
+    if (polres && String(polres) !== 'ALL') {
+      const targetPolres = String(polres).toLowerCase();
+      reports = reports.filter((r: any) =>
+        (r.polres && r.polres.toLowerCase() === targetPolres) ||
+        (r.polresId && callerUser.polresId && r.polresId === callerUser.polresId)
+      );
+    }
+    if (trainerId && String(trainerId) !== 'ALL') {
       reports = reports.filter((r: any) => r.trainerId === String(trainerId));
     }
-    if (materialId) {
+    if (materialId && String(materialId) !== 'ALL') {
       reports = reports.filter((r: any) => r.materialId === String(materialId));
     }
 
@@ -2779,13 +2804,11 @@ ${CERTIFICATE_SHARED_CSS}
     let effectivePolres: string | undefined = req.query.polres ? String(req.query.polres) : undefined;
 
     // Eksekutif level Polda / Polres terkunci ke wilayahnya sendiri
-    if (callerRole === 'role-executive') {
-      if (callerExecLevel === 'polda' && callerUser.polda) {
-        effectivePolda = callerUser.polda;
-      } else if (callerExecLevel === 'polres' && callerUser.polda) {
-        effectivePolda = callerUser.polda;
-        if (callerUser.polres) effectivePolres = callerUser.polres;
-      }
+    if (callerRole === 'role-executive-1' || (callerRole === 'role-executive' && callerExecLevel === 'polres')) {
+      if (callerUser.polda) effectivePolda = callerUser.polda;
+      if (callerUser.polres) effectivePolres = callerUser.polres;
+    } else if (callerRole === 'role-executive-2' || (callerRole === 'role-executive' && callerExecLevel === 'polda')) {
+      if (callerUser.polda) effectivePolda = callerUser.polda;
     }
 
     const { trainerId, level, startDate, endDate } = req.query;
@@ -3246,13 +3269,13 @@ ${CERTIFICATE_SHARED_CSS}
         kpiWeights: KPI_WEIGHTS,
         generatedAt: new Date().toISOString(),
         executiveScope: {
-          level: callerExecLevel || (callerRole === 'role-admin' ? 'nasional' : 'nasional'),
+          level: callerExecLevel || (callerRole === 'role-admin' ? 'nasional' : (callerRole === 'role-executive-1' ? 'polres' : callerRole === 'role-executive-2' ? 'polda' : 'nasional')),
           polda: callerUser.polda || null,
           polres: callerUser.polres || null,
           poldaId: callerUser.poldaId || null,
           polresId: callerUser.polresId || null,
-          isLockedToPolda: callerRole === 'role-executive' && callerExecLevel === 'polda',
-          isLockedToPolres: callerRole === 'role-executive' && callerExecLevel === 'polres',
+          isLockedToPolda: callerRole === 'role-executive-2' || (callerRole === 'role-executive' && callerExecLevel === 'polda'),
+          isLockedToPolres: callerRole === 'role-executive-1' || (callerRole === 'role-executive' && callerExecLevel === 'polres'),
         },
         appliedFilters: {
           polda: effectivePolda || 'ALL',
