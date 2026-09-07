@@ -3387,52 +3387,89 @@ ${CERTIFICATE_SHARED_CSS}
   // AI CHAT SESSIONS & MESSAGES (GOOGLE GEMINI INTEGRATION)
   // ===========================================================================
 
-  // Helper untuk memanggil Google Gemini API v1beta via native fetch
+  // Helper untuk memanggil Google Gemini API v1beta via native fetch dengan fallback model
   async function callGeminiApi(systemInstruction: string, contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }>) {
     const apiKey = process.env.GEMINI_API_KEY || '';
-    const model = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+    const configuredModel = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
 
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY belum dikonfigurasi pada environment server.');
     }
 
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    // List of candidate model names in order of preference
+    const candidateModels = Array.from(new Set([
+      configuredModel,
+      'gemini-1.5-flash-latest',
+      'gemini-1.5-flash-8b',
+      'gemini-1.5-pro',
+      'gemini-1.5-pro-latest',
+      'gemini-pro',
+      'gemini-2.0-flash',
+      'gemini-2.0-flash-exp'
+    ]));
 
-    const bodyPayload: any = {
-      contents,
-      systemInstruction: {
-        parts: [{ text: systemInstruction }]
-      },
-      generationConfig: {
-        temperature: 0.7,
-        topK: 40,
-        topP: 0.95,
-        maxOutputTokens: 2048,
+    let lastError: any = null;
+
+    for (const model of candidateModels) {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+      const bodyPayload: any = {
+        contents,
+        systemInstruction: {
+          parts: [{ text: systemInstruction }]
+        },
+        generationConfig: {
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 2048,
+        }
+      };
+
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(bodyPayload),
+        });
+
+        const data: any = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          const errorObj: any = new Error(data.error?.message || `Google Gemini API error (status ${res.status})`);
+          errorObj.status = res.status;
+          errorObj.geminiError = data.error;
+
+          // If rate limited or invalid key, throw immediately without trying other models
+          if (res.status === 429 || res.status === 401 || res.status === 403) {
+            throw errorObj;
+          }
+
+          // If model not found (404), continue to next model in loop
+          if (res.status === 404 || String(data.error?.message).includes('not found')) {
+            lastError = errorObj;
+            continue;
+          }
+
+          throw errorObj;
+        }
+
+        const candidateText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!candidateText) {
+          return 'Maaf, tidak ada jawaban yang dihasilkan oleh model.';
+        }
+        return candidateText;
+      } catch (err: any) {
+        lastError = err;
+        if (err.status === 429 || err.status === 401 || err.status === 403) {
+          throw err;
+        }
       }
-    };
-
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(bodyPayload),
-    });
-
-    const data: any = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      const errorObj: any = new Error(data.error?.message || `Google Gemini API error (status ${res.status})`);
-      errorObj.status = res.status;
-      errorObj.geminiError = data.error;
-      throw errorObj;
     }
 
-    const candidateText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!candidateText) {
-      return 'Maaf, tidak ada jawaban yang dihasilkan oleh model.';
-    }
-    return candidateText;
+    throw lastError || new Error('Tidak dapat menemukan model Gemini yang cocok.');
   }
 
   // 1. Get All AI Chat Sessions for current user

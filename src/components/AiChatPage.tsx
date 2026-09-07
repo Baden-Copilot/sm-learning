@@ -269,7 +269,13 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
       }
     } catch (err: any) {
       console.error('Send message error:', err);
-      setRateLimitError(`Kendala Sistem: ${err.message || 'Gagal menghubungi server.'}`);
+      // Jika error bukan rate limit spesifik, jangan kunci total input, cukup tampilkan pesan error
+      const msg = String(err.message || err || '');
+      if (msg.includes('429') || msg.includes('limit') || msg.includes('Quota')) {
+        setRateLimitError(`⚠️ Limit Gemini tercapai: ${msg}`);
+      } else {
+        setRateLimitError(`Kendala Sistem: ${msg}`);
+      }
     } finally {
       setIsLoading(false);
     }
