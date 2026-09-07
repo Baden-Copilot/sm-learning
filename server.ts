@@ -3390,22 +3390,20 @@ ${CERTIFICATE_SHARED_CSS}
   // Helper untuk memanggil Google Gemini API v1beta via native fetch dengan fallback model
   async function callGeminiApi(systemInstruction: string, contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }>) {
     const apiKey = process.env.GEMINI_API_KEY || '';
-    const configuredModel = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+    const configuredModel = process.env.GEMINI_MODEL || 'gemini-flash-latest';
 
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY belum dikonfigurasi pada environment server.');
     }
 
-    // List of candidate model names in order of preference
+    // List of valid active candidate model names in order of preference
     const candidateModels = Array.from(new Set([
       configuredModel,
-      'gemini-1.5-flash-latest',
-      'gemini-1.5-flash-8b',
-      'gemini-1.5-pro',
-      'gemini-1.5-pro-latest',
-      'gemini-pro',
-      'gemini-2.0-flash',
-      'gemini-2.0-flash-exp'
+      'gemini-flash-latest',
+      'gemini-3.6-flash',
+      'gemini-3.5-flash',
+      'gemini-2.5-flash',
+      'gemini-1.5-flash'
     ]));
 
     let lastError: any = null;
@@ -3438,17 +3436,18 @@ ${CERTIFICATE_SHARED_CSS}
         const data: any = await res.json().catch(() => ({}));
 
         if (!res.ok) {
-          const errorObj: any = new Error(data.error?.message || `Google Gemini API error (status ${res.status})`);
+          const errorMsg = data.error?.message || `Google Gemini API error (status ${res.status})`;
+          const errorObj: any = new Error(errorMsg);
           errorObj.status = res.status;
           errorObj.geminiError = data.error;
 
-          // If rate limited or invalid key, throw immediately without trying other models
+          // If rate limited or invalid key, throw immediately
           if (res.status === 429 || res.status === 401 || res.status === 403) {
             throw errorObj;
           }
 
-          // If model not found (404), continue to next model in loop
-          if (res.status === 404 || String(data.error?.message).includes('not found')) {
+          // If model deprecated / not found / unsupported method, continue to next fallback model
+          if (res.status === 404 || errorMsg.includes('not found') || errorMsg.includes('no longer available') || errorMsg.includes('not supported')) {
             lastError = errorObj;
             continue;
           }

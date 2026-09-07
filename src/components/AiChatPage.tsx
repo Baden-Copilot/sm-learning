@@ -396,7 +396,7 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
                   <Sparkles className="w-3.5 h-3.5 ml-1.5 text-amber-300" />
                 </h2>
                 <span className="text-[10px] bg-blue-500/30 text-blue-200 border border-blue-400/30 px-2 py-0.5 rounded-full font-mono font-medium">
-                  gemini-1.5-flash
+                  gemini-flash
                 </span>
               </div>
               <p className="text-[11px] text-slate-300 flex items-center mt-0.5">
