@@ -3390,7 +3390,7 @@ ${CERTIFICATE_SHARED_CSS}
   // Helper untuk memanggil Google Gemini API v1beta via native fetch dengan fallback model
   async function callGeminiApi(systemInstruction: string, contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }>) {
     const apiKey = process.env.GEMINI_API_KEY || '';
-    const configuredModel = process.env.GEMINI_MODEL || 'gemini-flash-latest';
+    const configuredModel = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
 
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY belum dikonfigurasi pada environment server.');
@@ -3399,9 +3399,11 @@ ${CERTIFICATE_SHARED_CSS}
     // List of valid active candidate model names in order of preference
     const candidateModels = Array.from(new Set([
       configuredModel,
-      'gemini-flash-latest',
       'gemini-3.6-flash',
       'gemini-3.5-flash',
+      'gemini-3.8-flash',
+      'gemini-flash-latest',
+      'gemini-3.7-flash',
       'gemini-2.5-flash',
       'gemini-1.5-flash'
     ]));
@@ -3442,12 +3444,24 @@ ${CERTIFICATE_SHARED_CSS}
           errorObj.geminiError = data.error;
 
           // If rate limited or invalid key, throw immediately
-          if (res.status === 429 || res.status === 401 || res.status === 403) {
+          if (res.status === 401 || res.status === 403) {
             throw errorObj;
           }
 
-          // If model deprecated / not found / unsupported method, continue to next fallback model
-          if (res.status === 404 || errorMsg.includes('not found') || errorMsg.includes('no longer available') || errorMsg.includes('not supported')) {
+          // If 503 (high demand / overload), 404 (not found / deprecated), 500 (transient), or 429 quota exhausted on specific model, try next model
+          if (
+            res.status === 503 ||
+            res.status === 500 ||
+            res.status === 404 ||
+            res.status === 429 ||
+            errorMsg.includes('high demand') ||
+            errorMsg.includes('temporarily unavailable') ||
+            errorMsg.includes('overloaded') ||
+            errorMsg.includes('not found') ||
+            errorMsg.includes('no longer available') ||
+            errorMsg.includes('not supported')
+          ) {
+            console.warn(`[Gemini Fallback] Model ${model} returned ${res.status} (${errorMsg}). Trying next model...`);
             lastError = errorObj;
             continue;
           }
@@ -3462,13 +3476,13 @@ ${CERTIFICATE_SHARED_CSS}
         return candidateText;
       } catch (err: any) {
         lastError = err;
-        if (err.status === 429 || err.status === 401 || err.status === 403) {
+        if (err.status === 401 || err.status === 403) {
           throw err;
         }
       }
     }
 
-    throw lastError || new Error('Tidak dapat menemukan model Gemini yang cocok.');
+    throw lastError || new Error('Tidak dapat menemukan model Gemini yang cocok saat ini.');
   }
 
   // 1. Get All AI Chat Sessions for current user

@@ -269,13 +269,8 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
       }
     } catch (err: any) {
       console.error('Send message error:', err);
-      // Jika error bukan rate limit spesifik, jangan kunci total input, cukup tampilkan pesan error
       const msg = String(err.message || err || '');
-      if (msg.includes('429') || msg.includes('limit') || msg.includes('Quota')) {
-        setRateLimitError(`⚠️ Limit Gemini tercapai: ${msg}`);
-      } else {
-        setRateLimitError(`Kendala Sistem: ${msg}`);
-      }
+      setRateLimitError(`Kendala Sistem: ${msg}`);
     } finally {
       setIsLoading(false);
     }
@@ -585,7 +580,7 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
           </div>
           <div className="flex items-center justify-between mt-2 px-1 text-[11px] text-slate-400">
             <span>Tekan <strong>Enter</strong> untuk mengirim, <strong>Shift + Enter</strong> untuk baris baru.</span>
-            <span>Didukung Google Gemini 1.5 Flash (Read-Only Context)</span>
+            <span>Didukung Google Gemini AI (Read-Only Context)</span>
           </div>
         </div>
       </div>
