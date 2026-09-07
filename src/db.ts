@@ -224,6 +224,62 @@ export async function initDb(configOverride?: DbConfig): Promise<void> {
     // Ignore if columns already exist or non-critical
   }
 
+  // Auto-migration: bersihkan nama prefix POLDA & POLRES di database MySQL yang sudah ada
+  try {
+    await conn.query(`
+      UPDATE polda
+      SET nama = TRIM(SUBSTRING(nama, 7))
+      WHERE nama LIKE 'POLDA %'
+    `);
+    await conn.query(`
+      UPDATE polres
+      SET nama = TRIM(SUBSTRING(nama, 14))
+      WHERE nama LIKE 'POLRES METRO %'
+    `);
+    await conn.query(`
+      UPDATE polres
+      SET nama = TRIM(SUBSTRING(nama, 12))
+      WHERE nama LIKE 'POLRESTABES %'
+    `);
+    await conn.query(`
+      UPDATE polres
+      SET nama = TRIM(SUBSTRING(nama, 10))
+      WHERE nama LIKE 'POLRESTA %'
+    `);
+    await conn.query(`
+      UPDATE polres
+      SET nama = TRIM(SUBSTRING(nama, 8))
+      WHERE nama LIKE 'POLRES %'
+    `);
+    await conn.query(`
+      UPDATE users
+      SET polda = TRIM(SUBSTRING(polda, 7))
+      WHERE polda LIKE 'POLDA %'
+    `);
+    await conn.query(`
+      UPDATE users
+      SET polres = TRIM(SUBSTRING(polres, 14))
+      WHERE polres LIKE 'POLRES METRO %'
+    `);
+    await conn.query(`
+      UPDATE users
+      SET polres = TRIM(SUBSTRING(polres, 12))
+      WHERE polres LIKE 'POLRESTABES %'
+    `);
+    await conn.query(`
+      UPDATE users
+      SET polres = TRIM(SUBSTRING(polres, 10))
+      WHERE polres LIKE 'POLRESTA %'
+    `);
+    await conn.query(`
+      UPDATE users
+      SET polres = TRIM(SUBSTRING(polres, 8))
+      WHERE polres LIKE 'POLRES %'
+    `);
+  } catch (migErr) {
+    // Non-critical auto-clean
+  }
+
   await hydrateAllFromDb();
   isInitialized = true;
   console.log(`[DB] MySQL terhubung ke "${config.database}" (${userDataCache.users.length} akun, ${poldaCache.length} polda, ${materialsCache.length} materi).`);
