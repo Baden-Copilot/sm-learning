@@ -677,11 +677,11 @@ export function TrainerOutreachPage({
                     </span>
                   </div>
                   <div>
-                    <span className="text-[11px] text-slate-400 block font-medium">Polda</span>
+                    <span className="text-[11px] text-slate-400 block font-medium">Provinsi</span>
                     <span className="font-bold text-slate-900">{selectedPolda || '-'}</span>
                   </div>
                   <div>
-                    <span className="text-[11px] text-slate-400 block font-medium">Polres / Wilayah</span>
+                    <span className="text-[11px] text-slate-400 block font-medium">Kota / Kabupaten</span>
                     <span className="font-bold text-slate-900">{selectedPolres || '-'}</span>
                   </div>
                 </div>
@@ -704,7 +704,7 @@ export function TrainerOutreachPage({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                    Polda (Daerah) * {hasProfileWilayah && '(Terkunci Wilayah Anda)'}
+                    Provinsi * {hasProfileWilayah && '(Terkunci Wilayah Anda)'}
                   </label>
                   <select
                     value={selectedPolda}
@@ -721,7 +721,7 @@ export function TrainerOutreachPage({
 
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                    Polres (Wilayah) * {hasProfileWilayah && selectedPolres && '(Terkunci Wilayah Anda)'}
+                    Kota / Kabupaten * {hasProfileWilayah && selectedPolres && '(Terkunci Wilayah Anda)'}
                   </label>
                   <select
                     value={selectedPolres}
@@ -735,7 +735,7 @@ export function TrainerOutreachPage({
                         <option key={`${p.poldaId}-${p.polresId}`} value={p.nama}>{p.nama}</option>
                       ))
                     ) : (
-                      <option value="">Tidak ada polres</option>
+                      <option value="">Tidak ada kota / kabupaten</option>
                     )}
                   </select>
                 </div>

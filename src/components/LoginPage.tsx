@@ -329,11 +329,11 @@ export function LoginPage({ onLogin, onOpenPublicPortal, onOpenPublicSession }: 
             </form>
           ) : (
             <form onSubmit={handleRegisterSubmit} className="space-y-3">
-              {/* Daerah / Polda */}
+              {/* Daerah / Provinsi */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Daerah (Polda) *
+                    Provinsi *
                   </label>
                   <select
                     value={regPolda}
@@ -341,7 +341,7 @@ export function LoginPage({ onLogin, onOpenPublicPortal, onOpenPublicSession }: 
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0a1d37]"
                     required
                   >
-                    <option value="">Pilih Polda</option>
+                    <option value="">Pilih Provinsi</option>
                     {(poldaList.length > 0 ? poldaList.map(p => p.nama) : DEFAULT_34_POLDA).map(p => (
                       <option key={p} value={p}>{p}</option>
                     ))}
@@ -350,7 +350,7 @@ export function LoginPage({ onLogin, onOpenPublicPortal, onOpenPublicSession }: 
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Wilayah (Polres) *
+                    Kota / Kabupaten *
                   </label>
                   <select
                     value={regPolres}
@@ -359,7 +359,7 @@ export function LoginPage({ onLogin, onOpenPublicPortal, onOpenPublicSession }: 
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#0a1d37]"
                     required
                   >
-                    <option value="">Pilih Polres</option>
+                    <option value="">Pilih Kota / Kabupaten</option>
                     {polresList.map(p => (
                       <option key={`${p.poldaId}-${p.polresId}`} value={p.nama}>{p.nama}</option>
                     ))}

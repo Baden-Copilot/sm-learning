@@ -601,14 +601,14 @@ export function ProfilePage({
               </div>
             </div>
 
-            {/* Wilayah Penugasan: Daerah (Polda) & Wilayah (Polres) */}
+            {/* Wilayah Penugasan: Provinsi & Kota / Kabupaten */}
             <div className="pt-2 border-t border-slate-100">
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-2">
                 Wilayah Penugasan Kedinasan
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Daerah (Polda)</label>
+                  <label className="font-bold text-slate-700 block mb-1">Provinsi</label>
                   <select
                     value={kedPolda}
                     onChange={e => setKedPolda(e.target.value)}
@@ -621,7 +621,7 @@ export function ProfilePage({
                 </div>
 
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Wilayah (Polres)</label>
+                  <label className="font-bold text-slate-700 block mb-1">Kota / Kabupaten</label>
                   <select
                     value={kedPolres}
                     onChange={e => setKedPolres(e.target.value)}
@@ -632,7 +632,7 @@ export function ProfilePage({
                         <option key={`${p.poldaId}-${p.polresId}`} value={p.nama}>{p.nama}</option>
                       ))
                     ) : (
-                      <option value="">Pilih Polda terlebih dahulu</option>
+                      <option value="">Pilih Provinsi terlebih dahulu</option>
                     )}
                   </select>
                 </div>

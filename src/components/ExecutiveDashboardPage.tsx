@@ -283,15 +283,15 @@ export function ExecutiveDashboardPage({
                       kpi.executiveScope.level === 'nasional'
                         ? 'Tingkat Nasional (Seluruh Indonesia)'
                         : kpi.executiveScope.level === 'polda'
-                        ? `Polda — ${kpi.executiveScope.polda || 'Wilayah'}`
-                        : `Polres — ${kpi.executiveScope.polres || 'Wilayah'}`
+                        ? `Provinsi — ${kpi.executiveScope.polda || 'Wilayah'}`
+                        : `Kota/Kabupaten — ${kpi.executiveScope.polres || 'Wilayah'}`
                     }
                   </span>
                 </div>
               )}
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-              Laporan Kinerja & Analitik Edukasi {kpi?.executiveScope?.level === 'polda' && kpi?.executiveScope?.polda ? kpi.executiveScope.polda : 'Nasional'}
+              Laporan Kinerja & Analitik Edukasi {kpi?.executiveScope?.level === 'polda' && kpi?.executiveScope?.polda ? `Provinsi ${kpi.executiveScope.polda}` : 'Nasional'}
             </h1>
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
               Seluruh angka dihitung langsung dari kegiatan lapangan yang tercatat — tidak ada nilai contoh.
@@ -326,7 +326,7 @@ export function ExecutiveDashboardPage({
         <div className="mt-6 pt-5 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <div>
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-              Wilayah Polda {kpi?.executiveScope?.isLockedToPolda && '(Terkunci)'}
+              Provinsi {kpi?.executiveScope?.isLockedToPolda && '(Terkunci)'}
             </label>
             <select
               value={selectedPolda}
@@ -335,7 +335,7 @@ export function ExecutiveDashboardPage({
               className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 disabled:bg-slate-100 disabled:cursor-not-allowed text-xs font-bold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500 cursor-pointer"
             >
               {!kpi?.executiveScope?.isLockedToPolda && (
-                <option value="ALL">Semua Polda (Nasional)</option>
+                <option value="ALL">Semua Provinsi (Nasional)</option>
               )}
               {poldaList.length > 0
                 ? poldaList.map(p => (
@@ -349,7 +349,7 @@ export function ExecutiveDashboardPage({
 
           <div>
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-              Polres / Satlantas {kpi?.executiveScope?.isLockedToPolres && '(Terkunci)'}
+              Kota / Kabupaten {kpi?.executiveScope?.isLockedToPolres && '(Terkunci)'}
             </label>
             <select
               value={selectedPolres}
@@ -357,7 +357,7 @@ export function ExecutiveDashboardPage({
               disabled={selectedPolda === 'ALL' || Boolean(kpi?.executiveScope?.isLockedToPolres)}
               className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-bold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500 cursor-pointer"
             >
-              <option value="ALL">Semua Polres</option>
+              <option value="ALL">Semua Kota / Kabupaten</option>
               {polresList.map(p => (
                 <option key={`${p.poldaId}-${p.polresId}`} value={p.nama}>{p.nama}</option>
               ))}
@@ -505,7 +505,7 @@ export function ExecutiveDashboardPage({
           { label: 'Akses Portal Publik', value: kpi.totalPublicViews, sub: 'penayangan mandiri', color: 'text-blue-800' },
           { label: 'Akses via Sesi QR', value: kpi.totalSessionViews, sub: 'penayangan saat pemaparan', color: 'text-purple-700' },
           { label: 'Percobaan Kuis', value: kpi.totalQuizAttempts, sub: `${kpi.totalQuizCompleted} lulus`, color: 'text-amber-700' },
-          { label: 'Wilayah Terlibat', value: kpi.regionalHierarchy.length, sub: 'Polda dengan kegiatan', color: 'text-emerald-700' },
+          { label: 'Wilayah Terlibat', value: kpi.regionalHierarchy.length, sub: 'Provinsi dengan kegiatan', color: 'text-emerald-700' },
         ].map(c => (
           <div key={c.label} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-1">
             <span className="text-[10px] font-bold text-slate-400 uppercase block truncate">{c.label}</span>
@@ -544,8 +544,8 @@ export function ExecutiveDashboardPage({
 
           <div className="flex bg-slate-100 rounded-xl p-1 shrink-0 self-start">
             {[
-              { key: 'polda' as const, label: 'Per Polda' },
-              { key: 'polres' as const, label: 'Per Polres' },
+              { key: 'polda' as const, label: 'Per Provinsi' },
+              { key: 'polres' as const, label: 'Per Kota / Kab' },
               { key: 'trainer' as const, label: 'Per Instruktur' },
             ].map(t => (
               <button
@@ -616,8 +616,8 @@ export function ExecutiveDashboardPage({
                       </div>
                       <p className="text-[11px] text-slate-500 truncate">
                         {kpiScope === 'trainer' && `${row.polres} — ${row.polda}`}
-                        {kpiScope === 'polres' && row.polda}
-                        {kpiScope === 'polda' && `${row.polresCount} polres • ${row.trainerCount} instruktur`}
+                        {kpiScope === 'polres' && `Provinsi ${row.polda}`}
+                        {kpiScope === 'polda' && `${row.polresCount} kota/kabupaten • ${row.trainerCount} instruktur`}
                       </p>
                       <p className="text-[11px] text-slate-600 font-medium">
                         {row.sessionCount} kegiatan • {row.participantCount} peserta • rata-rata nilai{' '}
@@ -700,7 +700,7 @@ export function ExecutiveDashboardPage({
           <div className="p-4 rounded-2xl bg-red-50 border border-red-200 space-y-2">
             <p className="text-xs font-bold text-red-900 flex items-center gap-1.5">
               <AlertCircle className="w-4 h-4" />
-              <span>{kpi.inactivePolda.length} Polda belum menjalankan kegiatan pada periode ini</span>
+              <span>{kpi.inactivePolda.length} Provinsi belum menjalankan kegiatan pada periode ini</span>
             </p>
             <div className="flex flex-wrap gap-1.5">
               {kpi.inactivePolda.map(p => (
@@ -973,7 +973,7 @@ export function ExecutiveDashboardPage({
         <section className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
           <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
             <Building className="w-4 h-4 text-purple-600" />
-            <span>Keaktifan Wilayah (Polda & Polres)</span>
+            <span>Keaktifan Wilayah (Provinsi & Kota/Kabupaten)</span>
           </h2>
 
           {kpi.regionalHierarchy.length === 0 ? (
@@ -993,7 +993,7 @@ export function ExecutiveDashboardPage({
                         <div className="min-w-0">
                           <span className="font-bold text-xs text-slate-900 block truncate">{p.polda}</span>
                           <span className="text-[10px] text-slate-500">
-                            {p.polresList.length} polres • {p.totalParticipants} peserta • {p.totalViews} interaksi
+                            {p.polresList.length} kota/kabupaten • {p.totalParticipants} peserta • {p.totalViews} interaksi
                           </span>
                         </div>
                       </div>

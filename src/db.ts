@@ -266,7 +266,8 @@ async function autoBootstrapIfEmpty(conn: mysql.PoolConnection): Promise<void> {
       const row = poldaRows[i];
       if (row.length < 3) continue;
       const poldaId = row[1].padStart(2, '0');
-      const nama = row[2];
+      const rawNama = row[2];
+      const nama = rawNama.replace(/^POLDA\s+/i, '').trim();
       const isWilayah = poldaId === '90' || poldaId === '99' ? 0 : 1;
       poldaList.push({ id: poldaId, nama, isWilayah });
       await conn.query(
@@ -287,7 +288,13 @@ async function autoBootstrapIfEmpty(conn: mysql.PoolConnection): Promise<void> {
       if (row.length < 4) continue;
       const polresId = row[1];
       const poldaId = row[2].padStart(2, '0');
-      const nama = row[3];
+      const rawNama = row[3];
+      const nama = rawNama
+        .replace(/^POLRES\s+METRO\s+/i, '')
+        .replace(/^POLRESTABES\s+/i, '')
+        .replace(/^POLRESTA\s+/i, '')
+        .replace(/^POLRES\s+/i, '')
+        .trim();
       if (poldaId === '00' || !poldaList.some(p => p.id === poldaId)) continue;
 
       await conn.query(

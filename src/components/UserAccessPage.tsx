@@ -1162,7 +1162,7 @@ export function UserAccessPage({
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="font-bold text-slate-700 block mb-1 text-[11px]">Polda</label>
+                    <label className="font-bold text-slate-700 block mb-1 text-[11px]">Provinsi</label>
                     <select
                       value={userForm.polda}
                       onChange={e => {
@@ -1171,21 +1171,21 @@ export function UserAccessPage({
                       }}
                       className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none text-xs cursor-pointer"
                     >
-                      <option value="">Pilih Polda</option>
+                      <option value="">Pilih Provinsi</option>
                       {(poldaList.length > 0 ? poldaList.map(p => p.nama) : DEFAULT_34_POLDA).map(p => (
                         <option key={p} value={p}>{p}</option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <label className="font-bold text-slate-700 block mb-1 text-[11px]">Polres</label>
+                    <label className="font-bold text-slate-700 block mb-1 text-[11px]">Kota / Kabupaten</label>
                     <select
                       value={userForm.polres}
                       onChange={e => setUserForm({ ...userForm, polres: e.target.value })}
                       disabled={!userForm.polda}
                       className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 disabled:opacity-50 focus:ring-2 focus:ring-blue-600 focus:outline-none text-xs cursor-pointer"
                     >
-                      <option value="">Pilih Polres</option>
+                      <option value="">Pilih Kota / Kabupaten</option>
                       {polresList.map(p => (
                         <option key={`${p.poldaId}-${p.polresId}`} value={p.nama}>{p.nama}</option>
                       ))}

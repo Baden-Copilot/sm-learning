@@ -74,7 +74,7 @@ ${materialDetails.join('\n')}
 
     specificSummary = `
 - Wewenang: Super Administrator (Akses penuh ke seluruh sistem SM-Learning).
-- Cakupan Wilayah: Nasional (${totalPolda} Polda di seluruh Indonesia).
+- Cakupan Wilayah: Nasional (${totalPolda} Provinsi di seluruh Indonesia).
 - Statistik Sistem:
   * Total Pengguna Terdaftar: ${totalUsers} akun.
   * Total Kegiatan Sosialisasi Lapangan: ${totalSessions} sesi (${activeSessions} sesi aktif).
@@ -102,7 +102,7 @@ ${materialDetails.join('\n')}
   * Tugas Utama: Melakukan penyuluhan tatap muka, memandu kuis interaktif, membuka room presentasi publik, dan mengunggah bukti laporan giat.
     `.trim();
   } else if (roleId === 'role-executive-1') {
-    // Polres Level
+    // Kota / Kabupaten Level
     const targetPolres = user.polres || user.polresId;
     const polresReports = outreachReports.filter(r => r.polres === targetPolres || r.polresId === user.polresId);
     const totalParticipants = polresReports.reduce((acc, r) => acc + (r.totalParticipants || 0), 0);
@@ -111,16 +111,16 @@ ${materialDetails.join('\n')}
       : '0';
 
     specificSummary = `
-- Wewenang: Eksekutif Tingkat 1 (Kapolres / Pimpinan Polres).
-- Wilayah Yurisdiksi: ${user.polres || 'Polres'} (Polda: ${user.polda || '-'}).
+- Wewenang: Eksekutif Tingkat 1 (Pimpinan Kota / Kabupaten).
+- Wilayah Yurisdiksi: ${user.polres || 'Kota/Kabupaten'} (Provinsi: ${user.polda || '-'}).
 - Data Capaian Wilayah Anda:
   * Laporan Sosialisasi di Wilayah: ${polresReports.length} kegiatan.
   * Total Masyarakat Terjangkau: ${totalParticipants} orang.
   * Rata-rata Pemahaman Materi (Skor Kuis): ${avgScore}%.
-  * Fokus Pengawasan: Memantau keaktifan penyuluhan Polantas di sekolah/komunitas wilayah hukum Polres.
+  * Fokus Pengawasan: Memantau keaktifan penyuluhan di sekolah/komunitas wilayah hukum setempat.
     `.trim();
   } else if (roleId === 'role-executive-2') {
-    // Polda Level
+    // Provinsi Level
     const targetPolda = user.polda || user.poldaId;
     const poldaReports = outreachReports.filter(r => r.polda === targetPolda || r.poldaId === user.poldaId);
     const totalParticipants = poldaReports.reduce((acc, r) => acc + (r.totalParticipants || 0), 0);
@@ -130,13 +130,13 @@ ${materialDetails.join('\n')}
     const polresInPolda = getPolresList(user.poldaId).length;
 
     specificSummary = `
-- Wewenang: Eksekutif Tingkat 2 (Kapolda / Dirlantas Polda).
-- Wilayah Yurisdiksi: ${user.polda || 'Polda'} (Membawahi ${polresInPolda} Polres jajaran).
-- Data Capaian Se-Polda:
+- Wewenang: Eksekutif Tingkat 2 (Pimpinan Provinsi).
+- Wilayah Yurisdiksi: ${user.polda || 'Provinsi'} (Membawahi ${polresInPolda} Kota/Kabupaten jajaran).
+- Data Capaian Se-Provinsi:
   * Total Kegiatan Edukasi: ${poldaReports.length} kegiatan.
   * Total Warga / Siswa Terbina: ${totalParticipants} orang.
   * Rata-rata Kepatuhan & Nilai Kuis: ${avgScore}%.
-  * Fokus Pengawasan: Menilai efektivitas dan sebaran program Dikmas Lantas di seluruh Polres jajaran Polda.
+  * Fokus Pengawasan: Menilai efektivitas dan sebaran program Dikmas Lantas di seluruh Kota/Kabupaten jajaran Provinsi.
     `.trim();
   } else if (roleId === 'role-executive-3') {
     // Nasional Level
@@ -147,13 +147,13 @@ ${materialDetails.join('\n')}
       : '0';
 
     specificSummary = `
-- Wewenang: Eksekutif Tingkat 3 (Kapolri / Kakorlantas Polri - Tingkat Nasional).
-- Cakupan Yurisdiksi: Seluruh 34 Polda & Seluruh Polres di Indonesia.
+- Wewenang: Eksekutif Tingkat 3 (Tingkat Nasional).
+- Cakupan Yurisdiksi: Seluruh 34 Provinsi & Seluruh Kota/Kabupaten di Indonesia.
 - Ringkasan Nasional:
   * Total Sosialisasi Dikmas Nasional: ${totalReports} laporan kegiatan.
   * Total Jangkauan Edukasi Publik: ${totalParticipants.toLocaleString('id-ID')} peserta.
   * Rata-rata Skor Nasional: ${avgScore}%.
-  * Fokus Pengawasan: Evaluasi strategis pencapaian target edukasi keselamatan berlalu lintas nasional dan perbandingan indeks keaktifan antar-Polda.
+  * Fokus Pengawasan: Evaluasi strategis pencapaian target edukasi keselamatan berlalu lintas nasional dan perbandingan indeks keaktifan antar-Provinsi.
     `.trim();
   } else {
     // Learner / Siswa / Anggota

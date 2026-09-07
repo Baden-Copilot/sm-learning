@@ -269,7 +269,7 @@ export function ReportsPage({
         `"${d.lastActive}"`,
       ]);
     } else if (activeReport === 'outreach') {
-      headers = ['ID Laporan', 'Nama Kegiatan', 'Instruktur', 'Modul Materi', 'Polda', 'Polres', 'Lokasi', 'Tanggal', 'Peserta', 'Tayangan', 'Kuis Selesai', 'Rata-rata Nilai', 'Kelulusan'];
+      headers = ['ID Laporan', 'Nama Kegiatan', 'Instruktur', 'Modul Materi', 'Provinsi', 'Kota / Kabupaten', 'Lokasi', 'Tanggal', 'Peserta', 'Tayangan', 'Kuis Selesai', 'Rata-rata Nilai', 'Kelulusan'];
       rows = outreachData.map(d => [
         `"${d.id}"`,
         `"${d.activityName.replace(/"/g, '""')}"`,
