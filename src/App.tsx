@@ -647,8 +647,11 @@ export default function App() {
       // Land each role on the screen it actually works from. A pimpinan opening the
       // app wants the national picture, not the learner home page.
       const roleId = userData.user?.roleId || userData.role?.id;
-      if (roleId === 'role-executive') setCurrentTab('executive');
-      else setCurrentTab('beranda');
+      if (roleId === 'role-executive' || roleId === 'role-executive-1' || roleId === 'role-executive-2' || roleId === 'role-executive-3') {
+        setCurrentTab('executive');
+      } else {
+        setCurrentTab('beranda');
+      }
     }
   };
 
@@ -1015,6 +1018,7 @@ export default function App() {
                 roles={userRoles}
                 currentRole={activeRole}
                 currentUser={currentUser}
+                authHeaders={getAuthHeaders()}
               />
             ) : (
               <ForbiddenPage

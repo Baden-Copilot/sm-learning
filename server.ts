@@ -2689,7 +2689,7 @@ ${CERTIFICATE_SHARED_CSS}
     }
 
     // A trainer may only open their own activity; pimpinan and admin see all.
-    const isSupervisor = roleId === 'role-admin' || roleId === 'role-executive';
+    const isSupervisor = roleId === 'role-admin' || roleId === 'role-executive' || roleId.startsWith('role-executive-');
     if (!isSupervisor && session.trainerId !== userId) {
       return res.status(403).json({
         success: false,

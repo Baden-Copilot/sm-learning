@@ -191,8 +191,6 @@ export function ExecutiveDashboardPage({
   const hasActiveFilter =
     selectedPolda !== 'ALL' || selectedPolres !== 'ALL' || selectedLevelFilter !== 'ALL' || Boolean(startDate) || Boolean(endDate);
 
-  const polresOptions = selectedPolda !== 'ALL' && POLRES_MAP[selectedPolda] ? POLRES_MAP[selectedPolda] : [];
-
   const kpi = analyticsData;
 
   // Month-over-month movement from the real trend series

@@ -28,6 +28,7 @@ interface ReportsPageProps {
   roles: Role[];
   currentRole: Role;
   currentUser: any;
+  authHeaders?: Record<string, string>;
 }
 
 export function ReportsPage({
@@ -36,6 +37,7 @@ export function ReportsPage({
   roles,
   currentRole,
   currentUser,
+  authHeaders,
 }: ReportsPageProps) {
   const [activeReport, setActiveReport] = useState<ReportType>('learning');
   const [selectedLevel, setSelectedLevel] = useState<string>('ALL');
@@ -47,7 +49,7 @@ export function ReportsPage({
 
   // Fetch real outreach reports
   React.useEffect(() => {
-    fetch('/api/outreach/reports')
+    fetch('/api/outreach/reports', { headers: authHeaders || {} })
       .then(res => res.json())
       .then(data => {
         if (data.success && Array.isArray(data.data)) {
@@ -55,7 +57,7 @@ export function ReportsPage({
         }
       })
       .catch(() => {});
-  }, []);
+  }, [authHeaders]);
 
   // 1. FILTERED DATA STREAMS (REAL LMS DATA)
   // A. Learning Report Data
