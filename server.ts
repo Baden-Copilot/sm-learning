@@ -30,7 +30,15 @@ import {
   deleteSingleRole,
   getPoldaList,
   getPolresList,
+  getAiChatSessions,
+  getAiChatSessionById,
+  createAiChatSession,
+  updateAiChatSessionTitle,
+  deleteAiChatSession,
+  getAiChatMessages,
+  saveAiChatMessage,
 } from './src/db';
+import { buildAiSystemInstruction } from './src/services/aiContextService';
 
 // Module-level pointer to materials (synced with db cache)
 let materialsStore: MaterialItem[] = readMaterialsData();
@@ -3372,6 +3380,225 @@ ${CERTIFICATE_SHARED_CSS}
       res.json({ reply });
     } catch (err) {
       res.status(500).json({ reply: 'Terjadi kesalahan server.' });
+    }
+  });
+
+  // ===========================================================================
+  // AI CHAT SESSIONS & MESSAGES (GOOGLE GEMINI INTEGRATION)
+  // ===========================================================================
+
+  // Helper untuk memanggil Google Gemini API v1beta via native fetch
+  async function callGeminiApi(systemInstruction: string, contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }>) {
+    const apiKey = process.env.GEMINI_API_KEY || '';
+    const model = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY belum dikonfigurasi pada environment server.');
+    }
+
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+    const bodyPayload: any = {
+      contents,
+      systemInstruction: {
+        parts: [{ text: systemInstruction }]
+      },
+      generationConfig: {
+        temperature: 0.7,
+        topK: 40,
+        topP: 0.95,
+        maxOutputTokens: 2048,
+      }
+    };
+
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(bodyPayload),
+    });
+
+    const data: any = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      const errorObj: any = new Error(data.error?.message || `Google Gemini API error (status ${res.status})`);
+      errorObj.status = res.status;
+      errorObj.geminiError = data.error;
+      throw errorObj;
+    }
+
+    const candidateText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!candidateText) {
+      return 'Maaf, tidak ada jawaban yang dihasilkan oleh model.';
+    }
+    return candidateText;
+  }
+
+  // 1. Get All AI Chat Sessions for current user
+  app.get('/api/ai-chat/sessions', async (req, res) => {
+    const caller = resolveCaller(req);
+    if (!caller) {
+      return res.status(401).json({ success: false, message: 'Harap login terlebih dahulu.' });
+    }
+
+    try {
+      const sessions = await getAiChatSessions(caller.id);
+      res.json({ success: true, data: sessions });
+    } catch (err: any) {
+      console.error('[AI Chat] Error getting sessions:', err);
+      res.status(500).json({ success: false, message: 'Gagal mengambil daftar percakapan AI.' });
+    }
+  });
+
+  // 2. Create New AI Chat Session
+  app.post('/api/ai-chat/sessions', async (req, res) => {
+    const caller = resolveCaller(req);
+    if (!caller) {
+      return res.status(401).json({ success: false, message: 'Harap login terlebih dahulu.' });
+    }
+
+    try {
+      const { title } = req.body;
+      const sessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const sessionTitle = (title && typeof title === 'string' && title.trim()) ? title.trim() : 'Percakapan Baru';
+      const created = await createAiChatSession(sessionId, caller.id, sessionTitle);
+      res.json({ success: true, data: created });
+    } catch (err: any) {
+      console.error('[AI Chat] Error creating session:', err);
+      res.status(500).json({ success: false, message: 'Gagal membuat sesi percakapan baru.' });
+    }
+  });
+
+  // 3. Get Messages in a Session
+  app.get('/api/ai-chat/sessions/:id/messages', async (req, res) => {
+    const caller = resolveCaller(req);
+    if (!caller) {
+      return res.status(401).json({ success: false, message: 'Harap login terlebih dahulu.' });
+    }
+
+    try {
+      const sessionId = req.params.id;
+      const messages = await getAiChatMessages(sessionId, caller.id);
+      res.json({ success: true, data: messages });
+    } catch (err: any) {
+      console.error('[AI Chat] Error getting messages:', err);
+      res.status(500).json({ success: false, message: 'Gagal memuat riwayat pesan percakapan.' });
+    }
+  });
+
+  // 4. Delete an AI Chat Session
+  app.delete('/api/ai-chat/sessions/:id', async (req, res) => {
+    const caller = resolveCaller(req);
+    if (!caller) {
+      return res.status(401).json({ success: false, message: 'Harap login terlebih dahulu.' });
+    }
+
+    try {
+      const sessionId = req.params.id;
+      await deleteAiChatSession(sessionId, caller.id);
+      res.json({ success: true, message: 'Sesi percakapan berhasil dihapus.' });
+    } catch (err: any) {
+      console.error('[AI Chat] Error deleting session:', err);
+      res.status(500).json({ success: false, message: 'Gagal menghapus sesi percakapan.' });
+    }
+  });
+
+  // 5. Send Prompt to Gemini & Store Messages
+  app.post('/api/ai-chat/send', async (req, res) => {
+    const caller = resolveCaller(req);
+    if (!caller) {
+      return res.status(401).json({ success: false, message: 'Harap login terlebih dahulu.' });
+    }
+
+    const { sessionId, message } = req.body;
+    if (!message || typeof message !== 'string' || !message.trim()) {
+      return res.status(400).json({ success: false, message: 'Pesan pertanyaan tidak boleh kosong.' });
+    }
+
+    try {
+      let activeSessionId = sessionId;
+      let session = null;
+
+      if (activeSessionId) {
+        session = await getAiChatSessionById(activeSessionId, caller.id);
+      }
+
+      // Jika belum ada session, otomatis buatkan session baru
+      if (!session) {
+        activeSessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+        const autoTitle = message.trim().slice(0, 35) + (message.trim().length > 35 ? '...' : '');
+        session = await createAiChatSession(activeSessionId, caller.id, autoTitle);
+      }
+
+      // 1. Simpan pesan user
+      const userMsgId = `msg-u-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      const savedUserMsg = await saveAiChatMessage(userMsgId, activeSessionId, caller.id, 'user', message.trim());
+
+      // 2. Ambil riwayat percakapan sebelumnya untuk multi-turn context (maks 10 pesan terakhir)
+      const prevMessages = await getAiChatMessages(activeSessionId, caller.id);
+      const recentHistory = prevMessages.slice(-10);
+
+      // 3. Format contents untuk Gemini API
+      const geminiContents = recentHistory.map((m) => ({
+        role: m.role === 'assistant' ? ('model' as const) : ('user' as const),
+        parts: [{ text: m.content }],
+      }));
+
+      // 4. Susun System Instruction dinamis berbasis role user
+      const systemInstruction = buildAiSystemInstruction(caller.user);
+
+      // 5. Panggil Google Gemini API
+      let replyText = '';
+      try {
+        replyText = await callGeminiApi(systemInstruction, geminiContents);
+      } catch (geminiErr: any) {
+        const errMsg = String(geminiErr?.message || geminiErr || '');
+        const statusCode = geminiErr?.status || geminiErr?.statusCode || geminiErr?.geminiError?.code;
+
+        // Deteksi spesifik HTTP 429 / RESOURCE_EXHAUSTED / Quota Exceeded
+        if (
+          statusCode === 429 ||
+          errMsg.includes('429') ||
+          errMsg.includes('RESOURCE_EXHAUSTED') ||
+          errMsg.includes('Quota exceeded') ||
+          errMsg.includes('quota') ||
+          errMsg.includes('limit')
+        ) {
+          console.warn('[AI Chat Rate Limit 429]', errMsg);
+          return res.status(429).json({
+            status: 'rate_limited',
+            success: false,
+            message: 'Limit free Gemini sudah habis. Silakan update token API atau tunggu beberapa menit sampai limit tersedia kembali.'
+          });
+        }
+
+        console.error('[AI Chat Gemini Error]', geminiErr);
+        return res.status(500).json({
+          success: false,
+          message: 'Terjadi kendala saat menghubungi Google Gemini API: ' + errMsg
+        });
+      }
+
+      // 6. Simpan respons asisten
+      const assistantMsgId = `msg-a-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      const savedAssistantMsg = await saveAiChatMessage(assistantMsgId, activeSessionId, caller.id, 'assistant', replyText);
+
+      // Update judul sesi jika masih berupa judul default
+      if (session && session.title === 'Percakapan Baru') {
+        const newTitle = message.trim().slice(0, 35) + (message.trim().length > 35 ? '...' : '');
+        await updateAiChatSessionTitle(activeSessionId, caller.id, newTitle);
+      }
+
+      res.json({
+        success: true,
+        sessionId: activeSessionId,
+        userMessage: savedUserMsg,
+        assistantMessage: savedAssistantMsg,
+      });
+    } catch (err: any) {
+      console.error('[AI Chat] Send error:', err);
+      res.status(500).json({ success: false, message: 'Gagal memproses pesan AI: ' + (err.message || String(err)) });
     }
   });
 

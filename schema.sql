@@ -378,4 +378,32 @@ CREATE TABLE `learning_events` (
   KEY `idx_event_time` (`timestamp`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- =============================================================================
+--  6. RIWAYAT & SESI AI CHAT (GEMINI INTEGRATION)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS `ai_chat_sessions` (
+  `id`         VARCHAR(80)  NOT NULL,
+  `user_id`    VARCHAR(50)  NOT NULL,
+  `title`      VARCHAR(255) NOT NULL,
+  `created_at` DATETIME     NOT NULL,
+  `updated_at` DATETIME     NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_chat_user` (`user_id`),
+  KEY `idx_chat_updated` (`updated_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `ai_chat_messages` (
+  `id`         VARCHAR(80)  NOT NULL,
+  `session_id` VARCHAR(80)  NOT NULL,
+  `user_id`    VARCHAR(50)  NOT NULL,
+  `role`       ENUM('user', 'assistant', 'system') NOT NULL,
+  `content`    LONGTEXT     NOT NULL,
+  `created_at` DATETIME     NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_chat_session` (`session_id`),
+  KEY `idx_chat_msg_user` (`user_id`),
+  KEY `idx_chat_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET FOREIGN_KEY_CHECKS = 1;

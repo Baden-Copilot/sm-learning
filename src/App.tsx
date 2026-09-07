@@ -32,6 +32,7 @@ import { ContentManagementPage } from './components/ContentManagementPage';
 import { ContentAuthoringPage } from './components/ContentAuthoringPage';
 import { ProfilePage } from './components/ProfilePage';
 import { ReportsPage } from './components/ReportsPage';
+import { AiChatPage } from './components/AiChatPage';
 import { BottomNav } from './components/BottomNav';
 import { AleshaKioskModal } from './components/AleshaKioskModal';
 import { Bot } from 'lucide-react';
@@ -1068,6 +1069,13 @@ export default function App() {
                 });
                 addToast('success', 'Profil Diperbarui', 'Nama tampilan akun berhasil disimpan.');
               }}
+            />
+          ) : currentTab === 'ai-chat' ? (
+            /* 11. AI CHAT GEMINI ASSISTANT */
+            <AiChatPage
+              currentUser={currentUser}
+              currentRole={activeRole}
+              authHeaders={getAuthHeaders()}
             />
           ) : (
             <LearningPage

@@ -175,6 +175,30 @@ export async function initDb(configOverride?: DbConfig): Promise<void> {
         \`nama\` VARCHAR(255) NOT NULL,
         PRIMARY KEY (\`id\`)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+      CREATE TABLE IF NOT EXISTS \`ai_chat_sessions\` (
+        \`id\`         VARCHAR(80)  NOT NULL,
+        \`user_id\`    VARCHAR(50)  NOT NULL,
+        \`title\`      VARCHAR(255) NOT NULL,
+        \`created_at\` DATETIME     NOT NULL,
+        \`updated_at\` DATETIME     NOT NULL,
+        PRIMARY KEY (\`id\`),
+        KEY \`idx_chat_user\` (\`user_id\`),
+        KEY \`idx_chat_updated\` (\`updated_at\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+      CREATE TABLE IF NOT EXISTS \`ai_chat_messages\` (
+        \`id\`         VARCHAR(80)  NOT NULL,
+        \`session_id\` VARCHAR(80)  NOT NULL,
+        \`user_id\`    VARCHAR(50)  NOT NULL,
+        \`role\`       ENUM('user', 'assistant', 'system') NOT NULL,
+        \`content\`    LONGTEXT     NOT NULL,
+        \`created_at\` DATETIME     NOT NULL,
+        PRIMARY KEY (\`id\`),
+        KEY \`idx_chat_session\` (\`session_id\`),
+        KEY \`idx_chat_msg_user\` (\`user_id\`),
+        KEY \`idx_chat_created\` (\`created_at\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
   } catch (err) {
     // Ignore if already exist
@@ -2000,4 +2024,124 @@ async function persistLearningRecords(records: LearningRecordsState): Promise<vo
   } finally {
     conn.release();
   }
+}
+
+// -----------------------------------------------------------------------------
+// AI Chat Queries (Gemini Assistant)
+// -----------------------------------------------------------------------------
+
+export interface AiChatSessionRow {
+  id: string;
+  userId: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AiChatMessageRow {
+  id: string;
+  sessionId: string;
+  userId: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  createdAt: string;
+}
+
+export async function getAiChatSessions(userId: string): Promise<AiChatSessionRow[]> {
+  const p = getPool();
+  const [rows]: any = await p.query(
+    'SELECT id, user_id, title, created_at, updated_at FROM ai_chat_sessions WHERE user_id = ? ORDER BY updated_at DESC',
+    [userId]
+  );
+  return rows.map((r: any) => ({
+    id: r.id,
+    userId: r.user_id,
+    title: r.title,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  }));
+}
+
+export async function getAiChatSessionById(sessionId: string, userId: string): Promise<AiChatSessionRow | null> {
+  const p = getPool();
+  const [rows]: any = await p.query(
+    'SELECT id, user_id, title, created_at, updated_at FROM ai_chat_sessions WHERE id = ? AND user_id = ? LIMIT 1',
+    [sessionId, userId]
+  );
+  if (!rows || rows.length === 0) return null;
+  const r = rows[0];
+  return {
+    id: r.id,
+    userId: r.user_id,
+    title: r.title,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  };
+}
+
+export async function createAiChatSession(id: string, userId: string, title: string): Promise<AiChatSessionRow> {
+  const p = getPool();
+  const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  await p.query(
+    'INSERT INTO ai_chat_sessions (id, user_id, title, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+    [id, userId, title, now, now]
+  );
+  return { id, userId, title, createdAt: now, updatedAt: now };
+}
+
+export async function updateAiChatSessionTitle(sessionId: string, userId: string, title: string): Promise<void> {
+  const p = getPool();
+  const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  await p.query(
+    'UPDATE ai_chat_sessions SET title = ?, updated_at = ? WHERE id = ? AND user_id = ?',
+    [title, now, sessionId, userId]
+  );
+}
+
+export async function touchAiChatSession(sessionId: string, userId: string): Promise<void> {
+  const p = getPool();
+  const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  await p.query(
+    'UPDATE ai_chat_sessions SET updated_at = ? WHERE id = ? AND user_id = ?',
+    [now, sessionId, userId]
+  );
+}
+
+export async function deleteAiChatSession(sessionId: string, userId: string): Promise<void> {
+  const p = getPool();
+  await p.query('DELETE FROM ai_chat_messages WHERE session_id = ? AND user_id = ?', [sessionId, userId]);
+  await p.query('DELETE FROM ai_chat_sessions WHERE id = ? AND user_id = ?', [sessionId, userId]);
+}
+
+export async function getAiChatMessages(sessionId: string, userId: string): Promise<AiChatMessageRow[]> {
+  const p = getPool();
+  const [rows]: any = await p.query(
+    'SELECT id, session_id, user_id, role, content, created_at FROM ai_chat_messages WHERE session_id = ? AND user_id = ? ORDER BY created_at ASC',
+    [sessionId, userId]
+  );
+  return rows.map((r: any) => ({
+    id: r.id,
+    sessionId: r.session_id,
+    userId: r.user_id,
+    role: r.role,
+    content: r.content,
+    createdAt: r.created_at,
+  }));
+}
+
+export async function saveAiChatMessage(
+  id: string,
+  sessionId: string,
+  userId: string,
+  role: 'user' | 'assistant' | 'system',
+  content: string
+): Promise<AiChatMessageRow> {
+  const p = getPool();
+  const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
+  await p.query(
+    'INSERT INTO ai_chat_messages (id, session_id, user_id, role, content, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+    [id, sessionId, userId, role, content, now]
+  );
+  await touchAiChatSession(sessionId, userId);
+  return { id, sessionId, userId, role, content, createdAt: now };
 }

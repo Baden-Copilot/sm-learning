@@ -13,7 +13,9 @@ import {
   Compass,
   FileCheck2,
   User,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Bot,
+  Sparkles
 } from 'lucide-react';
 import { POLRI_LOGO_URL } from '../data/materials';
 
@@ -155,102 +157,117 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           </div>
 
-          {/* SECTION: MANAGEMENT & EXECUTIVE (ROLE GUARDED) */}
-          {(canAccessExecutive || canAccessContentManagement || canAccessUserManagement || canAccessReports || isTrainer) && (
-            <div>
-              <span className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
-                Manajemen & Operasional
-              </span>
-              <div className="space-y-1">
-                {isTrainer && (
-                  <button
-                    id="sidebar-nav-trainer-outreach"
-                    onClick={() => handleNavClick('trainer-outreach')}
-                    className={`
-                      w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 text-left cursor-pointer
-                      ${currentTab === 'trainer-outreach' || currentTab === 'presentation-room'
-                        ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-400/40'
-                        : 'text-slate-300 hover:text-white hover:bg-white/8 active:scale-[0.99]'
-                      }
-                    `}
-                  >
-                    <Users className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span>Lap Giat</span>
-                  </button>
-                )}
+          {/* SECTION: MANAGEMENT & OPERATIONAL */}
+          <div>
+            <span className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+              Manajemen & Operasional
+            </span>
+            <div className="space-y-1">
+              {/* AI Chat — Tersedia untuk seluruh pengguna yang telah login */}
+              <button
+                id="sidebar-nav-ai-chat"
+                onClick={() => handleNavClick('ai-chat')}
+                className={`
+                  w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 text-left cursor-pointer
+                  ${currentTab === 'ai-chat'
+                    ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-400/40'
+                    : 'text-slate-300 hover:text-white hover:bg-white/8 active:scale-[0.99]'
+                  }
+                `}
+              >
+                <Bot className="w-4 h-4 text-cyan-400 shrink-0" />
+                <span className="flex-1 truncate">AI Chat</span>
+                <Sparkles className="w-3 h-3 text-amber-300 shrink-0" />
+              </button>
 
-                {/* Admins reach the dashboard from here; executives already have it
-                    as their first nav item, so it is not repeated for them. */}
-                {canAccessExecutive && !isExecutive && (
-                  <button
-                    id="sidebar-nav-executive"
-                    onClick={() => handleNavClick('executive')}
-                    className={`
-                      w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 text-left cursor-pointer
-                      ${currentTab === 'executive'
-                        ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-400/40'
-                        : 'text-slate-300 hover:text-white hover:bg-white/8 active:scale-[0.99]'
-                      }
-                    `}
-                  >
-                    <BarChart3 className="w-4 h-4 text-amber-400 shrink-0" />
-                    <span>Eksekutif Dashboard</span>
-                  </button>
-                )}
+              {isTrainer && (
+                <button
+                  id="sidebar-nav-trainer-outreach"
+                  onClick={() => handleNavClick('trainer-outreach')}
+                  className={`
+                    w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 text-left cursor-pointer
+                    ${currentTab === 'trainer-outreach' || currentTab === 'presentation-room'
+                      ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-400/40'
+                      : 'text-slate-300 hover:text-white hover:bg-white/8 active:scale-[0.99]'
+                    }
+                  `}
+                >
+                  <Users className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Lap Giat</span>
+                </button>
+              )}
 
-                {canAccessContentManagement && (
-                  <button
-                    id="sidebar-nav-content-management"
-                    onClick={() => handleNavClick('content-management')}
-                    className={`
-                      w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 text-left cursor-pointer
-                      ${currentTab === 'content-management'
-                        ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-400/40'
-                        : 'text-slate-300 hover:text-white hover:bg-white/8 active:scale-[0.99]'
-                      }
-                    `}
-                  >
-                    <Layers className="w-4 h-4 text-slate-400 shrink-0" />
-                    <span>Kelola Konten & Modul</span>
-                  </button>
-                )}
+              {/* Admins reach the dashboard from here; executives already have it
+                  as their first nav item, so it is not repeated for them. */}
+              {canAccessExecutive && !isExecutive && (
+                <button
+                  id="sidebar-nav-executive"
+                  onClick={() => handleNavClick('executive')}
+                  className={`
+                    w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 text-left cursor-pointer
+                    ${currentTab === 'executive'
+                      ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-400/40'
+                      : 'text-slate-300 hover:text-white hover:bg-white/8 active:scale-[0.99]'
+                    }
+                  `}
+                >
+                  <BarChart3 className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>Eksekutif Dashboard</span>
+                </button>
+              )}
 
-                {canAccessReports && (
-                  <button
-                    id="sidebar-nav-reports"
-                    onClick={() => handleNavClick('reports')}
-                    className={`
-                      w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 text-left cursor-pointer
-                      ${currentTab === 'reports'
-                        ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-400/40'
-                        : 'text-slate-300 hover:text-white hover:bg-white/8 active:scale-[0.99]'
-                      }
-                    `}
-                  >
-                    <FileSpreadsheet className="w-4 h-4 text-blue-400 shrink-0" />
-                    <span>Laporan & Ekspor</span>
-                  </button>
-                )}
+              {canAccessContentManagement && (
+                <button
+                  id="sidebar-nav-content-management"
+                  onClick={() => handleNavClick('content-management')}
+                  className={`
+                    w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 text-left cursor-pointer
+                    ${currentTab === 'content-management'
+                      ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-400/40'
+                      : 'text-slate-300 hover:text-white hover:bg-white/8 active:scale-[0.99]'
+                    }
+                  `}
+                >
+                  <Layers className="w-4 h-4 text-slate-400 shrink-0" />
+                  <span>Kelola Konten & Modul</span>
+                </button>
+              )}
 
-                {canAccessUserManagement && (
-                  <button
-                    id="sidebar-nav-user-akses"
-                    onClick={() => handleNavClick('user-akses')}
-                    className={`
-                      w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 text-left cursor-pointer
-                      ${currentTab === 'user-akses'
-                        ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-400/40'
-                        : 'text-slate-300 hover:text-white hover:bg-white/8 active:scale-[0.99]'
-                      }
-                    `}
-                  >
-                    <Users className="w-4 h-4 text-slate-400 shrink-0" />
-                    <span>User Akses & RBAC</span>
-                  </button>
-                )}
-              </div>
+              {canAccessReports && (
+                <button
+                  id="sidebar-nav-reports"
+                  onClick={() => handleNavClick('reports')}
+                  className={`
+                    w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 text-left cursor-pointer
+                    ${currentTab === 'reports'
+                      ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-400/40'
+                      : 'text-slate-300 hover:text-white hover:bg-white/8 active:scale-[0.99]'
+                    }
+                  `}
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-blue-400 shrink-0" />
+                  <span>Laporan & Ekspor</span>
+                </button>
+              )}
+
+              {canAccessUserManagement && (
+                <button
+                  id="sidebar-nav-user-akses"
+                  onClick={() => handleNavClick('user-akses')}
+                  className={`
+                    w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-150 text-left cursor-pointer
+                    ${currentTab === 'user-akses'
+                      ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-400/40'
+                      : 'text-slate-300 hover:text-white hover:bg-white/8 active:scale-[0.99]'
+                    }
+                  `}
+                >
+                  <Users className="w-4 h-4 text-slate-400 shrink-0" />
+                  <span>User Akses & RBAC</span>
+                </button>
+              )}
             </div>
-          )}
+          </div>
         </div>
 
         {/* Footer Support Links */}
