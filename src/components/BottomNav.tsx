@@ -56,14 +56,12 @@ export const BottomNav: React.FC<BottomNavProps> = ({
         { id: 'executive', label: 'Eksekutif', icon: BarChart3 },
         { id: 'learning', label: 'Katalog', icon: Compass },
         { id: 'reports', label: 'Laporan', icon: FileSpreadsheet },
-        { id: 'profile', label: 'Profil', icon: User },
       ]
     : [
         { id: 'beranda', label: 'Beranda', icon: Home },
         { id: 'learning', label: 'Katalog', icon: Compass },
         { id: 'my-learning', label: 'Belajar', icon: BookOpen },
         contextTab,
-        { id: 'profile', label: 'Profil', icon: User },
       ];
 
   return (

@@ -54,7 +54,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     ? [
         { id: 'executive', label: 'Eksekutif Dashboard', icon: BarChart3 },
         { id: 'learning', label: 'Katalog Materi', icon: Compass },
-        { id: 'profile', label: 'Profil Pengguna', icon: User },
       ]
     : [
         { id: 'beranda', label: 'Beranda', icon: Home },
@@ -62,7 +61,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { id: 'my-learning', label: 'My Learning', icon: BookOpen },
         { id: 'progress', label: 'Capaian & Sertifikat', icon: Award },
         { id: 'public-portal', label: 'Portal Edukasi Publik', icon: GraduationCap },
-        { id: 'profile', label: 'Profil Pengguna', icon: User },
       ];
 
   const sectionLabel = isExecutive ? 'Pemantauan Program' : 'Pembelajaran';

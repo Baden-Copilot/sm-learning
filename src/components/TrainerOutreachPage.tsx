@@ -93,6 +93,7 @@ export function TrainerOutreachPage({
   const [isUploadingFile, setIsUploadingFile] = useState<boolean>(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [description, setDescription] = useState<string>('');
+  const [hasProfileWilayah, setHasProfileWilayah] = useState<boolean>(false);
 
   const trainerId = currentUser?.user?.id || currentUser?.id || 'user-2';
   const currentRoleId = currentRole?.id || 'role-trainer';
@@ -140,6 +141,7 @@ export function TrainerOutreachPage({
           const u = data.data.user;
           if (u.polda) {
             setSelectedPolda(u.polda);
+            setHasProfileWilayah(true);
             if (u.polres) {
               setSelectedPolres(u.polres);
             }
@@ -702,12 +704,13 @@ export function TrainerOutreachPage({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                    Polda (Daerah) *
+                    Polda (Daerah) * {hasProfileWilayah && '(Terkunci Wilayah Anda)'}
                   </label>
                   <select
                     value={selectedPolda}
                     onChange={(e) => setSelectedPolda(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                    disabled={hasProfileWilayah}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 bg-white disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     required
                   >
                     {(poldaList.length > 0 ? poldaList.map(p => p.nama) : POLDA_LIST).map(p => (
@@ -718,12 +721,13 @@ export function TrainerOutreachPage({
 
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                    Polres (Wilayah) *
+                    Polres (Wilayah) * {hasProfileWilayah && selectedPolres && '(Terkunci Wilayah Anda)'}
                   </label>
                   <select
                     value={selectedPolres}
                     onChange={(e) => setSelectedPolres(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                    disabled={hasProfileWilayah && Boolean(selectedPolres)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 bg-white disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     required
                   >
                     {polresList.length > 0 ? (
