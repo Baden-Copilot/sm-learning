@@ -3485,6 +3485,10 @@ ${CERTIFICATE_SHARED_CSS}
     throw lastError || new Error('Tidak dapat menemukan model Gemini yang cocok saat ini.');
   }
 
+  // Rate Limiting anti-spam: 1 request per user per 30 seconds
+  const aiUserLastChatTime = new Map<string, number>();
+  const AI_CHAT_COOLDOWN_MS = 30 * 1000; // 30 detik
+
   // 1. Get All AI Chat Sessions for current user
   app.get('/api/ai-chat/sessions', async (req, res) => {
     const caller = resolveCaller(req);
@@ -3561,6 +3565,20 @@ ${CERTIFICATE_SHARED_CSS}
       return res.status(401).json({ success: false, message: 'Harap login terlebih dahulu.' });
     }
 
+    // Cek Cooldown Anti-Spam (30 detik per user)
+    const nowTime = Date.now();
+    const lastChatTime = aiUserLastChatTime.get(caller.id) || 0;
+    const diff = nowTime - lastChatTime;
+    if (diff < AI_CHAT_COOLDOWN_MS) {
+      const remainingSec = Math.ceil((AI_CHAT_COOLDOWN_MS - diff) / 1000);
+      return res.status(429).json({
+        success: false,
+        status: 'rate_limited',
+        cooldownSeconds: remainingSec,
+        message: `Mohon tunggu ${remainingSec} detik sebelum mengirim pesan berikutnya agar tidak membebani sistem.`
+      });
+    }
+
     const { sessionId, message } = req.body;
     if (!message || typeof message !== 'string' || !message.trim()) {
       return res.status(400).json({ success: false, message: 'Pesan pertanyaan tidak boleh kosong.' });
@@ -3580,6 +3598,9 @@ ${CERTIFICATE_SHARED_CSS}
         const autoTitle = message.trim().slice(0, 35) + (message.trim().length > 35 ? '...' : '');
         session = await createAiChatSession(activeSessionId, caller.id, autoTitle);
       }
+
+      // Catat timestamp user mengirim pesan untuk cooldown
+      aiUserLastChatTime.set(caller.id, Date.now());
 
       // 1. Simpan pesan user
       const userMsgId = `msg-u-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;

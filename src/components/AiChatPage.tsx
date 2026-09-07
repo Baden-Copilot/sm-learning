@@ -54,6 +54,7 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
   const [isSessionsLoading, setIsSessionsLoading] = useState(true);
   const [rateLimitError, setRateLimitError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [cooldownSeconds, setCooldownSeconds] = useState<number>(0);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -154,6 +155,15 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading, rateLimitError]);
 
+  // Countdown timer untuk anti-spam cooldown (30 detik)
+  useEffect(() => {
+    if (cooldownSeconds <= 0) return;
+    const interval = setInterval(() => {
+      setCooldownSeconds(prev => (prev > 1 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [cooldownSeconds]);
+
   // Handle Buat Sesi Baru
   const handleCreateNewSession = async () => {
     try {
@@ -208,7 +218,7 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
   // Handle Kirim Pesan
   const handleSendMessage = async (customPrompt?: string) => {
     const textToSend = customPrompt !== undefined ? customPrompt : inputText;
-    if (!textToSend.trim() || isLoading) return;
+    if (!textToSend.trim() || isLoading || cooldownSeconds > 0) return;
 
     const userText = textToSend.trim();
     setInputText('');
@@ -243,7 +253,9 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
       const data = await res.json();
 
       if (res.status === 429 || data.status === 'rate_limited') {
-        // TANGKAP RATE LIMIT GEMINI
+        if (data.cooldownSeconds) {
+          setCooldownSeconds(data.cooldownSeconds);
+        }
         setRateLimitError(
           data.message ||
           '⚠️ Limit free Gemini sudah habis. Silakan update token API di pengaturan atau tunggu beberapa menit sampai limit tersedia kembali.'
@@ -254,6 +266,9 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
       if (!res.ok || !data.success) {
         throw new Error(data.message || 'Gagal menerima respon dari asisten AI.');
       }
+
+      // Berhasil: aktifkan cooldown 30 detik pada frontend
+      setCooldownSeconds(30);
 
       if (data.sessionId && data.sessionId !== activeSessionId) {
         setActiveSessionId(data.sessionId);
@@ -454,7 +469,7 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
                     <button
                       key={idx}
                       onClick={() => handleSendMessage(qp.prompt)}
-                      disabled={Boolean(rateLimitError) || isLoading}
+                      disabled={Boolean(rateLimitError) || isLoading || cooldownSeconds > 0}
                       className="w-full text-left p-3 rounded-xl border border-slate-200/80 hover:border-blue-300 hover:bg-blue-50/50 transition-all text-xs text-slate-700 hover:text-blue-900 flex items-center justify-between group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs"
                     >
                       <div className="font-medium">
@@ -560,10 +575,12 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={Boolean(rateLimitError) || isLoading}
+              disabled={Boolean(rateLimitError) || isLoading || cooldownSeconds > 0}
               placeholder={
-                rateLimitError
-                  ? 'Limit kuota Gemini tercapai. Silakan tunggu...'
+                cooldownSeconds > 0
+                  ? `Mohon tunggu jeda ${cooldownSeconds} detik sebelum mengirim lagi...`
+                  : rateLimitError
+                  ? 'Kendala sistem atau limit tercapai. Silakan coba kembali sesaat lagi...'
                   : 'Ketik pertanyaan seputar materi, tugas operasional, atau analisis data...'
               }
               rows={1}
@@ -571,15 +588,25 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
             />
             <button
               onClick={() => handleSendMessage()}
-              disabled={!inputText.trim() || isLoading || Boolean(rateLimitError)}
-              className="p-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-xs active:scale-95 cursor-pointer shrink-0"
-              title="Kirim Pesan"
+              disabled={!inputText.trim() || isLoading || Boolean(rateLimitError) || cooldownSeconds > 0}
+              className="p-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-xs active:scale-95 cursor-pointer shrink-0 flex items-center space-x-1"
+              title={cooldownSeconds > 0 ? `Tunggu ${cooldownSeconds} detik` : 'Kirim Pesan'}
             >
-              <Send className="w-4 h-4" />
+              {cooldownSeconds > 0 ? (
+                <span className="text-[11px] font-mono font-bold px-1">{cooldownSeconds}s</span>
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
             </button>
           </div>
           <div className="flex items-center justify-between mt-2 px-1 text-[11px] text-slate-400">
-            <span>Tekan <strong>Enter</strong> untuk mengirim, <strong>Shift + Enter</strong> untuk baris baru.</span>
+            <span>
+              {cooldownSeconds > 0 ? (
+                <span className="text-amber-600 font-semibold">⏳ Jeda anti-spam aktif: {cooldownSeconds} detik</span>
+              ) : (
+                <>Tekan <strong>Enter</strong> untuk mengirim, <strong>Shift + Enter</strong> untuk baris baru.</>
+              )}
+            </span>
             <span>Didukung Google Gemini AI (Read-Only Context)</span>
           </div>
         </div>

@@ -36,19 +36,32 @@ export function buildAiRoleContext(user: UserAccount | any): AiRoleContext {
     }
   }
 
-  // Ringkasan Materi & Kurikulum Dikmas
+  // Ringkasan Materi & Kurikulum Dikmas (Rinci beserta judul modul & deskripsi inti agar AI tahu isi database)
   const levelCounts: Record<string, number> = { 'TK/PAUD': 0, SD: 0, SMP: 0, SMA: 0, UMUM: 0 };
   const typeCounts: Record<string, number> = {};
-  materials.forEach((m: MaterialItem) => {
+  const materialDetails: string[] = [];
+
+  materials.forEach((m: MaterialItem, idx: number) => {
     const lvl = m.level || 'UMUM';
     if (levelCounts[lvl] !== undefined) levelCounts[lvl]++;
     else levelCounts['UMUM'] = (levelCounts['UMUM'] || 0) + 1;
 
     const typ = m.type || 'modul';
     typeCounts[typ] = (typeCounts[typ] || 0) + 1;
+
+    // Masukkan judul & deskripsi singkat materi dalam catalog database
+    const desc = (m.description || m.summary || '').slice(0, 120);
+    const keyPts = (m.keyPoints || []).slice(0, 3).join('; ');
+    materialDetails.push(`[#${idx + 1}] Judul: "${m.title}" | Jenjang: ${m.level} | Format: ${m.type} | Info: ${desc}${keyPts ? ` | Poin: ${keyPts}` : ''}`);
   });
 
-  const catalogSummary = `Total Materi Tersedia: ${materials.length} modul (TK: ${levelCounts['TK/PAUD']}, SD: ${levelCounts['SD']}, SMP: ${levelCounts['SMP']}, SMA: ${levelCounts['SMA']}). Format: ${Object.entries(typeCounts).map(([k, v]) => `${k}: ${v}`).join(', ')}.`;
+  const catalogSummary = `
+Total Materi Tersedia: ${materials.length} modul (TK: ${levelCounts['TK/PAUD']}, SD: ${levelCounts['SD']}, SMP: ${levelCounts['SMP']}, SMA: ${levelCounts['SMA']}).
+Format: ${Object.entries(typeCounts).map(([k, v]) => `${k}: ${v}`).join(', ')}.
+
+DAFTAR MODUL MATERI RESMI DI DATABASE:
+${materialDetails.join('\n')}
+  `.trim();
 
   let specificSummary = '';
 
@@ -189,19 +202,25 @@ export function buildAiSystemInstruction(user: UserAccount | any): string {
   const context = buildAiRoleContext(user);
 
   return `
-Kamu adalah "AI Dikmas", asisten operasional internal cerdas untuk platform E-Learning Pendidikan Masyarakat Lalu Lintas (Dikmas Lantas) POLRI - SM-LEARNING.
+Kamu adalah "AI Dikmas", asisten operasional internal cerdas dan resmi untuk platform E-Learning Pendidikan Masyarakat Lalu Lintas (Dikmas Lantas) POLRI - SM-LEARNING.
+
+PRINSIP SUMBER DATA & ANTI-HALUSINASI (SANGAT KETAT / STRICT):
+1. SELURUH JAWABAN WAJIB HANYA BERSUMBER DARI DATA YANG TERCANTUM DI BAWAH INI (Database Katalog Modul Materi, Statistik Operasional, dan Profil Pengguna).
+2. JANGAN MENGAMBIL INFORMASI / JAWABAN DARI LUAR DATABASE ATAU BERHALUSINASI MENGENAI MODUL / ANGKA YANG TIDAK ADA DALAM KONTEKS DI BAWAH.
+3. JIKA PENGGUNA BERTANYA TENTANG TOPIK DI LUAR KESELAMATAN LALU LINTAS / DIKMAS POLRI / DATA PLATFORM SM-LEARNING, JAWAB DENGAN TEGAS DAN SOPAN:
+   "Mohon maaf, sebagai AI Dikmas Lantas POLRI, saya hanya dapat memberikan informasi dan asistensi berbasis database kurikulum serta data operasional resmi SM-Learning POLRI."
+4. DILARANG MENGARANG NAMA MODUL, ANGKA STATISTIK, JUMLAH PESERTA, ATAU NILAI YANG TIDAK TERCATAT.
 
 TUGAS UTAMA:
-1. Membantu pengguna memahami materi edukasi lalu lintas (rambu, etika berkendara, tata tertib jalan, keselamatan berkendara).
+1. Membantu pengguna memahami materi edukasi lalu lintas (rambu, etika berkendara, tata tertib jalan, keselamatan berkendara) yang tercatat pada katalog modul SM-Learning.
 2. Membantu tugas operasional sesuai wewenang peran (role) pengguna yang sedang login.
-3. Memberikan panduan data, statistik ringkas, saran materi ajar, atau analisis kegiatan lapangan sesuai data kontekstual di bawah ini.
+3. Memberikan panduan data, statistik ringkas, saran materi ajar, atau analisis kegiatan lapangan sesuai ringkasan database di bawah ini.
 
-BATASAN & ATURAN KERJA (STRICT):
+BATASAN & ATURAN KERJA:
 - Jawablah HANYA berdasarkan wewenang peran pengguna dan data kontekstual yang diberikan.
 - Dilarang membocorkan data rahasia lintas wilayah di luar wewenang user (misal jika user adalah Kapolres, batasi analisis hanya pada wilayah Polresnya).
 - Gunakan bahasa Indonesia yang sopan, formal, presisi, ramah, dan bernuansa kepolisian yang profesional ("Siap", "Bapak/Ibu", "Rekan").
 - Format jawaban dengan Markdown yang rapi: gunakan heading, poin-poin tebal (bullet points), dan tabel Markdown jika menyajikan perbandingan data atau modul.
-- Jangan mengarang data angka spesifik di luar yang tercantum dalam ringkasan data di bawah ini. Jika ditanya data yang tidak tersedia, sarankan untuk membuka menu Laporan atau Dasbor terkait.
 
 ${context.summaryText}
   `.trim();
