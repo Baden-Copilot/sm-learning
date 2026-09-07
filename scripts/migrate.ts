@@ -117,7 +117,8 @@ async function runMigration() {
     const row = poldaRows[i];
     if (row.length < 3) continue;
     const poldaId = row[1].padStart(2, '0');
-    const nama = row[2];
+    const rawNama = row[2];
+    const nama = rawNama.replace(/^POLDA\s+/i, '').trim();
     const isWilayah = poldaId === '90' || poldaId === '99' ? 0 : 1;
     poldaList.push({ id: poldaId, nama, isWilayah });
 
@@ -127,7 +128,7 @@ async function runMigration() {
       [poldaId, nama, isWilayah]
     );
   }
-  console.log(`     Tersimpan ${poldaList.length} baris Polda (${poldaList.filter(p => p.isWilayah === 1).length} kewilayahan).`);
+  console.log(`     Tersimpan ${poldaList.length} baris Provinsi (${poldaList.filter(p => p.isWilayah === 1).length} kewilayahan).`);
 
   const polresCsv = fs.readFileSync(path.join(ROOT_DIR, 'data_polres'), 'utf-8');
   const polresRows = parseCsv(polresCsv);
@@ -140,7 +141,13 @@ async function runMigration() {
     if (row.length < 4) continue;
     const polresId = row[1];
     const poldaId = row[2].padStart(2, '0');
-    const nama = row[3];
+    const rawNama = row[3];
+    const nama = rawNama
+      .replace(/^POLRES\s+METRO\s+/i, '')
+      .replace(/^POLRESTABES\s+/i, '')
+      .replace(/^POLRESTA\s+/i, '')
+      .replace(/^POLRES\s+/i, '')
+      .trim();
 
     // Lewati baris yatim polda_id '00' (umumnya berlabel DIHILANGKAN / DUPLIKAT)
     if (poldaId === '00') {
@@ -161,7 +168,7 @@ async function runMigration() {
     );
     polresCount++;
   }
-  console.log(`     Tersimpan ${polresCount} baris Polres (${skippedCount} baris usang dilewati).`);
+  console.log(`     Tersimpan ${polresCount} baris Kota/Kabupaten (${skippedCount} baris usang dilewati).`);
 
   // ---------------------------------------------------------------------------
   // Migrasi Data JSON Lama (Roles, Materials, Records, Outreach)
