@@ -327,7 +327,7 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
             <div className="p-8 text-center text-xs text-slate-400">
               <MessageSquare className="w-8 h-8 mx-auto mb-2 text-slate-300" />
               <p className="font-semibold text-slate-600">Belum Ada Riwayat</p>
-              <p className="mt-1">Mulai percakapan pertama Anda dengan Alesha AI.</p>
+              <p className="mt-1">Mulai percakapan pertama Anda dengan AI Dikmas.</p>
             </div>
           ) : (
             sessions.map((s) => {
@@ -392,7 +392,7 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
             <div>
               <div className="flex items-center space-x-2">
                 <h2 className="font-bold text-sm text-white flex items-center tracking-wide">
-                  Alesha AI Dikmas
+                  Ai Dikmas
                   <Sparkles className="w-3.5 h-3.5 ml-1.5 text-amber-300" />
                 </h2>
                 <span className="text-[10px] bg-blue-500/30 text-blue-200 border border-blue-400/30 px-2 py-0.5 rounded-full font-mono font-medium">
@@ -446,7 +446,7 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
                 Selamat Datang, {userName}
               </h3>
               <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
-                Alesha AI siap mendampingi Anda menjalankan tugas kepolisian dan edukasi masyarakat sesuai wewenang <strong>{roleName}</strong>.
+                AI Dikmas siap mendampingi Anda menjalankan tugas kepolisian dan edukasi masyarakat sesuai wewenang <strong>{roleName}</strong>.
               </p>
 
               {/* Quick Prompt Chips */}
@@ -549,7 +549,7 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
                 <span className="w-2 h-2 rounded-full bg-blue-600 animate-bounce" />
                 <span className="w-2 h-2 rounded-full bg-blue-600 animate-bounce [animation-delay:0.2s]" />
                 <span className="w-2 h-2 rounded-full bg-blue-600 animate-bounce [animation-delay:0.4s]" />
-                <span className="text-xs text-slate-500 font-medium ml-2">Alesha AI sedang menyusun jawaban...</span>
+                <span className="text-xs text-slate-500 font-medium ml-2">AI Dikmas sedang menyusun jawaban...</span>
               </div>
             </div>
           )}
