@@ -21,7 +21,10 @@
 import mysql from 'mysql2/promise';
 import fs from 'fs';
 import path from 'path';
+import dotenv from 'dotenv';
 import { MaterialItem } from './types';
+
+dotenv.config();
 
 export interface DbConfig {
   host?: string;
@@ -82,8 +85,35 @@ export interface WilayahPolres {
   nama: string;
 }
 
+export interface MasterInstansiItem {
+  id: string;
+  nama: string;
+}
+
+export interface MasterOrganisasiItem {
+  id: string;
+  instansiId?: string;
+  nama: string;
+}
+
+export interface MasterSubOrgItem {
+  id: string;
+  organisasiId?: string;
+  nama: string;
+}
+
+export interface MasterSatkerItem {
+  id: string;
+  subOrgId?: string;
+  nama: string;
+}
+
 let poldaCache: WilayahPolda[] = [];
 let polresCache: WilayahPolres[] = [];
+let masterInstansiCache: MasterInstansiItem[] = [];
+let masterOrganisasiCache: MasterOrganisasiItem[] = [];
+let masterSubOrgCache: MasterSubOrgItem[] = [];
+let masterSatkerCache: MasterSatkerItem[] = [];
 
 function toMySqlDatetime(val: any): string | null {
   if (!val) return null;
@@ -152,6 +182,36 @@ export async function initDb(configOverride?: DbConfig): Promise<void> {
   // Pastikan tabel-tabel master kedinasan sudah ada (idempotent CREATE)
   try {
     await conn.query(`
+      CREATE TABLE IF NOT EXISTS \`instansi\` (
+        \`id\`            VARCHAR(50)  NOT NULL,
+        \`nama_instansi\` VARCHAR(255) NOT NULL,
+        PRIMARY KEY (\`id\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+      CREATE TABLE IF NOT EXISTS \`organisasi\` (
+        \`id\`              VARCHAR(50)  NOT NULL,
+        \`instansi_id\`      VARCHAR(50)  NOT NULL,
+        \`nama_organisasi\` VARCHAR(255) NOT NULL,
+        PRIMARY KEY (\`id\`),
+        KEY \`idx_org_instansi\` (\`instansi_id\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+      CREATE TABLE IF NOT EXISTS \`sub_organisasi\` (
+        \`id\`                  VARCHAR(50)  NOT NULL,
+        \`organisasi_id\`        VARCHAR(50)  NOT NULL,
+        \`nama_sub_organisasi\` VARCHAR(255) NOT NULL,
+        PRIMARY KEY (\`id\`),
+        KEY \`idx_sub_org\` (\`organisasi_id\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+      CREATE TABLE IF NOT EXISTS \`satker\` (
+        \`id\`                VARCHAR(50)  NOT NULL,
+        \`sub_organisasi_id\` VARCHAR(50)  NOT NULL,
+        \`nama_satker\`       VARCHAR(255) NOT NULL,
+        PRIMARY KEY (\`id\`),
+        KEY \`idx_satker_sub\` (\`sub_organisasi_id\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
       CREATE TABLE IF NOT EXISTS \`master_instansi\` (
         \`id\`   VARCHAR(50)  NOT NULL,
         \`nama\` VARCHAR(255) NOT NULL,
@@ -202,6 +262,16 @@ export async function initDb(configOverride?: DbConfig): Promise<void> {
     `);
   } catch (err) {
     // Ignore if already exist
+  }
+
+  // Auto-seed data master instansi/organisasi/sub_organisasi/satker jika masih kosong
+  try {
+    const [insCountRows]: any = await conn.query('SELECT COUNT(*) as c FROM instansi');
+    if (Number(insCountRows[0]?.c) === 0) {
+      await autoSeedMasterKedinasan(conn);
+    }
+  } catch (_e) {
+    // Fallback seed
   }
 
   // Pastikan kolom baru di tabel users sudah ada (idempotent ALTER)
@@ -336,9 +406,13 @@ async function autoBootstrapIfEmpty(conn: mysql.PoolConnection): Promise<void> {
 
   // 3. Parse & seed data_polres
   const polresCsvPath = path.join(rootDir, 'data_polres');
+  const polresRows: string[][] = [];
   if (fs.existsSync(polresCsvPath)) {
     const polresCsv = fs.readFileSync(polresCsvPath, 'utf-8');
-    const polresRows = parseCsvSimple(polresCsv);
+    const parsedPolres = parseCsvSimple(polresCsv);
+    for (let i = 0; i < parsedPolres.length; i++) {
+      polresRows.push(parsedPolres[i]);
+    }
     for (let i = 1; i < polresRows.length; i++) {
       const row = polresRows[i];
       if (row.length < 4) continue;
@@ -772,11 +846,10 @@ async function autoBootstrapIfEmpty(conn: mysql.PoolConnection): Promise<void> {
 
   for (const u of accountRows) {
     await conn.query(
-      `INSERT INTO users (
+      `INSERT IGNORE INTO users (
          id, username, password, full_name, role_id, is_active,
          executive_level, polda_id, polres_id, position, unit, polda, polres, created_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE full_name = VALUES(full_name)`,
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         u.id,
         u.username,
@@ -797,6 +870,373 @@ async function autoBootstrapIfEmpty(conn: mysql.PoolConnection): Promise<void> {
   }
 
   console.log('[DB] Auto-bootstrap selesai.');
+}
+
+async function autoSeedMasterKedinasan(conn: mysql.PoolConnection): Promise<void> {
+  // 1. Instansi
+  const INSTANSI_DATA = [
+    ['ins-kemenko-polkam', 'Kementerian Koordinator Bidang Politik dan Keamanan'],
+    ['ins-kemenko-perekonomian', 'Kementerian Koordinator Bidang Perekonomian'],
+    ['ins-kemenko-pmk', 'Kementerian Koordinator Bidang Pembangunan Manusia dan Kebudayaan'],
+    ['ins-kemenko-infrastruktur', 'Kementerian Koordinator Bidang Infrastruktur dan Pembangunan Kewilayahan'],
+    ['ins-kemenko-pangan', 'Kementerian Koordinator Bidang Pangan'],
+    ['ins-kemenko-hukum-ham', 'Kementerian Koordinator Bidang Hukum, Hak Asasi Manusia, Imigrasi, dan Pemasyarakatan'],
+    ['ins-kemenko-pemberdayaan', 'Kementerian Koordinator Bidang Pemberdayaan Masyarakat'],
+    ['ins-kemenkeu', 'Kementerian Keuangan'],
+    ['ins-kemendagri', 'Kementerian Dalam Negeri'],
+    ['ins-kemenlu', 'Kementerian Luar Negeri'],
+    ['ins-kemenhan', 'Kementerian Pertahanan'],
+    ['ins-kemenkum', 'Kementerian Hukum'],
+    ['ins-kemenimipas', 'Kementerian Imigrasi dan Pemasyarakatan'],
+    ['ins-kemenkes', 'Kementerian Kesehatan'],
+    ['ins-kemendikdasmen', 'Kementerian Pendidikan Dasar dan Menengah'],
+    ['ins-kemendiktisaintek', 'Kementerian Pendidikan Tinggi, Sains, dan Teknologi'],
+    ['ins-kemenbud', 'Kementerian Kebudayaan'],
+    ['ins-kemenag', 'Kementerian Agama'],
+    ['ins-komdigi', 'Kementerian Komunikasi dan Digital'],
+    ['ins-kemenhub', 'Kementerian Perhubungan'],
+    ['ins-kementan', 'Kementerian Pertanian'],
+    ['ins-kemenpu', 'Kementerian Pekerjaan Umum'],
+    ['ins-kemenperkim', 'Kementerian Perumahan dan Kawasan Permukiman'],
+    ['ins-kemenatrbpn', 'Kementerian Agraria dan Tata Ruang / Badan Pertanahan Nasional'],
+    ['ins-kemenaker', 'Kementerian Ketenagakerjaan'],
+    ['ins-kemensos', 'Kementerian Sosial'],
+    ['ins-kemenesdm', 'Kementerian Energi dan Sumber Daya Mineral'],
+    ['ins-kemenperin', 'Kementerian Perindustrian'],
+    ['ins-kemendag', 'Kementerian Perdagangan'],
+    ['ins-kemenhut', 'Kementerian Kehutanan'],
+    ['ins-kemenlh', 'Kementerian Lingkungan Hidup'],
+    ['ins-kemenkkp', 'Kementerian Kelautan dan Perikanan'],
+    ['ins-kemenparekraf', 'Kementerian Pariwisata dan Ekonomi Kreatif'],
+    ['ins-kemenkop', 'Kementerian Koperasi'],
+    ['ins-kemenukm', 'Kementerian Usaha Mikro, Kecil, dan Menengah'],
+    ['ins-kemenbumn', 'Kementerian Badan Usaha Milik Negara'],
+    ['ins-kemenpanrb', 'Kementerian Pendayagunaan Aparatur Negara dan Reformasi Birokrasi'],
+    ['ins-kemenppn', 'Kementerian Perencanaan Pembangunan Nasional / Bappenas'],
+    ['ins-kemenpora', 'Kementerian Pemuda dan Olahraga'],
+    ['ins-kemenpppa', 'Kementerian Pemberdayaan Perempuan dan Perlindungan Anak'],
+    ['ins-kemeninvestasi', 'Kementerian Investasi dan Hilirisasi / BKPM'],
+    ['ins-kemendes', 'Kementerian Desa dan Pembangunan Daerah Tertinggal'],
+    ['ins-kemenp2mi', 'Kementerian Perlindungan Pekerja Migran Indonesia / BP2MI'],
+    ['ins-polri', 'Kepolisian Negara Republik Indonesia'],
+    ['ins-tni-ad', 'Tentara Nasional Indonesia Angkatan Darat'],
+    ['ins-tni-al', 'Tentara Nasional Indonesia Angkatan Laut'],
+    ['ins-tni-au', 'Tentara Nasional Indonesia Angkatan Udara'],
+    ['ins-kejaksaan', 'Kejaksaan Republik Indonesia'],
+    ['ins-ma', 'Mahkamah Agung Republik Indonesia'],
+    ['ins-kpk', 'Komisi Pemberantasan Korupsi'],
+    ['ins-bpk', 'Badan Pemeriksa Keuangan'],
+    ['ins-bps', 'Badan Pusat Statistik'],
+    ['ins-bssn', 'Badan Siber dan Sandi Negara'],
+    ['ins-bin', 'Badan Intelijen Negara'],
+    ['ins-bnpb', 'Badan Nasional Penanggulangan Bencana'],
+    ['ins-basarnas', 'Badan Nasional Pencarian dan Pertolongan'],
+    ['ins-bpom', 'Badan Pengawas Obat dan Makanan'],
+    ['ins-bmkg', 'Badan Meteorologi, Klimatologi, dan Geofisika'],
+    ['ins-bkn', 'Badan Kepegawaian Negara']
+  ];
+
+  for (const [id, nama] of INSTANSI_DATA) {
+    await conn.query(
+      `INSERT IGNORE INTO instansi (id, nama_instansi) VALUES (?, ?)`,
+      [id, nama]
+    );
+    await conn.query(
+      `INSERT IGNORE INTO master_instansi (id, nama) VALUES (?, ?)`,
+      [id, nama]
+    );
+  }
+
+  // 2. Organisasi
+  const ORGANISASI_DATA = [
+    ['org-kemenkeu-djp', 'ins-kemenkeu', 'Direktorat Jenderal Pajak'],
+    ['org-kemenkeu-djbc', 'ins-kemenkeu', 'Direktorat Jenderal Bea dan Cukai'],
+    ['org-kemenkeu-djpb', 'ins-kemenkeu', 'Direktorat Jenderal Perbendaharaan'],
+    ['org-kemenkeu-djkn', 'ins-kemenkeu', 'Direktorat Jenderal Kekayaan Negara'],
+    ['org-kemenkeu-dja', 'ins-kemenkeu', 'Direktorat Jenderal Anggaran'],
+    ['org-kemendagri-dukcapil', 'ins-kemendagri', 'Direktorat Jenderal Kependudukan dan Pencatatan Sipil'],
+    ['org-kemendagri-otda', 'ins-kemendagri', 'Direktorat Jenderal Otonomi Daerah'],
+    ['org-kemendagri-pemdes', 'ins-kemendagri', 'Direktorat Jenderal Bina Pemerintahan Desa'],
+    ['org-kemendagri-bangda', 'ins-kemendagri', 'Direktorat Jenderal Bina Pembangunan Daerah'],
+    ['org-kemenkum-ahu', 'ins-kemenkum', 'Direktorat Jenderal Administrasi Hukum Umum'],
+    ['org-kemenkum-ki', 'ins-kemenkum', 'Direktorat Jenderal Kekayaan Intelektual'],
+    ['org-kemenkum-pp', 'ins-kemenkum', 'Direktorat Jenderal Peraturan Perundang-undangan'],
+    ['org-kemenimipas-imigrasi', 'ins-kemenimipas', 'Direktorat Jenderal Imigrasi'],
+    ['org-kemenimipas-pas', 'ins-kemenimipas', 'Direktorat Jenderal Pemasyarakatan'],
+    ['org-kemenkes-yankes', 'ins-kemenkes', 'Direktorat Jenderal Pelayanan Kesehatan'],
+    ['org-kemenkes-p2p', 'ins-kemenkes', 'Direktorat Jenderal Pencegahan dan Pengendalian Penyakit'],
+    ['org-kemenkes-farmalkes', 'ins-kemenkes', 'Direktorat Jenderal Kefarmasian dan Alat Kesehatan'],
+    ['org-kemenkes-nakes', 'ins-kemenkes', 'Direktorat Jenderal Tenaga Kesehatan'],
+    ['org-kemendikdasmen-paud', 'ins-kemendikdasmen', 'Direktorat Jenderal Pendidikan Anak Usia Dini, Pendidikan Dasar, dan Pendidikan Menengah'],
+    ['org-kemendikdasmen-guru', 'ins-kemendikdasmen', 'Direktorat Jenderal Guru dan Tenaga Kependidikan'],
+    ['org-kemendikdasmen-vokasi', 'ins-kemendikdasmen', 'Direktorat Jenderal Pendidikan Vokasi'],
+    ['org-kemendiktisaintek-dikti', 'ins-kemendiktisaintek', 'Direktorat Jenderal Pendidikan Tinggi'],
+    ['org-kemendiktisaintek-riset', 'ins-kemendiktisaintek', 'Direktorat Jenderal Riset dan Pengembangan'],
+    ['org-komdigi-aptika', 'ins-komdigi', 'Direktorat Jenderal Aplikasi Informatika'],
+    ['org-komdigi-ppi', 'ins-komdigi', 'Direktorat Jenderal Penyelenggaraan Pos dan Informatika'],
+    ['org-komdigi-sdppi', 'ins-komdigi', 'Direktorat Jenderal Sumber Daya dan Perangkat Pos dan Informatika'],
+    ['org-komdigi-ikp', 'ins-komdigi', 'Direktorat Jenderal Informasi dan Komunikasi Publik'],
+    ['org-kemenhub-hubdat', 'ins-kemenhub', 'Direktorat Jenderal Perhubungan Darat'],
+    ['org-kemenhub-hubla', 'ins-kemenhub', 'Direktorat Jenderal Perhubungan Laut'],
+    ['org-kemenhub-hubud', 'ins-kemenhub', 'Direktorat Jenderal Perhubungan Udara'],
+    ['org-kemenhub-kereta', 'ins-kemenhub', 'Direktorat Jenderal Perkeretaapian'],
+    ['org-kementan-tanaman', 'ins-kementan', 'Direktorat Jenderal Tanaman Pangan'],
+    ['org-kementan-horti', 'ins-kementan', 'Direktorat Jenderal Hortikultura'],
+    ['org-kementan-ternak', 'ins-kementan', 'Direktorat Jenderal Peternakan dan Kesehatan Hewan'],
+    ['org-kementan-kebun', 'ins-kementan', 'Direktorat Jenderal Perkebunan'],
+    ['org-kemenpu-binamarga', 'ins-kemenpu', 'Direktorat Jenderal Bina Marga'],
+    ['org-kemenpu-ciptakarya', 'ins-kemenpu', 'Direktorat Jenderal Cipta Karya'],
+    ['org-kemenpu-sda', 'ins-kemenpu', 'Direktorat Jenderal Sumber Daya Air'],
+    ['org-kemenperkim-perumahan', 'ins-kemenperkim', 'Direktorat Jenderal Perumahan dan Kawasan Permukiman'],
+    ['org-kemenatrbpn-survei', 'ins-kemenatrbpn', 'Direktorat Jenderal Survei dan Pemetaan Pertanahan dan Ruang'],
+    ['org-kemenatrbpn-hak', 'ins-kemenatrbpn', 'Direktorat Jenderal Penetapan Hak dan Pendaftaran Tanah'],
+    ['org-kemenatrbpn-tataruang', 'ins-kemenatrbpn', 'Direktorat Jenderal Tata Ruang'],
+    ['org-kemenaker-vokasi', 'ins-kemenaker', 'Direktorat Jenderal Pembinaan Pelatihan Vokasi dan Produktivitas'],
+    ['org-kemenaker-wasnaker', 'ins-kemenaker', 'Direktorat Jenderal Pembinaan Pengawasan Ketenagakerjaan dan K3'],
+    ['org-kemenaker-phi', 'ins-kemenaker', 'Direktorat Jenderal Pembinaan Hubungan Industrial dan Jamsos'],
+    ['org-kemensos-linjamsos', 'ins-kemensos', 'Direktorat Jenderal Perlindungan dan Jaminan Sosial'],
+    ['org-kemensos-rehsos', 'ins-kemensos', 'Direktorat Jenderal Rehabilitasi Sosial'],
+    ['org-kemensos-dayasos', 'ins-kemensos', 'Direktorat Jenderal Pemberdayaan Sosial'],
+    ['org-kemenag-pendis', 'ins-kemenag', 'Direktorat Jenderal Pendidikan Islam'],
+    ['org-kemenag-bimas-islam', 'ins-kemenag', 'Direktorat Jenderal Bimbingan Masyarakat Islam'],
+    ['org-kemenag-phu', 'ins-kemenag', 'Direktorat Jenderal Penyelenggaraan Haji dan Umrah'],
+    ['org-kemenlu-protkons', 'ins-kemenlu', 'Direktorat Jenderal Protokol dan Konsuler'],
+    ['org-kemenlu-multilateral', 'ins-kemenlu', 'Direktorat Jenderal Kerja Sama Multilateral'],
+    ['org-kemenesdm-migas', 'ins-kemenesdm', 'Direktorat Jenderal Minyak dan Gas Bumi'],
+    ['org-kemenesdm-listrik', 'ins-kemenesdm', 'Direktorat Jenderal Ketenagalistrikan'],
+    ['org-kemenesdm-minerba', 'ins-kemenesdm', 'Direktorat Jenderal Mineral dan Batubara'],
+    ['org-kemenesdm-ebtke', 'ins-kemenesdm', 'Direktorat Jenderal Energi Baru, Terbarukan, dan Konservasi Energi'],
+    ['org-kemenperin-ikma', 'ins-kemenperin', 'Direktorat Jenderal Industri Kecil, Menengah, dan Aneka'],
+    ['org-kemenperin-ilmate', 'ins-kemenperin', 'Direktorat Jenderal Industri Logam, Mesin, Alat Transportasi, dan Elektronika'],
+    ['org-kemendag-pdn', 'ins-kemendag', 'Direktorat Jenderal Perdagangan Dalam Negeri'],
+    ['org-kemendag-pln', 'ins-kemendag', 'Direktorat Jenderal Perdagangan Luar Negeri'],
+    ['org-kemendag-pktn', 'ins-kemendag', 'Direktorat Jenderal Perlindungan Konsumen dan Tertib Niaga'],
+    ['org-kemenhut-ksdae', 'ins-kemenhut', 'Direktorat Jenderal Konservasi Sumber Daya Alam dan Ekosistem'],
+    ['org-kemenhut-gakkum', 'ins-kemenhut', 'Direktorat Jenderal Penegakan Hukum Kehutanan'],
+    ['org-kemenlh-pslb3', 'ins-kemenlh', 'Direktorat Jenderal Pengelolaan Sampah, Limbah, dan B3'],
+    ['org-kemenlh-ppkl', 'ins-kemenlh', 'Direktorat Jenderal Pengendalian Pencemaran dan Kerusakan Lingkungan'],
+    ['org-kemenkkp-tangkap', 'ins-kemenkkp', 'Direktorat Jenderal Perikanan Tangkap'],
+    ['org-kemenkkp-budidaya', 'ins-kemenkkp', 'Direktorat Jenderal Perikanan Budidaya'],
+    ['org-kemenkkp-psdkp', 'ins-kemenkkp', 'Direktorat Jenderal Pengawasan Sumber Daya Kelautan dan Perikanan'],
+    ['org-polri-korlantas', 'ins-polri', 'Korps Lalu Lintas'],
+    ['org-polri-bareskrim', 'ins-polri', 'Badan Reserse Kriminal'],
+    ['org-polri-baharkam', 'ins-polri', 'Badan Pemelihara Keamanan'],
+    ['org-polri-korbrimob', 'ins-polri', 'Korps Brigade Mobil'],
+    ['org-polri-baintelkam', 'ins-polri', 'Badan Intelijen Keamanan'],
+    ['org-tniad-pom', 'ins-tni-ad', 'Pusat Polisi Militer Angkatan Darat'],
+    ['org-tniad-kodam', 'ins-tni-ad', 'Komando Daerah Militer'],
+    ['org-tniad-korem', 'ins-tni-ad', 'Komando Resor Militer'],
+    ['org-tnial-pom', 'ins-tni-al', 'Pusat Polisi Militer Angkatan Laut'],
+    ['org-tnial-koarmada', 'ins-tni-al', 'Komando Armada RI'],
+    ['org-tniau-pom', 'ins-tni-au', 'Pusat Polisi Militer Angkatan Udara'],
+    ['org-tniau-koopsud', 'ins-tni-au', 'Komando Operasi Udara Nasional'],
+    ['org-kejaksaan-pidum', 'ins-kejaksaan', 'Jaksa Agung Muda Bidang Tindak Pidana Umum'],
+    ['org-kejaksaan-pidsus', 'ins-kejaksaan', 'Jaksa Agung Muda Bidang Tindak Pidana Khusus'],
+    ['org-kejaksaan-intel', 'ins-kejaksaan', 'Jaksa Agung Muda Bidang Intelijen'],
+    ['org-kejaksaan-datun', 'ins-kejaksaan', 'Jaksa Agung Muda Bidang Perdata dan Tata Usaha Negara'],
+    ['org-ma-badilum', 'ins-ma', 'Direktorat Jenderal Badan Peradilan Umum'],
+    ['org-ma-badilag', 'ins-ma', 'Direktorat Jenderal Badan Peradilan Agama'],
+    ['org-ma-badimiltun', 'ins-ma', 'Direktorat Jenderal Badan Peradilan Militer dan Tata Usaha Negara'],
+    ['org-kpk-penindakan', 'ins-kpk', 'Deputi Bidang Penindakan dan Eksekusi'],
+    ['org-kpk-pencegahan', 'ins-kpk', 'Deputi Bidang Pencegahan dan Monitoring'],
+    ['org-kpk-pendidikan', 'ins-kpk', 'Deputi Bidang Pendidikan dan Peran Serta Masyarakat'],
+    ['org-bpk-auditorat', 'ins-bpk', 'Auditorat Utama Keuangan Negara'],
+    ['org-bps-sosial', 'ins-bps', 'Deputi Bidang Statistik Sosial'],
+    ['org-bps-produksi', 'ins-bps', 'Deputi Bidang Statistik Produksi'],
+    ['org-bps-distribusi', 'ins-bps', 'Deputi Bidang Statistik Distribusi dan Jasa'],
+    ['org-bssn-kripto', 'ins-bssn', 'Deputi Bidang Kriptografi dan Keamanan Siber'],
+    ['org-bssn-operasi', 'ins-bssn', 'Deputi Bidang Operasi Keamanan Siber dan Sandi'],
+    ['org-bin-dn', 'ins-bin', 'Deputi Bidang Intelijen Dalam Negeri'],
+    ['org-bin-ln', 'ins-bin', 'Deputi Bidang Intelijen Luar Negeri'],
+    ['org-bnpb-darurat', 'ins-bnpb', 'Deputi Bidang Penanganan Darurat'],
+    ['org-bnpb-cegah', 'ins-bnpb', 'Deputi Bidang Pencegahan'],
+    ['org-basarnas-ops', 'ins-basarnas', 'Deputi Bidang Operasi Pencarian dan Pertolongan'],
+    ['org-bpom-obat', 'ins-bpom', 'Deputi Bidang Pengawasan Obat, Narkotika, Psikotropika, dan Prekursor'],
+    ['org-bpom-pangan', 'ins-bpom', 'Deputi Bidang Pengawasan Pangan Olahan'],
+    ['org-bmkg-meteo', 'ins-bmkg', 'Deputi Bidang Meteorologi'],
+    ['org-bmkg-geofisika', 'ins-bmkg', 'Deputi Bidang Geofisika'],
+    ['org-bkn-mutasi', 'ins-bkn', 'Deputi Bidang Mutasi Kepegawaian'],
+    ['org-bkn-simpeg', 'ins-bkn', 'Deputi Bidang Sistem Informasi Kepegawaian']
+  ];
+
+  for (const [id, insId, nama] of ORGANISASI_DATA) {
+    await conn.query(
+      `INSERT IGNORE INTO organisasi (id, instansi_id, nama_organisasi) VALUES (?, ?, ?)`,
+      [id, insId, nama]
+    );
+    await conn.query(
+      `INSERT IGNORE INTO master_organisasi (id, nama) VALUES (?, ?)`,
+      [id, nama]
+    );
+  }
+
+  // 3. Sub Organisasi
+  const SUB_ORG_DATA = [
+    ['sub-djp-kanwil', 'org-kemenkeu-djp', 'Kantor Wilayah Direktorat Jenderal Pajak'],
+    ['sub-djbc-kanwil', 'org-kemenkeu-djbc', 'Kantor Wilayah Direktorat Jenderal Bea dan Cukai'],
+    ['sub-djpb-kanwil', 'org-kemenkeu-djpb', 'Kantor Wilayah Direktorat Jenderal Perbendaharaan'],
+    ['sub-djkn-kanwil', 'org-kemenkeu-djkn', 'Kantor Wilayah Direktorat Jenderal Kekayaan Negara'],
+    ['sub-dukcapil-prov', 'org-kemendagri-dukcapil', 'Dinas Kependudukan dan Pencatatan Sipil Provinsi'],
+    ['sub-pemdes-bina', 'org-kemendagri-pemdes', 'Balai Besar Bina Pemerintahan Desa'],
+    ['sub-kemenkum-kanwil', 'org-kemenkum-ahu', 'Kantor Wilayah Kementerian Hukum'],
+    ['sub-imigrasi-kanwil', 'org-kemenimipas-imigrasi', 'Divisi Keimigrasian Kantor Wilayah'],
+    ['sub-pas-kanwil', 'org-kemenimipas-pas', 'Divisi Pemasyarakatan Kantor Wilayah'],
+    ['sub-yankes-rsup', 'org-kemenkes-yankes', 'Direktorat Pelayanan Rumah Sakit Vertikal'],
+    ['sub-p2p-bbkk', 'org-kemenkes-p2p', 'Balai Besar Kekarantinaan Kesehatan'],
+    ['sub-farmalkes-lab', 'org-kemenkes-farmalkes', 'Balai Besar Pengujian dan Kalibrasi Alat Kesehatan'],
+    ['sub-paud-bbpmp', 'org-kemendikdasmen-paud', 'Balai Besar Penjaminan Mutu Pendidikan'],
+    ['sub-guru-bbpgp', 'org-kemendikdasmen-guru', 'Balai Besar Guru Penggerak'],
+    ['sub-vokasi-bbppmpv', 'org-kemendikdasmen-vokasi', 'Balai Besar Pengembangan Penjaminan Mutu Pendidikan Vokasi'],
+    ['sub-dikti-lldikti', 'org-kemendiktisaintek-dikti', 'Lembaga Layanan Pendidikan Tinggi'],
+    ['sub-aptika-layanan', 'org-komdigi-aptika', 'Direktorat Layanan Aplikasi Informatika Pemerintahan'],
+    ['sub-sdppi-bmon', 'org-komdigi-sdppi', 'Balai Monitor Spektrum Frekuensi Radio'],
+    ['sub-hubdat-bptd', 'org-kemenhub-hubdat', 'Balai Pengelola Transportasi Darat'],
+    ['sub-hubla-ksop', 'org-kemenhub-hubla', 'Kantor Kesyahbandaran dan Otoritas Pelabuhan Utama'],
+    ['sub-hubud-otban', 'org-kemenhub-hubud', 'Kantor Otoritas Bandar Udara'],
+    ['sub-kereta-btp', 'org-kemenhub-kereta', 'Balai Teknik Perkeretaapian'],
+    ['sub-tanaman-bpts', 'org-kementan-tanaman', 'Balai Besar Pengujian Standar Instrumen Tanaman Pangan'],
+    ['sub-horti-bbps', 'org-kementan-horti', 'Balai Besar Pengujian Standar Instrumen Hortikultura'],
+    ['sub-ternak-bvet', 'org-kementan-ternak', 'Balai Besar Veteriner'],
+    ['sub-binamarga-bbpjn', 'org-kemenpu-binamarga', 'Balai Besar Pelaksanaan Jalan Nasional'],
+    ['sub-ciptakarya-bbppw', 'org-kemenpu-ciptakarya', 'Balai Prasarana Permukiman Wilayah'],
+    ['sub-sda-bbws', 'org-kemenpu-sda', 'Balai Besar Wilayah Sungai'],
+    ['sub-perkim-bp2p', 'org-kemenperkim-perumahan', 'Balai Pelaksana Penyediaan Perumahan'],
+    ['sub-atrbpn-kanwil', 'org-kemenatrbpn-hak', 'Kantor Wilayah Badan Pertanahan Nasional'],
+    ['sub-vokasi-bbpvp', 'org-kemenaker-vokasi', 'Balai Besar Pelatihan Vokasi dan Produktivitas'],
+    ['sub-wasnaker-bbk3', 'org-kemenaker-wasnaker', 'Balai Besar Pengujian K3'],
+    ['sub-rehsos-sentra', 'org-kemensos-rehsos', 'Sentra Terpadu Rehabilitasi Sosial'],
+    ['sub-kemenag-kanwil', 'org-kemenag-bimas-islam', 'Kantor Wilayah Kementerian Agama'],
+    ['sub-kemenlu-kbri', 'org-kemenlu-protkons', 'Kedutaan Besar Republik Indonesia'],
+    ['sub-kemenlu-kjri', 'org-kemenlu-protkons', 'Konsulat Jenderal Republik Indonesia'],
+    ['sub-minerba-bblm', 'org-kemenesdm-minerba', 'Balai Besar Pengujian Mineral dan Batubara'],
+    ['sub-ebtke-bbpke', 'org-kemenesdm-ebtke', 'Balai Besar Pengujian Energi Baru Terbarukan dan Konservasi Energi'],
+    ['sub-perin-bbks', 'org-kemenperin-ikma', 'Balai Besar Kerajinan dan Batik'],
+    ['sub-dag-bbm', 'org-kemendag-pktn', 'Balai Standardisasi Metrologi Legal'],
+    ['sub-ksdae-bbksda', 'org-kemenhut-ksdae', 'Balai Besar Konservasi Sumber Daya Alam'],
+    ['sub-ksdae-btn', 'org-kemenhut-ksdae', 'Balai Taman Nasional'],
+    ['sub-gakkum-bb', 'org-kemenhut-gakkum', 'Balai Pengamanan dan Penegakan Hukum LHK'],
+    ['sub-kkp-bbpbl', 'org-kemenkkp-budidaya', 'Balai Besar Perikanan Budidaya Laut'],
+    ['sub-kkp-psdkp', 'org-kemenkkp-psdkp', 'Pangkalan Pengawasan Sumber Daya Kelautan dan Perikanan'],
+    ['sub-polri-ditlantas', 'org-polri-korlantas', 'Direktorat Lalu Lintas Kepolisian Daerah'],
+    ['sub-polri-ditreskrimum', 'org-polri-bareskrim', 'Direktorat Reserse Kriminal Umum Kepolisian Daerah'],
+    ['sub-polri-ditreskrimsus', 'org-polri-bareskrim', 'Direktorat Reserse Kriminal Khusus Kepolisian Daerah'],
+    ['sub-polri-ditresnarkoba', 'org-polri-bareskrim', 'Direktorat Reserse Narkoba Kepolisian Daerah'],
+    ['sub-polri-ditintelkam', 'org-polri-baintelkam', 'Direktorat Intelijen Keamanan Kepolisian Daerah'],
+    ['sub-polri-ditsamapta', 'org-polri-baharkam', 'Direktorat Samapta Kepolisian Daerah'],
+    ['sub-polri-ditpolairud', 'org-polri-baharkam', 'Direktorat Kepolisian Perairan dan Udara Kepolisian Daerah'],
+    ['sub-polri-satbrimob', 'org-polri-korbrimob', 'Satuan Korps Brigade Mobil Kepolisian Daerah'],
+    ['sub-tniad-pomdam', 'org-tniad-pom', 'Polisi Militer Komando Daerah Militer'],
+    ['sub-tniad-kodim', 'org-tniad-korem', 'Komando Distrik Militer'],
+    ['sub-tnial-pomal', 'org-tnial-pom', 'Detasemen Polisi Militer Angkatan Laut'],
+    ['sub-tnial-lantamal', 'org-tnial-koarmada', 'Pangkalan Utama TNI Angkatan Laut'],
+    ['sub-tniau-pomau', 'org-tniau-pom', 'Satuan Polisi Militer Angkatan Udara'],
+    ['sub-tniau-lanud', 'org-tniau-koopsud', 'Pangkalan TNI Angkatan Udara'],
+    ['sub-kejaksaan-kejati', 'org-kejaksaan-pidum', 'Kejaksaan Tinggi'],
+    ['sub-ma-pt', 'org-ma-badilum', 'Pengadilan Tinggi'],
+    ['sub-ma-pta', 'org-ma-badilag', 'Pengadilan Tinggi Agama'],
+    ['sub-ma-pttun', 'org-ma-badimiltun', 'Pengadilan Tinggi Tata Usaha Negara'],
+    ['sub-ma-dilmilti', 'org-ma-badimiltun', 'Pengadilan Militer Tinggi'],
+    ['sub-kpk-satgas-sidik', 'org-kpk-penindakan', 'Direktorat Penyidikan dan Tindak Pidana Korupsi'],
+    ['sub-bpk-perwakilan', 'org-bpk-auditorat', 'Badan Pemeriksa Keuangan Kantor Perwakilan'],
+    ['sub-bps-prov', 'org-bps-sosial', 'Badan Pusat Statistik Provinsi'],
+    ['sub-bssn-balai', 'org-bssn-kripto', 'Balai Sertifikasi Elektronik'],
+    ['sub-bin-posda', 'org-bin-dn', 'Badan Intelijen Negara Daerah'],
+    ['sub-bnpb-pusdalops', 'org-bnpb-darurat', 'Pusat Pengendalian Operasi Penanggulangan Bencana'],
+    ['sub-basarnas-kantor', 'org-basarnas-ops', 'Kantor Pencarian dan Pertolongan'],
+    ['sub-bpom-bbpom', 'org-bpom-obat', 'Balai Besar Pengawas Obat dan Makanan'],
+    ['sub-bmkg-bbmkg', 'org-bmkg-meteo', 'Balai Besar Meteorologi, Klimatologi, dan Geofisika'],
+    ['sub-bkn-kanreg', 'org-bkn-mutasi', 'Kantor Regional Badan Kepegawaian Negara']
+  ];
+
+  for (const [id, orgId, nama] of SUB_ORG_DATA) {
+    await conn.query(
+      `INSERT IGNORE INTO sub_organisasi (id, organisasi_id, nama_sub_organisasi) VALUES (?, ?, ?)`,
+      [id, orgId, nama]
+    );
+    await conn.query(
+      `INSERT IGNORE INTO master_sub_org (id, nama) VALUES (?, ?)`,
+      [id, nama]
+    );
+  }
+
+  // 4. Satker
+  const SATKER_DATA = [
+    ['stk-kpp-pratama', 'sub-djp-kanwil', 'Kantor Pelayanan Pajak Pratama'],
+    ['stk-kpp-madya', 'sub-djp-kanwil', 'Kantor Pelayanan Pajak Madya'],
+    ['stk-kppbc-tmp', 'sub-djbc-kanwil', 'Kantor Pengawasan dan Pelayanan Bea dan Cukai Tipe Madya Pabean'],
+    ['stk-kppn', 'sub-djpb-kanwil', 'Kantor Pelayanan Perbendaharaan Negara'],
+    ['stk-kpknl', 'sub-djkn-kanwil', 'Kantor Pelayanan Kekayaan Negara dan Lelang'],
+    ['stk-dukcapil-kabkota', 'sub-dukcapil-prov', 'Dinas Kependudukan dan Pencatatan Sipil Kabupaten/Kota'],
+    ['stk-bapas', 'sub-pas-kanwil', 'Balai Pemasyarakatan'],
+    ['stk-lapas', 'sub-pas-kanwil', 'Lembaga Pemasyarakatan'],
+    ['stk-rutan', 'sub-pas-kanwil', 'Rumah Tahanan Negara'],
+    ['stk-kanim', 'sub-imigrasi-kanwil', 'Kantor Imigrasi'],
+    ['stk-rudinim', 'sub-imigrasi-kanwil', 'Rumah Detensi Imigrasi'],
+    ['stk-rsup-vertikal', 'sub-yankes-rsup', 'Rumah Sakit Umum Pusat'],
+    ['stk-bkk-pelabuhan', 'sub-p2p-bbkk', 'Balai Kekarantinaan Kesehatan Pelabuhan dan Bandara'],
+    ['stk-bpmp-prov', 'sub-paud-bbpmp', 'Balai Penjaminan Mutu Pendidikan Provinsi'],
+    ['stk-bgp-prov', 'sub-guru-bbpgp', 'Balai Guru Penggerak Provinsi'],
+    ['stk-ptn-universitas', 'sub-dikti-lldikti', 'Perguruan Tinggi Negeri / Universitas Negeri'],
+    ['stk-ptn-politeknik', 'sub-vokasi-bbppmpv', 'Politeknik Negeri'],
+    ['stk-lokamon-sdppi', 'sub-sdppi-bmon', 'Loka Monitor Spektrum Frekuensi Radio'],
+    ['stk-upp-laut', 'sub-hubla-ksop', 'Unit Penyelenggara Pelabuhan'],
+    ['stk-upbu-udara', 'sub-hubud-otban', 'Unit Penyelenggara Bandar Udara'],
+    ['stk-satpel-hubdat', 'sub-hubdat-bptd', 'Satuan Pelayanan Terminal dan Penyeberangan'],
+    ['stk-bvet-daerah', 'sub-ternak-bvet', 'Balai Veteriner Daerah'],
+    ['stk-pjn-wilayah', 'sub-binamarga-bbpjn', 'Satuan Kerja Pelaksanaan Jalan Nasional Wilayah'],
+    ['stk-sumber-daya-air', 'sub-sda-bbws', 'Satuan Kerja Operasi dan Pemeliharaan Sumber Daya Air'],
+    ['stk-kantah-kabkota', 'sub-atrbpn-kanwil', 'Kantor Pertanahan Kabupaten/Kota'],
+    ['stk-bpvp-daerah', 'sub-vokasi-bbpvp', 'Balai Pelatihan Vokasi dan Produktivitas'],
+    ['stk-sentra-rehsos', 'sub-rehsos-sentra', 'Sentra Rehabilitasi Sosial Anak dan Lansia'],
+    ['stk-kemenag-kabkota', 'sub-kemenag-kanwil', 'Kantor Kementerian Agama Kabupaten/Kota'],
+    ['stk-kua-kecamatan', 'sub-kemenag-kanwil', 'Kantor Urusan Agama Kecamatan'],
+    ['stk-perutusan-pbb', 'sub-kemenlu-kbri', 'Perutusan Tetap Republik Indonesia untuk PBB'],
+    ['stk-inspektur-tambang', 'sub-minerba-bblm', 'Seksi Pengawasan Inspektur Tambang Lapangan'],
+    ['stk-balai-industri', 'sub-perin-bbks', 'Balai Standardisasi dan Pelayanan Jasa Industri'],
+    ['stk-kemendag-metrologi', 'sub-dag-bbm', 'Unit Pelaksana Teknis Metrologi Legal'],
+    ['stk-seksikonservasi-bksda', 'sub-ksdae-bbksda', 'Seksi Konservasi Wilayah BKSDA'],
+    ['stk-resor-tamannasional', 'sub-ksdae-btn', 'Resor Pengelolaan Taman Nasional'],
+    ['stk-pos-gakkum', 'sub-gakkum-bb', 'Pos Pengamanan dan Penegakan Hukum Kawasan Hutan'],
+    ['stk-stasiun-psdkp', 'sub-kkp-psdkp', 'Stasiun Pengawasan Sumber Daya Kelautan dan Perikanan'],
+    ['stk-satlantas-polres', 'sub-polri-ditlantas', 'Satuan Lalu Lintas Polres'],
+    ['stk-satreskrim-polres', 'sub-polri-ditreskrimum', 'Satuan Reserse Kriminal Polres'],
+    ['stk-satresnarkoba-polres', 'sub-polri-ditresnarkoba', 'Satuan Reserse Narkoba Polres'],
+    ['stk-satintelkam-polres', 'sub-polri-ditintelkam', 'Satuan Intelijen Keamanan Polres'],
+    ['stk-satsamapta-polres', 'sub-polri-ditsamapta', 'Satuan Samapta Polres'],
+    ['stk-satpolairud-polres', 'sub-polri-ditpolairud', 'Satuan Kepolisian Perairan dan Udara Polres'],
+    ['stk-batalyon-brimob', 'sub-polri-satbrimob', 'Batalyon Pelopor / Gegana Satuan Brimob'],
+    ['stk-polsek', 'sub-polri-ditsamapta', 'Kepolisian Sektor'],
+    ['stk-denpom-ad', 'sub-tniad-pomdam', 'Detasemen Polisi Militer AD'],
+    ['stk-koramil-ad', 'sub-tniad-kodim', 'Komando Rayon Militer AD'],
+    ['stk-lanal-al', 'sub-tnial-lantamal', 'Pangkalan TNI Angkatan Laut'],
+    ['stk-pos-al', 'sub-tnial-lantamal', 'Pos Pengamat TNI Angkatan Laut'],
+    ['stk-satrad-au', 'sub-tniau-lanud', 'Satuan Radar Komando Operasi Udara'],
+    ['stk-kejari', 'sub-kejaksaan-kejati', 'Kejaksaan Negeri'],
+    ['stk-cabjari', 'sub-kejaksaan-kejati', 'Cabang Kejaksaan Negeri'],
+    ['stk-pn', 'sub-ma-pt', 'Pengadilan Negeri'],
+    ['stk-pa', 'sub-ma-pta', 'Pengadilan Agama'],
+    ['stk-ptun', 'sub-ma-pttun', 'Pengadilan Tata Usaha Negara'],
+    ['stk-dilmil', 'sub-ma-dilmilti', 'Pengadilan Militer'],
+    ['stk-kpk-penyelidikan', 'sub-kpk-satgas-sidik', 'Satuan Tugas Penindakan dan Investigasi Lapangan KPK'],
+    ['stk-bpk-subauditorat', 'sub-bpk-perwakilan', 'Subauditorat Daerah Kantor Perwakilan BPK'],
+    ['stk-bps-kabkota', 'sub-bps-prov', 'Badan Pusat Statistik Kabupaten/Kota'],
+    ['stk-basarnas-pos', 'sub-basarnas-kantor', 'Pos Pencarian dan Pertolongan'],
+    ['stk-bpom-loka', 'sub-bpom-bbpom', 'Loka Pengawas Obat dan Makanan'],
+    ['stk-bmkg-stasiun-meteo', 'sub-bmkg-bbmkg', 'Stasiun Meteorologi Penerbangan dan Maritim'],
+    ['stk-bmkg-stasiun-geo', 'sub-bmkg-bbmkg', 'Stasiun Geofisika dan Klimatologi'],
+    ['stk-bkn-upt', 'sub-bkn-kanreg', 'Unit Penyelenggara Seleksi Calon Aparatur Sipil Negara BKN']
+  ];
+
+  for (const [id, subId, nama] of SATKER_DATA) {
+    await conn.query(
+      `INSERT IGNORE INTO satker (id, sub_organisasi_id, nama_satker) VALUES (?, ?, ?)`,
+      [id, subId, nama]
+    );
+    await conn.query(
+      `INSERT IGNORE INTO master_satker (id, nama) VALUES (?, ?)`,
+      [id, nama]
+    );
+  }
 }
 
 function parseCsvSimple(content: string): string[][] {
@@ -842,7 +1282,7 @@ export function isDbReady(): boolean {
 export async function hydrateAllFromDb(): Promise<void> {
   const p = getPool();
 
-  // 1. Master wilayah
+  // 1. Master wilayah & kedinasan
   const [poldaRows]: any = await p.query('SELECT polda_id, nama, is_wilayah FROM polda ORDER BY polda_id ASC');
   poldaCache = poldaRows.map((r: any) => ({
     poldaId: r.polda_id,
@@ -856,6 +1296,90 @@ export async function hydrateAllFromDb(): Promise<void> {
     polresId: r.polres_id,
     nama: r.nama,
   }));
+
+  try {
+    const [insRows]: any = await p.query(`
+      SELECT id, COALESCE(nama_instansi, nama) AS nama FROM (
+        SELECT id, nama_instansi, NULL AS nama FROM instansi
+        UNION ALL
+        SELECT id, NULL AS nama_instansi, nama FROM master_instansi
+      ) t WHERE id IS NOT NULL GROUP BY id ORDER BY nama ASC
+    `);
+    masterInstansiCache = insRows.map((r: any) => ({ id: r.id, nama: r.nama }));
+  } catch (_e) {
+    try {
+      const [insRows]: any = await p.query('SELECT id, nama FROM master_instansi ORDER BY nama ASC');
+      masterInstansiCache = insRows.map((r: any) => ({ id: r.id, nama: r.nama }));
+    } catch (_e2) {
+      masterInstansiCache = [];
+    }
+  }
+
+  try {
+    const [orgRows]: any = await p.query(`
+      SELECT id, instansi_id, nama FROM (
+        SELECT id, instansi_id, nama_organisasi AS nama FROM organisasi
+        UNION ALL
+        SELECT id, NULL AS instansi_id, nama FROM master_organisasi
+      ) t WHERE id IS NOT NULL GROUP BY id ORDER BY nama ASC
+    `);
+    masterOrganisasiCache = orgRows.map((r: any) => ({
+      id: r.id,
+      instansiId: r.instansi_id || undefined,
+      nama: r.nama
+    }));
+  } catch (_e) {
+    try {
+      const [orgRows]: any = await p.query('SELECT id, nama FROM master_organisasi ORDER BY nama ASC');
+      masterOrganisasiCache = orgRows.map((r: any) => ({ id: r.id, nama: r.nama }));
+    } catch (_e2) {
+      masterOrganisasiCache = [];
+    }
+  }
+
+  try {
+    const [subRows]: any = await p.query(`
+      SELECT id, organisasi_id, nama FROM (
+        SELECT id, organisasi_id, nama_sub_organisasi AS nama FROM sub_organisasi
+        UNION ALL
+        SELECT id, NULL AS organisasi_id, nama FROM master_sub_org
+      ) t WHERE id IS NOT NULL GROUP BY id ORDER BY nama ASC
+    `);
+    masterSubOrgCache = subRows.map((r: any) => ({
+      id: r.id,
+      organisasiId: r.organisasi_id || undefined,
+      nama: r.nama
+    }));
+  } catch (_e) {
+    try {
+      const [subRows]: any = await p.query('SELECT id, nama FROM master_sub_org ORDER BY nama ASC');
+      masterSubOrgCache = subRows.map((r: any) => ({ id: r.id, nama: r.nama }));
+    } catch (_e2) {
+      masterSubOrgCache = [];
+    }
+  }
+
+  try {
+    const [stkRows]: any = await p.query(`
+      SELECT id, sub_organisasi_id, nama FROM (
+        SELECT id, sub_organisasi_id, nama_satker AS nama FROM satker
+        UNION ALL
+        SELECT id, NULL AS sub_organisasi_id, nama FROM master_satker
+      ) t WHERE id IS NOT NULL GROUP BY id ORDER BY nama ASC
+    `);
+    masterSatkerCache = stkRows.map((r: any) => ({
+      id: r.id,
+      subOrgId: r.sub_organisasi_id || undefined,
+      nama: r.nama
+    }));
+  } catch (_e) {
+    try {
+      const [stkRows]: any = await p.query('SELECT id, nama FROM master_satker ORDER BY nama ASC');
+      masterSatkerCache = stkRows.map((r: any) => ({ id: r.id, nama: r.nama }));
+    } catch (_e2) {
+      masterSatkerCache = [];
+    }
+  }
 
   // 2. Roles & Users
   const [roleRows]: any = await p.query('SELECT id, name, description, permissions FROM roles');
@@ -1459,7 +1983,7 @@ export async function writeUserData(data: any): Promise<void> {
   }
 }
 
-// Lookup Master Wilayah
+// Lookup Master Wilayah & Kedinasan
 export function getPoldaList(): WilayahPolda[] {
   return poldaCache;
 }
@@ -1467,6 +1991,115 @@ export function getPoldaList(): WilayahPolda[] {
 export function getPolresList(poldaId?: string): WilayahPolres[] {
   if (!poldaId) return polresCache;
   return polresCache.filter(p => p.poldaId === poldaId);
+}
+
+export function getMasterInstansiList(): MasterInstansiItem[] {
+  return masterInstansiCache;
+}
+
+export function getMasterOrganisasiList(instansiIdOrNama?: string): MasterOrganisasiItem[] {
+  if (!instansiIdOrNama) return masterOrganisasiCache;
+  const matchInstansi = masterInstansiCache.find(
+    i =>
+      i.id.toLowerCase() === instansiIdOrNama.toLowerCase() ||
+      i.nama.toLowerCase() === instansiIdOrNama.toLowerCase() ||
+      instansiIdOrNama.toLowerCase().includes(i.nama.toLowerCase()) ||
+      i.nama.toLowerCase().includes(instansiIdOrNama.toLowerCase())
+  );
+  if (!matchInstansi) {
+    return masterOrganisasiCache;
+  }
+  const filtered = masterOrganisasiCache.filter(o => o.instansiId === matchInstansi.id);
+  return filtered.length > 0 ? filtered : masterOrganisasiCache;
+}
+
+export function getMasterSubOrgList(organisasiIdOrNama?: string): MasterSubOrgItem[] {
+  if (!organisasiIdOrNama) return masterSubOrgCache;
+  const matchOrg = masterOrganisasiCache.find(
+    o =>
+      o.id.toLowerCase() === organisasiIdOrNama.toLowerCase() ||
+      o.nama.toLowerCase() === organisasiIdOrNama.toLowerCase() ||
+      organisasiIdOrNama.toLowerCase().includes(o.nama.toLowerCase()) ||
+      o.nama.toLowerCase().includes(organisasiIdOrNama.toLowerCase())
+  );
+  if (!matchOrg) {
+    return masterSubOrgCache;
+  }
+  const filtered = masterSubOrgCache.filter(s => s.organisasiId === matchOrg.id);
+  return filtered.length > 0 ? filtered : masterSubOrgCache;
+}
+
+export function getMasterSatkerList(subOrgIdOrNama?: string): MasterSatkerItem[] {
+  if (!subOrgIdOrNama) return masterSatkerCache;
+  const matchSub = masterSubOrgCache.find(
+    s =>
+      s.id.toLowerCase() === subOrgIdOrNama.toLowerCase() ||
+      s.nama.toLowerCase() === subOrgIdOrNama.toLowerCase() ||
+      subOrgIdOrNama.toLowerCase().includes(s.nama.toLowerCase()) ||
+      s.nama.toLowerCase().includes(subOrgIdOrNama.toLowerCase())
+  );
+  if (!matchSub) {
+    return masterSatkerCache;
+  }
+  const filtered = masterSatkerCache.filter(stk => stk.subOrgId === matchSub.id);
+  return filtered.length > 0 ? filtered : masterSatkerCache;
+}
+
+export async function createMasterKedinasanItem(
+  type: 'instansi' | 'organisasi' | 'sub_organisasi' | 'satker',
+  payload: { id: string; nama: string; parentId?: string }
+): Promise<any> {
+  const p = getPool();
+  if (type === 'instansi') {
+    await p.query(`INSERT INTO instansi (id, nama_instansi) VALUES (?, ?) ON DUPLICATE KEY UPDATE nama_instansi = VALUES(nama_instansi)`, [payload.id, payload.nama]);
+    await p.query(`INSERT INTO master_instansi (id, nama) VALUES (?, ?) ON DUPLICATE KEY UPDATE nama = VALUES(nama)`, [payload.id, payload.nama]);
+    const idx = masterInstansiCache.findIndex(i => i.id === payload.id);
+    if (idx !== -1) masterInstansiCache[idx] = { id: payload.id, nama: payload.nama };
+    else masterInstansiCache.push({ id: payload.id, nama: payload.nama });
+  } else if (type === 'organisasi') {
+    await p.query(`INSERT INTO organisasi (id, instansi_id, nama_organisasi) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE instansi_id = VALUES(instansi_id), nama_organisasi = VALUES(nama_organisasi)`, [payload.id, payload.parentId || 'ins-polri', payload.nama]);
+    await p.query(`INSERT INTO master_organisasi (id, nama) VALUES (?, ?) ON DUPLICATE KEY UPDATE nama = VALUES(nama)`, [payload.id, payload.nama]);
+    const idx = masterOrganisasiCache.findIndex(i => i.id === payload.id);
+    if (idx !== -1) masterOrganisasiCache[idx] = { id: payload.id, instansiId: payload.parentId, nama: payload.nama };
+    else masterOrganisasiCache.push({ id: payload.id, instansiId: payload.parentId, nama: payload.nama });
+  } else if (type === 'sub_organisasi') {
+    await p.query(`INSERT INTO sub_organisasi (id, organisasi_id, nama_sub_organisasi) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE organisasi_id = VALUES(organisasi_id), nama_sub_organisasi = VALUES(nama_sub_organisasi)`, [payload.id, payload.parentId || 'org-polri-korlantas', payload.nama]);
+    await p.query(`INSERT INTO master_sub_org (id, nama) VALUES (?, ?) ON DUPLICATE KEY UPDATE nama = VALUES(nama)`, [payload.id, payload.nama]);
+    const idx = masterSubOrgCache.findIndex(i => i.id === payload.id);
+    if (idx !== -1) masterSubOrgCache[idx] = { id: payload.id, organisasiId: payload.parentId, nama: payload.nama };
+    else masterSubOrgCache.push({ id: payload.id, organisasiId: payload.parentId, nama: payload.nama });
+  } else if (type === 'satker') {
+    await p.query(`INSERT INTO satker (id, sub_organisasi_id, nama_satker) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE sub_organisasi_id = VALUES(sub_organisasi_id), nama_satker = VALUES(nama_satker)`, [payload.id, payload.parentId || 'sub-polri-ditlantas', payload.nama]);
+    await p.query(`INSERT INTO master_satker (id, nama) VALUES (?, ?) ON DUPLICATE KEY UPDATE nama = VALUES(nama)`, [payload.id, payload.nama]);
+    const idx = masterSatkerCache.findIndex(i => i.id === payload.id);
+    if (idx !== -1) masterSatkerCache[idx] = { id: payload.id, subOrgId: payload.parentId, nama: payload.nama };
+    else masterSatkerCache.push({ id: payload.id, subOrgId: payload.parentId, nama: payload.nama });
+  }
+  return payload;
+}
+
+export async function deleteMasterKedinasanItem(
+  type: 'instansi' | 'organisasi' | 'sub_organisasi' | 'satker',
+  id: string
+): Promise<void> {
+  const p = getPool();
+  if (type === 'instansi') {
+    await p.query(`DELETE FROM instansi WHERE id = ?`, [id]);
+    await p.query(`DELETE FROM master_instansi WHERE id = ?`, [id]);
+    masterInstansiCache = masterInstansiCache.filter(i => i.id !== id);
+  } else if (type === 'organisasi') {
+    await p.query(`DELETE FROM organisasi WHERE id = ?`, [id]);
+    await p.query(`DELETE FROM master_organisasi WHERE id = ?`, [id]);
+    masterOrganisasiCache = masterOrganisasiCache.filter(i => i.id !== id);
+  } else if (type === 'sub_organisasi') {
+    await p.query(`DELETE FROM sub_organisasi WHERE id = ?`, [id]);
+    await p.query(`DELETE FROM master_sub_org WHERE id = ?`, [id]);
+    masterSubOrgCache = masterSubOrgCache.filter(i => i.id !== id);
+  } else if (type === 'satker') {
+    await p.query(`DELETE FROM satker WHERE id = ?`, [id]);
+    await p.query(`DELETE FROM master_satker WHERE id = ?`, [id]);
+    masterSatkerCache = masterSatkerCache.filter(i => i.id !== id);
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -1497,19 +2130,28 @@ async function persistUserData(data: UserDataState): Promise<void> {
       await conn.query(
         `INSERT INTO users (
            id, username, password, full_name, role_id, is_active,
-           executive_level, polda_id, polres_id, position, unit, polda, polres, created_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           phone, email, photo_url, nip, position, unit, instansi, organisasi, sub_org, satker,
+           executive_level, polda_id, polres_id, polda, polres, created_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE
            username = VALUES(username),
            password = VALUES(password),
            full_name = VALUES(full_name),
            role_id = VALUES(role_id),
            is_active = VALUES(is_active),
+           phone = VALUES(phone),
+           email = VALUES(email),
+           photo_url = VALUES(photo_url),
+           nip = VALUES(nip),
+           position = VALUES(position),
+           unit = VALUES(unit),
+           instansi = VALUES(instansi),
+           organisasi = VALUES(organisasi),
+           sub_org = VALUES(sub_org),
+           satker = VALUES(satker),
            executive_level = VALUES(executive_level),
            polda_id = VALUES(polda_id),
            polres_id = VALUES(polres_id),
-           position = VALUES(position),
-           unit = VALUES(unit),
            polda = VALUES(polda),
            polres = VALUES(polres),
            created_at = VALUES(created_at)`,
@@ -1520,11 +2162,19 @@ async function persistUserData(data: UserDataState): Promise<void> {
           u.fullName,
           u.roleId,
           u.isActive ? 1 : 0,
+          u.phone || null,
+          u.email || null,
+          u.photoUrl || null,
+          u.nip || null,
+          u.position || null,
+          u.unit || null,
+          u.instansi || null,
+          u.organisasi || null,
+          u.subOrg || null,
+          u.satker || null,
           u.executiveLevel || null,
           u.poldaId || null,
           u.polresId || null,
-          u.position || null,
-          u.unit || null,
           u.polda || null,
           u.polres || null,
           u.createdAt || '2026-01-01',
@@ -1532,12 +2182,7 @@ async function persistUserData(data: UserDataState): Promise<void> {
       );
     }
 
-    // Hapus user yang dihapus dari array
-    if (data.users.length > 0) {
-      const userIds = data.users.map(u => u.id);
-      await conn.query('DELETE FROM users WHERE id NOT IN (?)', [userIds]);
-    }
-
+    // Non-destructive: jangan hapus user existing di database
     await conn.commit();
   } catch (err) {
     await conn.rollback();

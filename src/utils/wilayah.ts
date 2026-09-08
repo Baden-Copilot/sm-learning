@@ -102,6 +102,63 @@ export async function fetchPolresByPolda(poldaIdOrNama?: string): Promise<Wilaya
   return [];
 }
 
+export async function fetchMasterInstansi(): Promise<string[]> {
+  try {
+    const res = await fetch('/api/master-kedinasan/instansi');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+      return json.data.map((item: any) => item.nama);
+    }
+  } catch (_e) {}
+  return MASTER_INSTANSI;
+}
+
+export async function fetchMasterOrganisasi(instansi?: string): Promise<string[]> {
+  try {
+    const url = instansi
+      ? `/api/master-kedinasan/organisasi?instansi=${encodeURIComponent(instansi)}`
+      : '/api/master-kedinasan/organisasi';
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+      return json.data.map((item: any) => item.nama);
+    }
+  } catch (_e) {}
+  return MASTER_ORGANISASI;
+}
+
+export async function fetchMasterSubOrg(organisasi?: string): Promise<string[]> {
+  try {
+    const url = organisasi
+      ? `/api/master-kedinasan/sub-org?organisasi=${encodeURIComponent(organisasi)}`
+      : '/api/master-kedinasan/sub-org';
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+      return json.data.map((item: any) => item.nama);
+    }
+  } catch (_e) {}
+  return MASTER_SUB_ORG;
+}
+
+export async function fetchMasterSatker(subOrg?: string): Promise<string[]> {
+  try {
+    const url = subOrg
+      ? `/api/master-kedinasan/satker?subOrg=${encodeURIComponent(subOrg)}`
+      : '/api/master-kedinasan/satker';
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+      return json.data.map((item: any) => item.nama);
+    }
+  } catch (_e) {}
+  return MASTER_SATKER;
+}
+
 /** Master Data Tambahan untuk Profil & Organisasi Kedinasan */
 export const MASTER_INSTANSI = [
   'Kepolisian Negara Republik Indonesia (POLRI)',

@@ -30,6 +30,12 @@ import {
   deleteSingleRole,
   getPoldaList,
   getPolresList,
+  getMasterInstansiList,
+  getMasterOrganisasiList,
+  getMasterSubOrgList,
+  getMasterSatkerList,
+  createMasterKedinasanItem,
+  deleteMasterKedinasanItem,
   getAiChatSessions,
   getAiChatSessionById,
   createAiChatSession,
@@ -647,63 +653,103 @@ async function startServer() {
   });
 
   // Master Data Kedinasan (Instansi, Organisasi, Sub Org, Satker)
-  app.get('/api/master/kedinasan', (_req, res) => {
+  app.get('/api/master/kedinasan', (req, res) => {
+    const instansi = getMasterInstansiList();
+    const instansiId = (req.query.instansiId as string) || (req.query.instansi as string);
+    const organisasi = getMasterOrganisasiList(instansiId);
+    const organisasiId = (req.query.organisasiId as string) || (req.query.organisasi as string);
+    const subOrg = getMasterSubOrgList(organisasiId);
+    const subOrgId = (req.query.subOrgId as string) || (req.query.subOrg as string);
+    const satker = getMasterSatkerList(subOrgId);
+
     res.json({
       success: true,
       data: {
-        instansi: [
+        instansi: instansi.length > 0 ? instansi.map(i => i.nama) : [
           'Kepolisian Negara Republik Indonesia (POLRI)',
+          'Kementerian Keuangan',
+          'Kementerian Dalam Negeri',
+          'Kementerian Hukum',
           'Kementerian Perhubungan Republik Indonesia',
-          'Kementerian Pendidikan, Kebudayaan, Riset, dan Teknologi',
-          'Kementerian Dalam Negeri Republik Indonesia',
-          'Dinas Perhubungan Provinsi / Kabupaten / Kota',
-          'Jasa Raharja',
-          'Instansi Pendidikan / Sekolah / Kampus',
-          'Komunitas / Mitra Keselamatan Publik'
+          'Kementerian Kesehatan',
+          'Kementerian Pendidikan Dasar dan Menengah'
         ],
-        organisasi: [
+        organisasi: organisasi.length > 0 ? organisasi.map(o => o.nama) : [
           'Korps Lalu Lintas (Korlantas POLRI)',
-          'Direktorat Keamanan dan Keselamatan (Ditkamsel)',
-          'Direktorat Penegakan Hukum (Ditgakkum)',
-          'Direktorat Registrasi dan Identifikasi (Ditregident)',
-          'Direktorat Lalu Lintas Polda (Ditlantas)',
-          'Satuan Lalu Lintas Polres (Satlantas)',
-          'Unit Keamanan dan Keselamatan (Unit Kamsel / Dikyasa)',
-          'Polsek Jajaran',
-          'Biro Operasi (Roops)',
-          'Biro SDM'
+          'Direktorat Jenderal Pajak',
+          'Direktorat Jenderal Perbendaharaan',
+          'Direktorat Jenderal Perhubungan Darat',
+          'Direktorat Keamanan dan Keselamatan (Ditkamsel)'
         ],
-        subOrg: [
-          'Subdit Pendidikan Masyarakat (Subdit Dikmas)',
-          'Subdit Standar Cegah & Tindak (Subdit Kamsel)',
-          'Subdit Patroli Pengawalan (Subdit Wal)',
-          'Subdit Gakkum & Tilang',
-          'Subdit Sim & Stnk (Regident)',
-          'Unit Kamsel Satlantas',
-          'Unit Turjawali Satlantas',
-          'Unit Gakkum Satlantas',
-          'Bagian Operasional (Bagops)',
-          'Seksi Humas & Edukasi'
+        subOrg: subOrg.length > 0 ? subOrg.map(s => s.nama) : [
+          'Direktorat Lalu Lintas Kepolisian Daerah',
+          'Kantor Wilayah Direktorat Jenderal Pajak',
+          'Balai Pengelola Transportasi Darat',
+          'Subdit Pendidikan Masyarakat (Subdit Dikmas)'
         ],
-        satker: [
-          'Korlantas Mabes Polri',
-          'Ditlantas Polda Metro Jaya',
-          'Ditlantas Polda Jawa Barat',
-          'Ditlantas Polda Jawa Tengah',
-          'Ditlantas Polda Jawa Timur',
-          'Satlantas Polres Metro Jakarta Pusat',
-          'Satlantas Polres Metro Jakarta Selatan',
-          'Satlantas Polres Metro Jakarta Barat',
-          'Satlantas Polres Metro Jakarta Timur',
-          'Satlantas Polres Metro Jakarta Utara',
-          'Satlantas Polrestabes Bandung',
-          'Satlantas Polrestabes Semarang',
-          'Satlantas Polrestabes Surabaya',
-          'Satlantas Polres Bogor',
-          'Satlantas Polresta Tangerang'
-        ]
+        satker: satker.length > 0 ? satker.map(stk => stk.nama) : [
+          'Satuan Lalu Lintas Polres',
+          'Kantor Pelayanan Pajak Pratama',
+          'Kantor Pelayanan Perbendaharaan Negara',
+          'Korlantas Mabes Polri'
+        ],
+        raw: {
+          instansi,
+          organisasi,
+          subOrg,
+          satker
+        }
       }
     });
+  });
+
+  app.get('/api/master-kedinasan/instansi', (_req, res) => {
+    const list = getMasterInstansiList();
+    res.json({ success: true, data: list });
+  });
+
+  app.get('/api/master-kedinasan/organisasi', (req, res) => {
+    const instansiId = (req.query.instansiId as string) || (req.query.instansi as string);
+    const list = getMasterOrganisasiList(instansiId);
+    res.json({ success: true, data: list });
+  });
+
+  app.get('/api/master-kedinasan/sub-org', (req, res) => {
+    const organisasiId = (req.query.organisasiId as string) || (req.query.organisasi as string);
+    const list = getMasterSubOrgList(organisasiId);
+    res.json({ success: true, data: list });
+  });
+
+  app.get('/api/master-kedinasan/satker', (req, res) => {
+    const subOrgId = (req.query.subOrgId as string) || (req.query.subOrg as string);
+    const list = getMasterSatkerList(subOrgId);
+    res.json({ success: true, data: list });
+  });
+
+  // Admin Master Kedinasan Add/Delete
+  app.post('/api/master-kedinasan/:type', verifyAuthAndRole('user-akses', 'add'), async (req, res) => {
+    const type = req.params.type as 'instansi' | 'organisasi' | 'sub_organisasi' | 'satker';
+    const { id, nama, parentId } = req.body;
+    if (!id || !nama) {
+      return res.status(400).json({ success: false, message: 'ID dan nama wajib diisi.' });
+    }
+    try {
+      await createMasterKedinasanItem(type, { id: String(id).trim(), nama: String(nama).trim(), parentId: parentId ? String(parentId).trim() : undefined });
+      res.json({ success: true, message: `Master data ${type} berhasil disimpan.` });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || 'Gagal menyimpan master data ke database.' });
+    }
+  });
+
+  app.delete('/api/master-kedinasan/:type/:id', verifyAuthAndRole('user-akses', 'delete'), async (req, res) => {
+    const type = req.params.type as 'instansi' | 'organisasi' | 'sub_organisasi' | 'satker';
+    const { id } = req.params;
+    try {
+      await deleteMasterKedinasanItem(type, id);
+      res.json({ success: true, message: `Master data ${type} berhasil dihapus.` });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err?.message || 'Gagal menghapus master data.' });
+    }
   });
 
   // Public Catalog for Umum (/umum portal)

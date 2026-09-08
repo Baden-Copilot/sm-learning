@@ -754,25 +754,13 @@ async function runMigration() {
     keterangan: 'Eksekutif default (Polda Metro Jaya)',
   });
 
-  // Tulis semua ke tabel users
+  // Tulis semua ke tabel users (gunakan INSERT IGNORE agar akun manual tidak tertimpa)
   for (const u of accountRows) {
     await conn.query(
-      `INSERT INTO users (
+      `INSERT IGNORE INTO users (
          id, username, password, full_name, role_id, is_active,
          executive_level, polda_id, polres_id, position, unit, polda, polres, created_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE
-         password = VALUES(password),
-         full_name = VALUES(full_name),
-         role_id = VALUES(role_id),
-         is_active = VALUES(is_active),
-         executive_level = VALUES(executive_level),
-         polda_id = VALUES(polda_id),
-         polres_id = VALUES(polres_id),
-         position = VALUES(position),
-         unit = VALUES(unit),
-         polda = VALUES(polda),
-         polres = VALUES(polres)`,
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         u.id,
         u.username,

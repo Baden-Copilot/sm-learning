@@ -27,6 +27,10 @@ import {
   fetchPolresByPolda,
   WilayahPoldaItem,
   WilayahPolresItem,
+  fetchMasterInstansi,
+  fetchMasterOrganisasi,
+  fetchMasterSubOrg,
+  fetchMasterSatker,
   MASTER_INSTANSI,
   MASTER_ORGANISASI,
   MASTER_SUB_ORG,
@@ -65,6 +69,11 @@ export function ProfilePage({
   // Kedinasan State (Lengkap 6 Poin)
   const [poldaList, setPoldaList] = useState<WilayahPoldaItem[]>([]);
   const [polresList, setPolresList] = useState<WilayahPolresItem[]>([]);
+  const [instansiOptions, setInstansiOptions] = useState<string[]>(MASTER_INSTANSI);
+  const [organisasiOptions, setOrganisasiOptions] = useState<string[]>(MASTER_ORGANISASI);
+  const [subOrgOptions, setSubOrgOptions] = useState<string[]>(MASTER_SUB_ORG);
+  const [satkerOptions, setSatkerOptions] = useState<string[]>(MASTER_SATKER);
+
   const [kedInstansi, setKedInstansi] = useState(user?.instansi || MASTER_INSTANSI[0]);
   const [kedOrganisasi, setKedOrganisasi] = useState(user?.organisasi || MASTER_ORGANISASI[0]);
   const [kedSubOrg, setKedSubOrg] = useState(user?.subOrg || MASTER_SUB_ORG[0]);
@@ -84,6 +93,69 @@ export function ProfilePage({
 
   const userId = user?.id || 'user-1';
   const roleId = currentRole?.id || 'role-admin';
+
+  // 1. Load Master Instansi saat mount
+  useEffect(() => {
+    fetchMasterInstansi().then(list => {
+      if (list && list.length > 0) {
+        setInstansiOptions(list);
+      }
+    });
+  }, []);
+
+  // 2. Load Organisasi saat kedInstansi berubah
+  useEffect(() => {
+    if (!kedInstansi) {
+      setOrganisasiOptions([]);
+      setKedOrganisasi('');
+      return;
+    }
+    fetchMasterOrganisasi(kedInstansi).then(list => {
+      if (list && list.length > 0) {
+        setOrganisasiOptions(list);
+        setKedOrganisasi(list[0]);
+      } else {
+        setOrganisasiOptions([]);
+        setKedOrganisasi('');
+      }
+    });
+  }, [kedInstansi]);
+
+  // 3. Load Sub-Organisasi saat kedOrganisasi berubah
+  useEffect(() => {
+    if (!kedOrganisasi) {
+      setSubOrgOptions([]);
+      setKedSubOrg('');
+      return;
+    }
+    fetchMasterSubOrg(kedOrganisasi).then(list => {
+      if (list && list.length > 0) {
+        setSubOrgOptions(list);
+        setKedSubOrg(list[0]);
+      } else {
+        setSubOrgOptions([]);
+        setKedSubOrg('');
+      }
+    });
+  }, [kedOrganisasi]);
+
+  // 4. Load Satker saat kedSubOrg berubah
+  useEffect(() => {
+    if (!kedSubOrg) {
+      setSatkerOptions([]);
+      setKedSatker('');
+      return;
+    }
+    fetchMasterSatker(kedSubOrg).then(list => {
+      if (list && list.length > 0) {
+        setSatkerOptions(list);
+        setKedSatker(list[0]);
+      } else {
+        setSatkerOptions([]);
+        setKedSatker('');
+      }
+    });
+  }, [kedSubOrg]);
 
   // Load daftar polda dari DB
   useEffect(() => {
@@ -516,7 +588,7 @@ export function ProfilePage({
                 onChange={e => setKedInstansi(e.target.value)}
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none cursor-pointer"
               >
-                {MASTER_INSTANSI.map(item => (
+                {instansiOptions.map(item => (
                   <option key={item} value={item}>{item}</option>
                 ))}
               </select>
@@ -532,7 +604,7 @@ export function ProfilePage({
                 onChange={e => setKedOrganisasi(e.target.value)}
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none cursor-pointer"
               >
-                {MASTER_ORGANISASI.map(item => (
+                {organisasiOptions.map(item => (
                   <option key={item} value={item}>{item}</option>
                 ))}
               </select>
@@ -548,7 +620,7 @@ export function ProfilePage({
                 onChange={e => setKedSubOrg(e.target.value)}
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none cursor-pointer"
               >
-                {MASTER_SUB_ORG.map(item => (
+                {subOrgOptions.map(item => (
                   <option key={item} value={item}>{item}</option>
                 ))}
               </select>
@@ -564,7 +636,7 @@ export function ProfilePage({
                 onChange={e => setKedSatker(e.target.value)}
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:ring-2 focus:ring-blue-600 focus:outline-none cursor-pointer"
               >
-                {MASTER_SATKER.map(item => (
+                {satkerOptions.map(item => (
                   <option key={item} value={item}>{item}</option>
                 ))}
               </select>

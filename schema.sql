@@ -26,36 +26,61 @@ SET FOREIGN_KEY_CHECKS = 0;
 --  1. MASTER WILAYAH & ORGANISASI KEDINASAN
 -- =============================================================================
 
-DROP TABLE IF EXISTS `master_instansi`;
-CREATE TABLE `master_instansi` (
+CREATE TABLE IF NOT EXISTS `instansi` (
+  `id`            VARCHAR(50)  NOT NULL,
+  `nama_instansi` VARCHAR(255) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `organisasi` (
+  `id`              VARCHAR(50)  NOT NULL,
+  `instansi_id`      VARCHAR(50)  NOT NULL,
+  `nama_organisasi` VARCHAR(255) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_org_instansi` (`instansi_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `sub_organisasi` (
+  `id`                  VARCHAR(50)  NOT NULL,
+  `organisasi_id`        VARCHAR(50)  NOT NULL,
+  `nama_sub_organisasi` VARCHAR(255) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_sub_org` (`organisasi_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `satker` (
+  `id`                VARCHAR(50)  NOT NULL,
+  `sub_organisasi_id` VARCHAR(50)  NOT NULL,
+  `nama_satker`       VARCHAR(255) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_satker_sub` (`sub_organisasi_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `master_instansi` (
   `id`   VARCHAR(50)  NOT NULL,
   `nama` VARCHAR(255) NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-DROP TABLE IF EXISTS `master_organisasi`;
-CREATE TABLE `master_organisasi` (
+CREATE TABLE IF NOT EXISTS `master_organisasi` (
   `id`   VARCHAR(50)  NOT NULL,
   `nama` VARCHAR(255) NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-DROP TABLE IF EXISTS `master_sub_org`;
-CREATE TABLE `master_sub_org` (
+CREATE TABLE IF NOT EXISTS `master_sub_org` (
   `id`   VARCHAR(50)  NOT NULL,
   `nama` VARCHAR(255) NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-DROP TABLE IF EXISTS `master_satker`;
-CREATE TABLE `master_satker` (
+CREATE TABLE IF NOT EXISTS `master_satker` (
   `id`   VARCHAR(50)  NOT NULL,
   `nama` VARCHAR(255) NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-DROP TABLE IF EXISTS `polda`;
-CREATE TABLE `polda` (
+CREATE TABLE IF NOT EXISTS `polda` (
   `polda_id`   VARCHAR(2)   NOT NULL COMMENT 'Kode Polda 2 digit, mis. 12',
   `nama`       VARCHAR(150) NOT NULL COMMENT 'Nama resmi, mis. POLDA METRO JAYA',
   `is_wilayah` TINYINT(1)   NOT NULL DEFAULT 1
@@ -65,8 +90,7 @@ CREATE TABLE `polda` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- polres_id berulang antar Polda, jadi kunci utamanya gabungan keduanya.
-DROP TABLE IF EXISTS `polres`;
-CREATE TABLE `polres` (
+CREATE TABLE IF NOT EXISTS `polres` (
   `polda_id`  VARCHAR(2)   NOT NULL,
   `polres_id` VARCHAR(3)   NOT NULL COMMENT 'Kode Polres, unik hanya di dalam satu Polda',
   `nama`      VARCHAR(150) NOT NULL,
@@ -80,8 +104,7 @@ CREATE TABLE `polres` (
 --  2. PERAN & AKUN PENGGUNA
 -- =============================================================================
 
-DROP TABLE IF EXISTS `roles`;
-CREATE TABLE `roles` (
+CREATE TABLE IF NOT EXISTS `roles` (
   `id`          VARCHAR(50)  NOT NULL COMMENT 'mis. role-admin, role-trainer, role-executive',
   `name`        VARCHAR(100) NOT NULL,
   `description` TEXT         NULL,
@@ -94,8 +117,7 @@ CREATE TABLE `roles` (
 --   polda    : hanya kegiatan di polda_id miliknya (Kapolda)
 --   polres   : hanya kegiatan di polres_id miliknya (Kapolres)
 -- Trainer memakai polda_id/polres_id yang sama sebagai penanda wilayah tugas.
-DROP TABLE IF EXISTS `users`;
-CREATE TABLE `users` (
+CREATE TABLE IF NOT EXISTS `users` (
   `id`              VARCHAR(50)  NOT NULL,
   `username`        VARCHAR(100) NOT NULL,
   `password`        VARCHAR(255) NOT NULL,
@@ -131,8 +153,7 @@ CREATE TABLE `users` (
 --  3. MATERI PEMBELAJARAN
 -- =============================================================================
 
-DROP TABLE IF EXISTS `materials`;
-CREATE TABLE `materials` (
+CREATE TABLE IF NOT EXISTS `materials` (
   `id`                        VARCHAR(60)  NOT NULL,
   `title`                     VARCHAR(300) NOT NULL,
   `level`                     VARCHAR(20)  NOT NULL COMMENT 'TK/PAUD, SD, SMP, SMA',
@@ -163,8 +184,7 @@ CREATE TABLE `materials` (
 -- =============================================================================
 
 -- Satu baris per (pengguna, materi): progres milik orang, bukan milik materi.
-DROP TABLE IF EXISTS `user_progress`;
-CREATE TABLE `user_progress` (
+CREATE TABLE IF NOT EXISTS `user_progress` (
   `user_id`              VARCHAR(50)  NOT NULL,
   `material_id`          VARCHAR(60)  NOT NULL,
   `progress_percent`     TINYINT UNSIGNED NOT NULL DEFAULT 0,
@@ -175,16 +195,14 @@ CREATE TABLE `user_progress` (
   KEY `idx_progress_material` (`material_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-DROP TABLE IF EXISTS `user_bookmarks`;
-CREATE TABLE `user_bookmarks` (
+CREATE TABLE IF NOT EXISTS `user_bookmarks` (
   `user_id`     VARCHAR(50) NOT NULL,
   `material_id` VARCHAR(60) NOT NULL,
   `created_at`  DATETIME    NULL,
   PRIMARY KEY (`user_id`, `material_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-DROP TABLE IF EXISTS `user_history`;
-CREATE TABLE `user_history` (
+CREATE TABLE IF NOT EXISTS `user_history` (
   `id`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id`     VARCHAR(50) NOT NULL,
   `material_id` VARCHAR(60) NOT NULL,
@@ -195,8 +213,7 @@ CREATE TABLE `user_history` (
 
 -- Percobaan kuis datang dari dua arah: personel yang login (user_id terisi)
 -- dan peserta sosialisasi lapangan (participant_id + session_id terisi).
-DROP TABLE IF EXISTS `quiz_attempts`;
-CREATE TABLE `quiz_attempts` (
+CREATE TABLE IF NOT EXISTS `quiz_attempts` (
   `attempt_id`       VARCHAR(80)  NOT NULL,
   `user_id`          VARCHAR(50)  NULL,
   `session_id`       VARCHAR(60)  NULL,
@@ -220,8 +237,7 @@ CREATE TABLE `quiz_attempts` (
 
 -- Wilayah disalin ke sini saat sertifikat terbit supaya rekap kewilayahan tetap
 -- benar meski trainer dimutasi setelahnya.
-DROP TABLE IF EXISTS `certificates`;
-CREATE TABLE `certificates` (
+CREATE TABLE IF NOT EXISTS `certificates` (
   `certificate_id`     VARCHAR(80)  NOT NULL,
   `certificate_number` VARCHAR(80)  NOT NULL,
   `user_id`            VARCHAR(50)  NULL,
@@ -252,8 +268,7 @@ CREATE TABLE `certificates` (
   KEY `idx_cert_wilayah` (`polda_id`, `polres_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-DROP TABLE IF EXISTS `audit_logs`;
-CREATE TABLE `audit_logs` (
+CREATE TABLE IF NOT EXISTS `audit_logs` (
   `id`         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `actor_id`   VARCHAR(50)  NULL,
   `actor_name` VARCHAR(200) NULL,
@@ -264,8 +279,7 @@ CREATE TABLE `audit_logs` (
   KEY `idx_audit_created` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-DROP TABLE IF EXISTS `notifications`;
-CREATE TABLE `notifications` (
+CREATE TABLE IF NOT EXISTS `notifications` (
   `id`         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id`    VARCHAR(50)  NULL,
   `title`      VARCHAR(200) NULL,
@@ -283,8 +297,7 @@ CREATE TABLE `notifications` (
 -- polda_id/polres_id diisi dari wilayah trainer saat sesi dibuka. Kolom inilah
 -- yang membatasi apa yang boleh dilihat seorang eksekutif Polda atau Polres —
 -- nama wilayah versi teks hanya untuk ditampilkan.
-DROP TABLE IF EXISTS `outreach_sessions`;
-CREATE TABLE `outreach_sessions` (
+CREATE TABLE IF NOT EXISTS `outreach_sessions` (
   `id`                  VARCHAR(60)  NOT NULL,
   `material_id`         VARCHAR(60)  NOT NULL,
   `material_title`      VARCHAR(300) NULL,
@@ -315,8 +328,7 @@ CREATE TABLE `outreach_sessions` (
   KEY `idx_session_status_date` (`status`, `date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-DROP TABLE IF EXISTS `session_participants`;
-CREATE TABLE `session_participants` (
+CREATE TABLE IF NOT EXISTS `session_participants` (
   `id`         VARCHAR(80)  NOT NULL,
   `session_id` VARCHAR(60)  NOT NULL,
   `name`       VARCHAR(200) NOT NULL,
@@ -326,8 +338,7 @@ CREATE TABLE `session_participants` (
   KEY `idx_participant_session` (`session_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-DROP TABLE IF EXISTS `outreach_reports`;
-CREATE TABLE `outreach_reports` (
+CREATE TABLE IF NOT EXISTS `outreach_reports` (
   `id`                  VARCHAR(60)  NOT NULL,
   `session_id`          VARCHAR(60)  NOT NULL,
   `material_id`         VARCHAR(60)  NULL,
@@ -361,8 +372,7 @@ CREATE TABLE `outreach_reports` (
 
 -- Sumber tunggal angka kunjungan. session_id NULL berarti lalu lintas portal
 -- publik /umum; terisi berarti bagian dari sesi sosialisasi seorang trainer.
-DROP TABLE IF EXISTS `learning_events`;
-CREATE TABLE `learning_events` (
+CREATE TABLE IF NOT EXISTS `learning_events` (
   `id`             VARCHAR(80)  NOT NULL,
   `user_id`        VARCHAR(50)  NULL,
   `session_id`     VARCHAR(60)  NULL,

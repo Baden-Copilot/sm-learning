@@ -828,8 +828,7 @@ export function TrainerOutreachPage({
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting || isLoadingEligible || eligibleMaterials.length === 0}
-                  title={eligibleMaterials.length === 0 ? 'Lulus minimal satu modul untuk membuat sesi pemaparan.' : undefined}
+                  disabled={isSubmitting}
                   className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 cursor-pointer flex items-center gap-2"
                 >
                   {isSubmitting ? (
