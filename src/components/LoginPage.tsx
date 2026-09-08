@@ -195,15 +195,15 @@ export function LoginPage({ onLogin, onOpenPublicPortal, onOpenPublicSession }: 
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#030712] text-slate-100 flex items-center justify-center p-4 sm:p-6 lg:p-8 relative overflow-x-hidden font-sans selection:bg-blue-500 selection:text-white">
-      {/* High-Tech Futuristic Cyber Grid Background */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+    <div className="min-h-screen w-full bg-[#030712] text-slate-100 flex items-center justify-center p-4 sm:p-6 lg:p-8 relative overflow-hidden font-sans selection:bg-blue-500 selection:text-white">
+      {/* High-Tech Futuristic Cyber Grid Background with Translucent Center Watermark */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden flex items-center justify-center">
         {/* Subtle Cyberpunk Grid */}
         <div
-          className="absolute inset-0 opacity-[0.15]"
+          className="absolute inset-0 opacity-[0.12]"
           style={{
-            backgroundImage: `linear-gradient(to right, rgba(59, 130, 246, 0.3) 1px, transparent 1px), linear-gradient(to bottom, rgba(59, 130, 246, 0.3) 1px, transparent 1px)`,
-            backgroundSize: '48px 48px',
+            backgroundImage: `linear-gradient(to right, rgba(59, 130, 246, 0.25) 1px, transparent 1px), linear-gradient(to bottom, rgba(59, 130, 246, 0.25) 1px, transparent 1px)`,
+            backgroundSize: '40px 40px',
           }}
         />
 
@@ -216,6 +216,15 @@ export function LoginPage({ onLogin, onOpenPublicPortal, onOpenPublicSession }: 
           }}
         />
 
+        {/* Giant Translucent Watermark Logo in the Background */}
+        <div className="absolute w-[500px] h-[500px] sm:w-[650px] sm:h-[650px] opacity-[0.06] flex items-center justify-center select-none pointer-events-none">
+          <img
+            src="/korlantas-logo-new.png"
+            alt=""
+            className="w-full h-full object-contain filter drop-shadow-[0_0_80px_rgba(59,130,246,0.8)]"
+          />
+        </div>
+
         {/* Luminous Core Orbs */}
         <div className="absolute -top-32 -left-32 w-[550px] h-[550px] bg-blue-600/20 rounded-full blur-[140px] animate-pulse" />
         <div className="absolute -bottom-32 -right-32 w-[550px] h-[550px] bg-indigo-600/20 rounded-full blur-[140px] animate-pulse" />
@@ -223,24 +232,12 @@ export function LoginPage({ onLogin, onOpenPublicPortal, onOpenPublicSession }: 
       </div>
 
       <div className="w-full max-w-lg relative z-10 my-auto py-6 space-y-6">
-        {/* TOP BRANDING & LOGO */}
-        <div className="text-center space-y-3">
+        {/* TOP BRANDING HEADER */}
+        <div className="text-center space-y-2.5">
           {/* Status Indicator Pill */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-blue-950/80 border border-blue-500/30 text-blue-400 text-[11px] font-mono tracking-wider shadow-[0_0_15px_rgba(59,130,246,0.2)]">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
             <span className="font-bold uppercase">SISTEM EDUKASI KESELAMATAN BERLALU LINTAS</span>
-          </div>
-
-          {/* Logo with Tech Halo */}
-          <div className="relative inline-block mt-2">
-            <div className="absolute -inset-2 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-3xl blur-md opacity-40 animate-pulse" />
-            <div className="relative w-28 h-28 bg-slate-900/90 backdrop-blur-xl border-2 border-blue-400/40 rounded-3xl flex items-center justify-center mx-auto shadow-2xl p-3.5">
-              <img
-                src="/korlantas-logo-new.png"
-                alt="Logo Korlantas POLRI"
-                className="w-24 h-24 object-contain filter drop-shadow-[0_0_12px_rgba(59,130,246,0.6)]"
-              />
-            </div>
           </div>
 
           <div>
