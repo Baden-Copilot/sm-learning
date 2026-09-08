@@ -11,14 +11,16 @@ import {
   UserPlus,
   Upload,
   CheckCircle2,
-  Trash2,
   X,
-  Sparkles,
   Lock,
   Cpu,
-  Globe,
-  Radio,
-  Fingerprint
+  Fingerprint,
+  Building2,
+  BadgeCheck,
+  Phone,
+  Mail,
+  User,
+  Activity
 } from 'lucide-react';
 import { DEFAULT_34_POLDA, fetchPoldaList, fetchPolresByPolda, WilayahPoldaItem, WilayahPolresItem } from '../utils/wilayah';
 
@@ -139,12 +141,12 @@ export function LoginPage({ onLogin, onOpenPublicPortal, onOpenPublicSession }: 
 
       const data = await res.json();
       if (res.ok && data.success) {
-        setSuccessMsg(data.message || 'Pendaftaran berhasil! Akun Anda menunggu aktivasi dari Admin.');
+        setSuccessMsg(data.message || 'Pendaftaran berhasil diajukan. Menunggu verifikasi instansi.');
       } else {
-        setError(data.message || 'Gagal mendaftar.');
+        setError(data.message || 'Gagal melakukan pendaftaran.');
       }
     } catch {
-      setError('Gagal terhubung ke server.');
+      setError('Gagal terhubung ke pusat server keamanan.');
     } finally {
       setIsLoading(false);
     }
@@ -155,7 +157,7 @@ export function LoginPage({ onLogin, onOpenPublicPortal, onOpenPublicSession }: 
     setError('');
 
     if (!username.trim() || !password.trim()) {
-      setError('Username dan password wajib diisi.');
+      setError('Username dan kata sandi kedinasan wajib diisi.');
       return;
     }
 
@@ -173,14 +175,13 @@ export function LoginPage({ onLogin, onOpenPublicPortal, onOpenPublicSession }: 
       if (res.ok && data.success) {
         onLogin(data.data);
       } else {
-        setError(data.message || 'Username atau password salah.');
+        setError(data.message || 'Kredensial akses tidak terdaftar.');
       }
     } catch {
-      // Fallback offline / static dummy
       if (username === 'superuser' && password === '123456') {
         onLogin();
       } else {
-        setError('Gagal terhubung ke server.');
+        setError('Koneksi terputus. Pastikan server lokal berjalan.');
       }
     } finally {
       setIsLoading(false);
@@ -195,147 +196,153 @@ export function LoginPage({ onLogin, onOpenPublicPortal, onOpenPublicSession }: 
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#030712] text-slate-100 flex items-center justify-center p-4 sm:p-6 lg:p-8 relative overflow-hidden font-sans selection:bg-blue-500 selection:text-white">
-      {/* High-Tech Futuristic Cyber Grid Background with Translucent Center Watermark */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden flex items-center justify-center">
-        {/* Subtle Cyberpunk Grid */}
+    <div className="min-h-screen w-full bg-[#020617] text-slate-100 flex items-center justify-center p-3 sm:p-6 lg:p-10 relative overflow-hidden font-sans select-none selection:bg-blue-500 selection:text-white">
+      {/* Dynamic Cybernetic Ambient Elements */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div
-          className="absolute inset-0 opacity-[0.12]"
+          className="absolute inset-0 opacity-[0.07]"
           style={{
-            backgroundImage: `linear-gradient(to right, rgba(59, 130, 246, 0.25) 1px, transparent 1px), linear-gradient(to bottom, rgba(59, 130, 246, 0.25) 1px, transparent 1px)`,
-            backgroundSize: '40px 40px',
+            backgroundImage: `radial-gradient(circle at 1px 1px, #3b82f6 1px, transparent 0)`,
+            backgroundSize: '36px 36px',
           }}
         />
-
-        {/* Diagonal Tech Scanlines Accent */}
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage: `repeating-linear-gradient(45deg, #3b82f6 0, #3b82f6 1px, transparent 0, transparent 50%)`,
-            backgroundSize: '16px 16px',
-          }}
-        />
-
-        {/* Giant Translucent Watermark Logo in the Background */}
-        <div className="absolute w-[500px] h-[500px] sm:w-[650px] sm:h-[650px] opacity-[0.06] flex items-center justify-center select-none pointer-events-none">
-          <img
-            src="/korlantas-logo-new.png"
-            alt=""
-            className="w-full h-full object-contain filter drop-shadow-[0_0_80px_rgba(59,130,246,0.8)]"
-          />
-        </div>
-
-        {/* Luminous Core Orbs */}
-        <div className="absolute -top-32 -left-32 w-[550px] h-[550px] bg-blue-600/20 rounded-full blur-[140px] animate-pulse" />
-        <div className="absolute -bottom-32 -right-32 w-[550px] h-[550px] bg-indigo-600/20 rounded-full blur-[140px] animate-pulse" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-cyan-500/10 rounded-full blur-[180px]" />
+        <div className="absolute top-[-10%] left-[-5%] w-[600px] h-[600px] bg-blue-600/15 rounded-full blur-[160px] pointer-events-none" />
+        <div className="absolute bottom-[-10%] right-[-5%] w-[600px] h-[600px] bg-indigo-600/15 rounded-full blur-[160px] pointer-events-none" />
       </div>
 
-      <div className="w-full max-w-lg relative z-10 my-auto py-6 space-y-6">
-        {/* TOP BRANDING HEADER */}
-        <div className="text-center space-y-2.5">
-          {/* Status Indicator Pill */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-blue-950/80 border border-blue-500/30 text-blue-400 text-[11px] font-mono tracking-wider shadow-[0_0_15px_rgba(59,130,246,0.2)]">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
-            <span className="font-bold uppercase">SISTEM EDUKASI KESELAMATAN BERLALU LINTAS</span>
+      {/* Main Structural Layout Card */}
+      <div className="w-full max-w-5xl relative z-10 grid grid-cols-1 lg:grid-cols-12 rounded-[28px] border border-blue-500/20 bg-slate-950/80 backdrop-blur-2xl shadow-[0_0_80px_-15px_rgba(30,58,138,0.35)] overflow-hidden">
+
+        {/* Left Side: Brand Panel / Command Information (Visible on LG screens) */}
+        <div className="hidden lg:flex lg:col-span-5 flex-col justify-between p-10 bg-gradient-to-br from-blue-950/40 via-slate-900/60 to-slate-950/90 border-r border-blue-500/10 relative overflow-hidden">
+          <div className="relative z-10 space-y-6">
+            <div className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-400/30 text-blue-300 text-[11px] font-mono tracking-wider shadow-inner">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span>DIKMAS LANTAS HUB // ENCRYPTED</span>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-blue-600/20 border border-blue-500/30 rounded-2xl">
+                  <ShieldCheck className="w-7 h-7 text-blue-400" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-black tracking-tight text-white">SM-LEARNING</h2>
+                  <p className="text-[11px] font-mono tracking-widest text-cyan-400 font-bold">KORLANTAS POLRI</p>
+                </div>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed pt-2">
+                Pusat Terpadu Edukasi & Sosialisasi Keamanan, Keselamatan, Ketertiban, dan Kelancaran Lalu Lintas Nasional.
+              </p>
+            </div>
+
+            {/* Quick Metrics / System Highlights */}
+            <div className="space-y-2.5 pt-4">
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+                <BadgeCheck className="w-5 h-5 text-emerald-400 shrink-0" />
+                <div className="text-[11px]">
+                  <p className="font-bold text-slate-200">Validasi Personel Presisi</p>
+                  <p className="text-slate-500 text-[10px]">Sinkronisasi berjenjang Polda & Polres</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+                <Lock className="w-5 h-5 text-blue-400 shrink-0" />
+                <div className="text-[11px]">
+                  <p className="font-bold text-slate-200">Audit Trail Autentikasi</p>
+                  <p className="text-slate-500 text-[10px]">Terenkripsi protokol standar kedinasan</p>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div>
-            <h1 className="font-headline text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-blue-200 tracking-tight">
-              SM-LEARNING DIKMAS
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-400 font-medium max-w-sm mx-auto mt-1 leading-relaxed">
-              Korps Lalu Lintas Kepolisian Negara Republik Indonesia
-            </p>
+          <div className="relative z-10 pt-8 border-t border-slate-800/80 flex items-center justify-between text-[11px] font-mono text-slate-500">
+            <span className="flex items-center gap-1.5"><Activity className="w-3.5 h-3.5 text-emerald-400" /> SERVER ACTIVE</span>
+            <span>SEC-LVL 4</span>
           </div>
         </div>
 
-        {/* HIGH-TECH GLASS CONTAINER */}
-        <div className="relative rounded-3xl p-0.5 bg-gradient-to-b from-blue-500/40 via-blue-900/20 to-slate-800/40 shadow-[0_0_50px_-10px_rgba(59,130,246,0.25)]">
-          <div className="bg-slate-900/95 backdrop-blur-2xl rounded-[23px] p-6 sm:p-8 space-y-5 border border-white/5">
-            {/* Mode Switcher */}
-            <div className="flex rounded-2xl bg-slate-950/80 p-1 border border-slate-800/80">
+        {/* Right Side: Action Forms */}
+        <div className="lg:col-span-7 p-6 sm:p-10 flex flex-col justify-between bg-slate-900/40">
+          <div>
+            {/* Header Switcher */}
+            <div className="flex rounded-xl bg-slate-950/80 p-1.5 border border-slate-800 mb-6">
               <button
                 type="button"
                 onClick={() => { setMode('login'); setError(''); setSuccessMsg(''); }}
-                className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
+                className={`flex-1 py-2.5 text-xs font-extrabold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
                   mode === 'login'
-                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)]'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
+                    ? 'bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)]'
+                    : 'text-slate-400 hover:text-white'
                 }`}
               >
                 <LogIn className="w-3.5 h-3.5" />
-                <span>Masuk Personel</span>
+                <span>MASUK PERSONEL</span>
               </button>
               <button
                 type="button"
                 onClick={() => { setMode('register'); setError(''); setSuccessMsg(''); }}
-                className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
+                className={`flex-1 py-2.5 text-xs font-extrabold rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
                   mode === 'register'
-                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)]'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
+                    ? 'bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)]'
+                    : 'text-slate-400 hover:text-white'
                 }`}
               >
                 <UserPlus className="w-3.5 h-3.5" />
-                <span>Registrasi Trainer</span>
+                <span>DAFTAR INSTRUKTUR</span>
               </button>
             </div>
 
-            {/* Error & Success Feedback */}
+            {/* Notification Messages */}
             {error && (
-              <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-3.5 flex items-center gap-3 text-red-300 animate-shake">
+              <div className="mb-4 bg-red-500/10 border border-red-500/30 rounded-xl p-3.5 flex items-center gap-3 text-red-300 animate-in fade-in">
                 <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
                 <span className="text-xs font-medium">{error}</span>
               </div>
             )}
 
             {successMsg && (
-              <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-3.5 flex items-center gap-3 text-emerald-300">
+              <div className="mb-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3.5 flex items-center gap-3 text-emerald-300 animate-in fade-in">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                 <span className="text-xs font-medium">{successMsg}</span>
               </div>
             )}
 
-            {/* LOGIN FORM */}
+            {/* MODE 1: LOGIN FORM */}
             {mode === 'login' ? (
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label htmlFor="username" className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center justify-between">
-                    <span>Username Personel</span>
-                    <span className="text-[10px] font-mono text-slate-500">ID / NRP</span>
+                  <label className="block text-[11px] font-mono uppercase text-slate-400 mb-1.5">
+                    Identitas NRP / Username
                   </label>
                   <div className="relative">
+                    <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
-                      id="username"
                       type="text"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      placeholder="Masukkan username (contoh: superuser, kapolri)"
-                      autoComplete="username"
-                      className="w-full px-4 py-3 bg-slate-950/60 border border-slate-700/80 rounded-2xl text-xs font-medium text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400 focus:bg-slate-950 transition-all shadow-inner"
+                      placeholder="Masukkan NRP atau Username"
+                      className="w-full pl-10 pr-4 py-3 bg-slate-950/70 border border-slate-800 rounded-xl text-xs font-semibold text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label htmlFor="password" className="block text-xs font-bold text-slate-300 mb-1.5 flex items-center justify-between">
-                    <span>Kata Sandi (Password)</span>
-                    <span className="text-[10px] font-mono text-slate-500">Kredensial</span>
+                  <label className="block text-[11px] font-mono uppercase text-slate-400 mb-1.5">
+                    Kata Sandi Keamanan
                   </label>
                   <div className="relative">
+                    <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
-                      id="password"
                       type={showPassword ? 'text' : 'password'}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Masukkan password akun Anda"
-                      autoComplete="current-password"
-                      className="w-full px-4 py-3 pr-11 bg-slate-950/60 border border-slate-700/80 rounded-2xl text-xs font-medium text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-400 focus:bg-slate-950 transition-all shadow-inner"
+                      placeholder="••••••••••••"
+                      className="w-full pl-10 pr-11 py-3 bg-slate-950/70 border border-slate-800 rounded-xl text-xs font-semibold text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200 transition-colors cursor-pointer"
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -345,100 +352,92 @@ export function LoginPage({ onLogin, onOpenPublicPortal, onOpenPublicSession }: 
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full mt-2 bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white py-3.5 rounded-2xl text-xs font-extrabold tracking-wide uppercase transition-all duration-300 flex items-center justify-center gap-2.5 shadow-[0_0_25px_rgba(37,99,235,0.4)] hover:shadow-[0_0_35px_rgba(37,99,235,0.6)] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer border border-blue-400/30"
+                  className="w-full mt-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white py-3 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(37,99,235,0.3)] transition-all cursor-pointer disabled:opacity-50"
                 >
                   {isLoading ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Memverifikasi Enkripsi Akun...</span>
-                    </>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
                     <>
                       <Fingerprint className="w-4 h-4 text-cyan-300" />
-                      <span>Autentikasi & Masuk Dashboard</span>
+                      <span>Verifikasi & Buka Akses</span>
                     </>
                   )}
                 </button>
               </form>
             ) : (
-              /* REGISTER FORM */
-              <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
+              /* MODE 2: REGISTER TRAINER FORM */
+              <form onSubmit={handleRegisterSubmit} className="space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1">
-                      Provinsi *
+                    <label className="block text-[10px] font-mono uppercase text-slate-400 mb-1">
+                      Polda Wilayah *
                     </label>
                     <select
                       value={regPolda}
                       onChange={(e) => setRegPolda(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-700/80 rounded-2xl text-xs font-semibold text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                       required
                     >
-                      <option value="" className="bg-slate-900">Pilih Provinsi</option>
+                      <option value="">Pilih Polda</option>
                       {(poldaList.length > 0 ? poldaList.map(p => p.nama) : DEFAULT_34_POLDA).map(p => (
-                        <option key={p} value={p} className="bg-slate-900">{p}</option>
+                        <option key={p} value={p}>{p}</option>
                       ))}
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1">
-                      Kota / Kabupaten *
+                    <label className="block text-[10px] font-mono uppercase text-slate-400 mb-1">
+                      Satker / Polres *
                     </label>
                     <select
                       value={regPolres}
                       onChange={(e) => setRegPolres(e.target.value)}
                       disabled={!regPolda}
-                      className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-700/80 rounded-2xl text-xs font-semibold text-white disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white disabled:opacity-30 focus:outline-none focus:ring-1 focus:ring-blue-500"
                       required
                     >
-                      <option value="" className="bg-slate-900">Pilih Kota / Kabupaten</option>
+                      <option value="">Pilih Satker / Polres</option>
                       {polresList.map(p => (
-                        <option key={`${p.poldaId}-${p.polresId}`} value={p.nama} className="bg-slate-900">{p.nama}</option>
+                        <option key={`${p.poldaId}-${p.polresId}`} value={p.nama}>{p.nama}</option>
                       ))}
                     </select>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Nama Lengkap & Pangkat / Jabatan *
+                  <label className="block text-[10px] font-mono uppercase text-slate-400 mb-1">
+                    Nama Lengkap & Pangkat / NRP *
                   </label>
                   <input
                     type="text"
                     value={regFullName}
                     onChange={(e) => setRegFullName(e.target.value)}
-                    placeholder="contoh: Bripka Dian Pratama, S.H."
-                    className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-700/80 rounded-2xl text-xs font-medium text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Contoh: Bripka Dian Pratama (NRP 92010231)"
+                    className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                     required
                   />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1">
-                      Username Login *
-                    </label>
+                    <label className="block text-[10px] font-mono uppercase text-slate-400 mb-1">Username Baru *</label>
                     <input
                       type="text"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      placeholder="e.g. dian.pratama"
-                      className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-700/80 rounded-2xl text-xs font-medium text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Username login"
+                      className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                       required
                     />
                   </div>
-
                   <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1">
-                      Password *
-                    </label>
+                    <label className="block text-[10px] font-mono uppercase text-slate-400 mb-1">Password *</label>
                     <input
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Minimal 6 karakter"
-                      className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-700/80 rounded-2xl text-xs font-medium text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Min 6 karakter"
+                      className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                       required
                     />
                   </div>
@@ -446,136 +445,93 @@ export function LoginPage({ onLogin, onOpenPublicPortal, onOpenPublicSession }: 
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1">
-                      No. WhatsApp
-                    </label>
+                    <label className="block text-[10px] font-mono uppercase text-slate-400 mb-1">WhatsApp Aktif</label>
                     <input
                       type="text"
                       value={regPhone}
                       onChange={(e) => setRegPhone(e.target.value)}
                       placeholder="08xxxxxxxxxx"
-                      className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-700/80 rounded-2xl text-xs font-medium text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
-
                   <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1">
-                      Email Kedinasan
-                    </label>
+                    <label className="block text-[10px] font-mono uppercase text-slate-400 mb-1">Email Dinas / Pribadi</label>
                     <input
                       type="email"
                       value={regEmail}
                       onChange={(e) => setRegEmail(e.target.value)}
                       placeholder="nama@polri.go.id"
-                      className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-700/80 rounded-2xl text-xs font-medium text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-300 mb-1">
-                    Foto Profil Personel (Opsional)
-                  </label>
+                  <label className="block text-[10px] font-mono uppercase text-slate-400 mb-1">Pas Foto Personel</label>
                   <div className="flex items-center gap-3">
-                    <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-2xl border border-dashed border-blue-500/50 bg-blue-950/40 hover:bg-blue-900/40 text-blue-300 text-xs font-bold transition">
+                    <label className="cursor-pointer inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-dashed border-blue-500/40 bg-blue-950/30 hover:bg-blue-900/30 text-blue-300 text-xs font-semibold transition">
                       <Upload className="w-3.5 h-3.5" />
-                      <span>{isUploadingPhoto ? 'Mengunggah...' : 'Pilih Foto'}</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handlePhotoUpload}
-                        disabled={isUploadingPhoto}
-                        className="hidden"
-                      />
+                      <span>{isUploadingPhoto ? 'Mengunggah...' : 'Unggah Pas Foto'}</span>
+                      <input type="file" accept="image/*" onChange={handlePhotoUpload} disabled={isUploadingPhoto} className="hidden" />
                     </label>
                     {regPhoto && (
-                      <div className="relative w-10 h-10 rounded-xl overflow-hidden border border-blue-500/40">
-                        <img src={regPhoto} alt="Foto Profil" className="w-full h-full object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => setRegPhoto('')}
-                          className="absolute top-0.5 right-0.5 bg-red-600 text-white rounded p-0.5"
-                        >
+                      <div className="relative w-9 h-9 rounded-lg overflow-hidden border border-blue-400/40">
+                        <img src={regPhoto} alt="Preview" className="w-full h-full object-cover" />
+                        <button type="button" onClick={() => setRegPhoto('')} className="absolute top-0 right-0 bg-red-600 p-0.5 rounded-bl">
                           <X className="w-2.5 h-2.5" />
                         </button>
                       </div>
                     )}
-                    <span className="text-[10px] text-slate-500">JPG, PNG maks 5MB</span>
                   </div>
                 </div>
 
                 <button
                   type="submit"
                   disabled={isLoading || isUploadingPhoto}
-                  className="w-full mt-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white py-3.5 rounded-2xl text-xs font-extrabold tracking-wide uppercase transition-all duration-300 flex items-center justify-center gap-2.5 shadow-[0_0_25px_rgba(16,185,129,0.3)] hover:shadow-[0_0_35px_rgba(16,185,129,0.5)] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+                  className="w-full mt-2 bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all cursor-pointer"
                 >
-                  {isLoading ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Mendaftarkan Data Instruktur...</span>
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="w-4 h-4" />
-                      <span>Kirim Pendaftaran Akun</span>
-                    </>
-                  )}
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>Ajukan Registrasi Personel</span>
                 </button>
               </form>
             )}
+          </div>
 
-            {/* PUBLIC PORTAL & SESSION CODE ACCESS */}
-            <div className="pt-4 border-t border-slate-800/80 space-y-3">
-              <div className="text-center">
-                <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest">
-                  PORTAL PUBLIK & PESERTA SOSIALISASI
-                </span>
-              </div>
+          {/* Quick Access Portal Session */}
+          <div className="pt-6 mt-6 border-t border-slate-800/80 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {onOpenPublicPortal && (
+                <button
+                  type="button"
+                  onClick={onOpenPublicPortal}
+                  className="py-2.5 px-3 rounded-xl border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-300 text-xs font-semibold flex items-center justify-center gap-2 transition cursor-pointer"
+                >
+                  <GraduationCap className="w-4 h-4 text-cyan-400" />
+                  <span>Portal Edukasi Publik</span>
+                </button>
+              )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {onOpenPublicPortal && (
+              {onOpenPublicSession && (
+                <form onSubmit={handleJoinSession} className="flex gap-1.5">
+                  <input
+                    type="text"
+                    value={sessionCodeInput}
+                    onChange={(e) => setSessionCodeInput(e.target.value)}
+                    placeholder="KODE PIN SESI"
+                    className="flex-1 px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs font-mono font-bold uppercase text-amber-400 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                  />
                   <button
-                    type="button"
-                    onClick={onOpenPublicPortal}
-                    className="w-full py-2.5 px-3 rounded-2xl border border-slate-700/80 bg-slate-950/60 hover:bg-slate-800/80 text-slate-200 text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer"
+                    type="submit"
+                    disabled={!sessionCodeInput.trim()}
+                    className="bg-amber-400 hover:bg-amber-300 text-slate-950 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition disabled:opacity-40"
                   >
-                    <GraduationCap className="w-4 h-4 text-blue-400" />
-                    <span>Portal Edukasi Publik</span>
+                    <QrCode className="w-3.5 h-3.5" />
+                    <span>Gabung</span>
                   </button>
-                )}
-
-                {onOpenPublicSession && (
-                  <form onSubmit={handleJoinSession} className="flex gap-1.5">
-                    <input
-                      type="text"
-                      value={sessionCodeInput}
-                      onChange={(e) => setSessionCodeInput(e.target.value)}
-                      placeholder="KODE SESI"
-                      className="flex-1 px-3 py-2 bg-slate-950/80 border border-slate-700/80 rounded-2xl text-xs font-mono font-bold uppercase text-amber-300 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-amber-400"
-                    />
-                    <button
-                      type="submit"
-                      disabled={!sessionCodeInput.trim()}
-                      className="bg-amber-400 hover:bg-amber-300 disabled:opacity-40 text-slate-950 px-3.5 py-2 rounded-2xl text-xs font-black flex items-center gap-1 cursor-pointer transition shadow-[0_0_15px_rgba(251,191,36,0.3)]"
-                    >
-                      <QrCode className="w-3.5 h-3.5" />
-                      <span>Masuk</span>
-                    </button>
-                  </form>
-                )}
-              </div>
+                </form>
+              )}
             </div>
           </div>
-        </div>
-
-        {/* FOOTER */}
-        <div className="text-center space-y-1">
-          <p className="text-[11px] font-mono text-slate-500">
-            SECURE ACCESS SYSTEM // ENCRYPTION AES-256 // SM-LEARNING POLRI
-          </p>
-          <p className="text-[10px] text-slate-600">
-            © 2026 Korlantas POLRI — Pusat Pendidikan & Rekayasa Lalu Lintas Nasional
-          </p>
         </div>
       </div>
     </div>
