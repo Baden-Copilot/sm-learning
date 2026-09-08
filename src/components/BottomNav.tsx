@@ -44,13 +44,12 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     if (canAccessReports) {
       return { id: 'reports', label: 'Laporan', icon: FileSpreadsheet };
     }
-    return { id: 'progress', label: 'Capaian', icon: Award };
+    return { id: 'learning', label: 'Katalog', icon: Compass };
   };
 
   const contextTab = getContextTab();
 
-  // Mirrors the sidebar: a pimpinan takes no courses, so Beranda and My Learning
-  // are replaced by the dashboard they actually work from.
+  // Note: My Learning and Capaian & Sertifikat are hidden across all roles as requested.
   const navItems = isExecutive
     ? [
         { id: 'executive', label: 'Eksekutif', icon: BarChart3 },
@@ -60,7 +59,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     : [
         { id: 'beranda', label: 'Beranda', icon: Home },
         { id: 'learning', label: 'Katalog', icon: Compass },
-        { id: 'my-learning', label: 'Belajar', icon: BookOpen },
         contextTab,
       ];
 

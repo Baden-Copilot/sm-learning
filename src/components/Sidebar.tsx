@@ -46,12 +46,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isTrainer = false,
 }) => {
   // Core navigation. A pimpinan supervises the program rather than taking the
-  // courses, so their list drops the personal-progress entries (My Learning,
-  // Capaian & Sertifikat) that would otherwise sit empty for them, and their
-  // home IS the dashboard — the learner Beranda has nothing a pimpinan acts on.
-  // The public portal is also dropped: it is the citizen-facing entry point, and
-  // what a pimpinan needs to know about it already shows up as numbers on the
-  // dashboard.
+  // courses, so their list drops the personal-progress entries that would otherwise sit empty,
+  // and their home IS the dashboard — the learner Beranda has nothing a pimpinan acts on.
+  // Note: "My Learning" and "Capaian & Sertifikat" are hidden across all roles as requested.
   const learnerNavItems = isExecutive
     ? [
         { id: 'executive', label: 'Eksekutif Dashboard', icon: BarChart3 },
@@ -60,8 +57,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     : [
         { id: 'beranda', label: 'Beranda', icon: Home },
         { id: 'learning', label: 'Learning Library', icon: Compass },
-        { id: 'my-learning', label: 'My Learning', icon: BookOpen },
-        { id: 'progress', label: 'Capaian & Sertifikat', icon: Award },
         { id: 'public-portal', label: 'Portal Edukasi Publik', icon: GraduationCap },
       ];
 

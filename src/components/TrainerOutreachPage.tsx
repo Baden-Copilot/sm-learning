@@ -72,10 +72,8 @@ export function TrainerOutreachPage({
   // Result preview: trainer reviews what actually happened in one of their sessions
   const [previewSessionId, setPreviewSessionId] = useState<string | null>(null);
 
-  // Trainer competency gate: only materials the trainer personally passed
-  const [eligibleMaterials, setEligibleMaterials] = useState<any[]>([]);
-  const [lockedMaterials, setLockedMaterials] = useState<any[]>([]);
-  const [isLoadingEligible, setIsLoadingEligible] = useState<boolean>(true);
+  // Materials from library for dropdown
+  const libraryMaterials = (materials || []).filter(m => (m.publishStatus || 'published') === 'published');
 
   // Form Fields
   const [selectedMaterialId, setSelectedMaterialId] = useState<string>('');
@@ -192,36 +190,12 @@ export function TrainerOutreachPage({
     // Use stable string values, not object references, to prevent infinite re-renders
   }, [trainerId, currentRoleId]);
 
-  // Load materials the trainer has already passed (competency gate)
-  const fetchEligibleMaterials = () => {
-    setIsLoadingEligible(true);
-    fetch(`/api/outreach/eligible-materials?trainerId=${encodeURIComponent(trainerId)}`, {
-      headers: { 'x-user-id': trainerId, 'x-role-id': currentRoleId }
-    })
-      .then(res => {
-        if (!res.ok) throw new Error('Gagal memuat daftar modul kelulusan trainer.');
-        return res.json();
-      })
-      .then(data => {
-        if (data.success) {
-          const list = Array.isArray(data.data) ? data.data : [];
-          setEligibleMaterials(list);
-          setLockedMaterials(Array.isArray(data.locked) ? data.locked : []);
-          setSelectedMaterialId(prev =>
-            prev && list.some((m: any) => m.id === prev) ? prev : (list[0]?.id || '')
-          );
-        }
-      })
-      .catch(() => {
-        setEligibleMaterials([]);
-        setLockedMaterials([]);
-      })
-      .finally(() => setIsLoadingEligible(false));
-  };
-
+  // Set default selected material when libraryMaterials loads
   useEffect(() => {
-    fetchEligibleMaterials();
-  }, [trainerId, currentRoleId]);
+    if (libraryMaterials.length > 0 && !selectedMaterialId) {
+      setSelectedMaterialId(libraryMaterials[0].id);
+    }
+  }, [libraryMaterials, selectedMaterialId]);
 
   // Handle Polda Change to update Polres dropdown
   const handlePoldaChange = (polda: string) => {
@@ -282,18 +256,8 @@ export function TrainerOutreachPage({
 
   const handleCreateSession = (e: React.FormEvent) => {
     e.preventDefault();
-    if (eligibleMaterials.length === 0) {
-      setFormError('Anda belum lulus modul apa pun. Selesaikan pembelajaran dan kuis evaluasi terlebih dahulu.');
-      return;
-    }
-
     if (!selectedMaterialId || !activityName.trim() || !location.trim()) {
       setFormError('Harap pilih materi, isi nama kegiatan, dan lokasi pelaksanaan.');
-      return;
-    }
-
-    if (!eligibleMaterials.some(m => m.id === selectedMaterialId)) {
-      setFormError('Materi yang dipilih belum Anda tuntaskan. Pilih modul yang sudah lulus.');
       return;
     }
 
@@ -327,9 +291,7 @@ export function TrainerOutreachPage({
           throw new Error('Respon server bukan format JSON.');
         }
         if (!res.ok) {
-          // Surface server-side reason (e.g. 403 competency gate), not a generic message
           return res.json().then(d => {
-            if (res.status === 403) fetchEligibleMaterials();
             throw new Error(d.message || 'Gagal membuat kegiatan pemaparan.');
           });
         }
@@ -383,8 +345,8 @@ export function TrainerOutreachPage({
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
-                if (eligibleMaterials.length > 0 && !selectedMaterialId) {
-                  setSelectedMaterialId(eligibleMaterials[0].id);
+                if (libraryMaterials.length > 0 && !selectedMaterialId) {
+                  setSelectedMaterialId(libraryMaterials[0].id);
                 }
                 setFormError(null);
                 setShowCreateModal(true);
@@ -433,8 +395,8 @@ export function TrainerOutreachPage({
           </div>
           <button
             onClick={() => {
-              if (eligibleMaterials.length > 0 && !selectedMaterialId) {
-                setSelectedMaterialId(eligibleMaterials[0].id);
+              if (libraryMaterials.length > 0 && !selectedMaterialId) {
+                setSelectedMaterialId(libraryMaterials[0].id);
               }
               setFormError(null);
               setShowCreateModal(true);
@@ -616,25 +578,12 @@ export function TrainerOutreachPage({
             <form onSubmit={handleCreateSession} className="space-y-4">
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                  Pilih Modul Pembelajaran / Materi *
+                  Pilih Modul Pembelajaran / Materi (Library) *
                 </label>
 
-                {isLoadingEligible ? (
-                  <div className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500 flex items-center gap-2">
-                    <div className="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                    <span>Memeriksa riwayat kelulusan modul Anda...</span>
-                  </div>
-                ) : eligibleMaterials.length === 0 ? (
-                  <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 space-y-2">
-                    <div className="flex items-start gap-2 text-amber-800">
-                      <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />
-                      <div className="space-y-1">
-                        <p className="text-xs font-bold">Anda belum lulus modul apa pun</p>
-                        <p className="text-[11px] leading-relaxed">
-                          Instruktur wajib menuntaskan pembelajaran dan lulus kuis evaluasi sebuah modul terlebih dahulu sebelum boleh memaparkannya kepada peserta publik.
-                        </p>
-                      </div>
-                    </div>
+                {libraryMaterials.length === 0 ? (
+                  <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800">
+                    Tidak ada materi terdaftar dalam library.
                   </div>
                 ) : (
                   <>
@@ -644,21 +593,14 @@ export function TrainerOutreachPage({
                       className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                       required
                     >
-                      {eligibleMaterials.map(m => (
+                      {libraryMaterials.map(m => (
                         <option key={m.id} value={m.id}>
                           [{m.level}] {m.title}
-                          {m.quizScore !== null && m.quizScore !== undefined
-                            ? ` — Lulus Kuis ${m.quizScore}`
-                            : ' — Silabus Tuntas 100%'}
                         </option>
                       ))}
                     </select>
-                    <p className="text-[11px] text-emerald-700 font-semibold mt-1.5 flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5" />
-                      <span>
-                        {eligibleMaterials.length} modul tersertifikasi siap dipaparkan
-                        {lockedMaterials.length > 0 ? ` • ${lockedMaterials.length} modul terkunci (belum lulus)` : ''}
-                      </span>
+                    <p className="text-[11px] text-slate-500 font-medium mt-1.5">
+                      Tersedia {libraryMaterials.length} modul materi dalam library.
                     </p>
                   </>
                 )}

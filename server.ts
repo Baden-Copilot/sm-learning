@@ -1797,94 +1797,24 @@ async function startServer() {
 
   // === OUTREACH SESSIONS & LIVE FIELD PRESENTATION API ===
 
-  /**
-   * Trainer competency gate: a trainer may only present a material they have
-   * personally completed first. Completion is proven by ANY of:
-   *   - a passed quiz attempt (score >= passingGrade)
-   *   - an issued certificate for the material
-   *   - 100% syllabus progress in learning-records
-   *   - 100% syllabus progress on the material itself (materials.json)
-   * Any one of these is sufficient: a trainer who finished the whole syllabus
-   * has demonstrably mastered the content whether or not a quiz exists.
-   */
-  function getTrainerMaterialCompetency(trainerId: string, material: any) {
-    const records = readLearningRecords();
-    const hasQuiz = Boolean(material?.quiz && material.quiz.length > 0);
-
-    const passedAttempt = (records.quizAttempts || [])
-      .filter((q: any) => q.userId === trainerId && q.materialId === material.id && q.passed)
-      .sort((a: any, b: any) => String(b.completedAt || '').localeCompare(String(a.completedAt || '')))[0] || null;
-
-    const progress = (records.userProgress || []).find(
-      (p: any) => p.userId === trainerId && p.materialId === material.id
-    ) || null;
-
-    const certificate = (records.certificates || []).find(
-      (c: any) => c.userId === trainerId && c.materialId === material.id
-    ) || null;
-
-    const recordPercent = progress?.progressPercent || 0;
-    const materialPercent = material?.progressPercent || 0;
-    const progressPercent = Math.max(recordPercent, materialPercent);
-
-    const syllabusDone =
-      progressPercent >= 100 ||
-      progress?.status === 'completed' ||
-      material?.status === 'completed';
-
-    const isEligible = Boolean(passedAttempt) || Boolean(certificate) || syllabusDone;
-
-    return {
-      isEligible,
-      hasQuiz,
-      progressPercent,
-      syllabusDone,
-      quizScore: passedAttempt?.score ?? null,
-      certificateNumber: certificate?.certificateNumber || null,
-      completedAt: passedAttempt?.completedAt || progress?.lastAccessedAt || null,
-      reason: isEligible
-        ? null
-        : hasQuiz
-          ? 'Trainer belum lulus kuis evaluasi maupun menuntaskan silabus materi ini.'
-          : 'Trainer belum menyelesaikan seluruh silabus materi ini.'
-    };
-  }
-
-  // Materials the trainer is certified/qualified to present to the public
-  app.get('/api/outreach/eligible-materials', (req, res) => {
-    const trainerId = (req.query.trainerId as string) || (req.headers['x-user-id'] as string) || 'user-2';
-
-    const evaluated = materialsStore
+  // Materials available for trainer outreach / field presentation (all published library materials)
+  app.get('/api/outreach/eligible-materials', (_req, res) => {
+    const list = materialsStore
       .filter(m => (m.publishStatus || 'published') === 'published')
-      .map(m => {
-        const competency = getTrainerMaterialCompetency(trainerId, m);
-        return {
-          id: m.id,
-          title: m.title,
-          level: m.level,
-          type: m.type,
-          typeLabel: m.typeLabel,
-          hasQuiz: competency.hasQuiz,
-          progressPercent: competency.progressPercent,
-          quizScore: competency.quizScore,
-          certificateNumber: competency.certificateNumber,
-          completedAt: competency.completedAt,
-          isEligible: competency.isEligible,
-          reason: competency.reason
-        };
-      });
-
-    const eligible = evaluated.filter(m => m.isEligible);
-    const locked = evaluated.filter(m => !m.isEligible);
+      .map(m => ({
+        id: m.id,
+        title: m.title,
+        level: m.level,
+        type: m.type,
+        typeLabel: m.typeLabel,
+        isEligible: true
+      }));
 
     res.json({
       success: true,
-      count: eligible.length,
-      data: eligible,
-      locked,
-      message: eligible.length === 0
-        ? 'Anda belum lulus satu pun modul. Selesaikan pembelajaran dan kuis evaluasi terlebih dahulu untuk dapat memberikan pemaparan ke publik.'
-        : undefined
+      count: list.length,
+      data: list,
+      locked: []
     });
   });
 
@@ -1959,16 +1889,6 @@ async function startServer() {
       return res.status(404).json({ success: false, message: 'Materi tidak ditemukan dalam katalog.' });
     }
 
-    // Competency gate: trainer must have passed the material before presenting it
-    const competency = getTrainerMaterialCompetency(userId, material);
-    if (!competency.isEligible) {
-      return res.status(403).json({
-        success: false,
-        message: `${competency.reason} Selesaikan modul "${material.title}" terlebih dahulu sebelum membuat sesi pemaparan.`,
-        data: { materialId, ...competency }
-      });
-    }
-
     const userData = readUserData();
     const trainer = userData.users.find((u: any) => u.id === userId);
     const trainerName = trainer?.fullName || 'Instruktur Dikmas Lantas POLRI';
@@ -1988,13 +1908,6 @@ async function startServer() {
       // Snapshot trainer kedinasan for historical consistency
       trainerPosition: trainer?.position || '',
       trainerUnit: trainer?.unit || '',
-      // Snapshot proof that the trainer is qualified on this material
-      trainerCompetency: {
-        quizScore: competency.quizScore,
-        progressPercent: competency.progressPercent,
-        certificateNumber: competency.certificateNumber,
-        verifiedAt: new Date().toISOString()
-      },
       activityName,
       polda,
       polres,
