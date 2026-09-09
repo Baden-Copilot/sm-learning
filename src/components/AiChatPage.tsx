@@ -518,8 +518,8 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
                     setRateLimitError(null);
                   }}
                   className={`group relative flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${isActive
-                    ? 'bg-blue-50 text-blue-900 border border-blue-200/80 shadow-2xs font-bold'
-                    : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                      ? 'bg-blue-50 text-blue-900 border border-blue-200/80 shadow-2xs font-bold'
+                      : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
                     }`}
                 >
                   <div className="flex items-center space-x-2.5 min-w-0 flex-1">
@@ -658,8 +658,8 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
                   {/* Avatar */}
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold shadow-2xs ${isUser
-                      ? 'bg-[#0a1d37] text-white'
-                      : 'bg-white border border-slate-200 text-blue-700 ring-2 ring-blue-50'
+                        ? 'bg-[#0a1d37] text-white'
+                        : 'bg-white border border-slate-200 text-blue-700 ring-2 ring-blue-50'
                       }`}
                   >
                     {isUser ? (
@@ -673,8 +673,8 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
                   <div className={`max-w-[85%] sm:max-w-[78%] flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
                     <div
                       className={`relative group rounded-2xl px-4 py-3 text-xs leading-relaxed shadow-2xs ${isUser
-                        ? 'bg-blue-600 text-white rounded-tr-xs'
-                        : 'bg-slate-50 text-slate-800 border border-slate-200/90 rounded-tl-xs'
+                          ? 'bg-blue-600 text-white rounded-tr-xs'
+                          : 'bg-slate-50 text-slate-800 border border-slate-200/90 rounded-tl-xs'
                         }`}
                     >
                       {isUser ? (
@@ -832,10 +832,10 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
               onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
               disabled={isLoading || Boolean(rateLimitError)}
               className={`p-2 rounded-xl transition-colors cursor-pointer shrink-0 ${isRecording
-                ? 'bg-red-600 text-white animate-pulse'
-                : voiceNote
-                  ? 'bg-purple-100 text-purple-700'
-                  : 'text-slate-500 hover:text-purple-600 hover:bg-purple-50/60'
+                  ? 'bg-red-600 text-white animate-pulse'
+                  : voiceNote
+                    ? 'bg-purple-100 text-purple-700'
+                    : 'text-slate-500 hover:text-purple-600 hover:bg-purple-50/60'
                 }`}
               title={isRecording ? 'Hentikan Perekaman' : 'Kirim Pesan Suara (Voice Note)'}
             >
@@ -1106,7 +1106,29 @@ function normalizeMarkdown(raw: string): string {
   text = text.replace(/([^\n])\s*(\[[^\]]+\]\s*\((?:https?:\/\/[^\s)]+|\/static\/[^\s)]+|\.[a-z0-9]+[^\s)]*)\))/gi, '$1\n\n$2');
   text = text.replace(/(\[[^\]]+\]\s*\((?:https?:\/\/[^\s)]+|\/static\/[^\s)]+|\.[a-z0-9]+[^\s)]*)\))\s*([^\n])/gi, '$1\n\n$2');
 
+  // 7. Convert any localhost / 127.0.0.1 URLs directly to alesha.djalu.co.id
+  text = text.replace(/https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?/gi, 'https://alesha.djalu.co.id');
+
   return text;
+}
+
+/**
+ * Resolves URLs from Alesha AI: converts localhost / 127.0.0.1 or relative /static/ paths
+ * directly to https://alesha.djalu.co.id
+ */
+function resolveAleshaLink(url: string): string {
+  if (!url) return '';
+  let resolved = url.trim();
+
+  // If starts with /static/, route directly to https://alesha.djalu.co.id
+  if (resolved.startsWith('/static/')) {
+    return `https://alesha.djalu.co.id${resolved}`;
+  }
+
+  // If starts with localhost or 127.0.0.1 (any port), replace directly with https://alesha.djalu.co.id
+  resolved = resolved.replace(/^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?/i, 'https://alesha.djalu.co.id');
+
+  return resolved;
 }
 
 function renderInformativeTable(tableRows: string[][], key: string | number) {
@@ -1239,11 +1261,7 @@ function parseInlineFormatting(text: string): React.ReactNode {
     const linkMatch = part.match(/^\[([^\]]+)\]\s*\(([^)\s]+)\)$/);
     if (linkMatch) {
       const linkText = linkMatch[1];
-      let href = linkMatch[2];
-      if (href.startsWith('/static/')) {
-        const apiBase = typeof window !== 'undefined' && window.location.hostname == 'https://alesha.djalu.co.id';
-        href = `${apiBase}${href}`;
-      }
+      const href = resolveAleshaLink(linkMatch[2]);
       return (
         <a
           key={index}
@@ -1271,7 +1289,7 @@ function parseDocumentDownloadCard(line: string, key: string | number): React.Re
   if (!match) return null;
 
   const rawLabel = match[1].trim();
-  let fileUrl = match[2].trim();
+  const fileUrl = resolveAleshaLink(match[2].trim());
   const lowerLabel = rawLabel.toLowerCase();
   const lowerUrl = fileUrl.toLowerCase();
 
@@ -1282,12 +1300,6 @@ function parseDocumentDownloadCard(line: string, key: string | number): React.Re
     /(?:unduh|download|dokumen|berkas|file|rekapitulasi|laporan|export)/i.test(lowerLabel);
 
   if (!isDocLink) return null;
-
-  // Resolve backend server URL for static exports
-  if (fileUrl.startsWith('/static/')) {
-    const apiBase = typeof window !== 'undefined' && window.location.hostname == 'https://alesha.djalu.co.id';
-    fileUrl = `${apiBase}${fileUrl}`;
-  }
 
   // Determine file type category
   type FileCategory = 'word' | 'excel' | 'csv' | 'pdf' | 'pptx' | 'file';
