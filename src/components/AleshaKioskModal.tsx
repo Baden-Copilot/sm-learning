@@ -25,7 +25,7 @@ interface AleshaKioskModalProps {
 export const AleshaKioskModal: React.FC<AleshaKioskModalProps> = ({
   isOpen,
   onClose,
-  kioskUrl = 'http://localhost:3000/kiosk-public',
+  kioskUrl = 'https://alesha.djalu.co.id/kiosk-public',
   activeMenu = 'beranda',
   selectedMaterial,
   currentUser,
@@ -289,9 +289,11 @@ export const AleshaKioskModal: React.FC<AleshaKioskModalProps> = ({
                 };
               }
 
-              const resolvedUrl = fUrl.startsWith('/static/')
-                ? `${typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? `http://${window.location.hostname}:8000` : 'http://localhost:8000'}${fUrl}`
+              let resolvedUrl = fUrl.startsWith('/static/')
+                ? `https://alesha-be.djalu.co.id${fUrl}`
                 : fUrl;
+              resolvedUrl = resolvedUrl.replace(/^https?:\/\/(?:localhost|127\.0\.0\.1):8000/i, 'https://alesha-be.djalu.co.id');
+              resolvedUrl = resolvedUrl.replace(/^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?/i, 'https://alesha.djalu.co.id');
 
               return (
                 <a

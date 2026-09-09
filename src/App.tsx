@@ -1277,9 +1277,7 @@ export default function App() {
         onClose={() => setIsAleshaModalOpen(false)}
         kioskUrl={
           (import.meta as any).env?.VITE_ALESHA_KIOSK_URL ||
-          (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-            ? 'http://localhost:3000/kiosk-public'
-            : 'https://alesha.djalu.co.id/kiosk-public')
+          'https://alesha.djalu.co.id/kiosk-public'
         }
         activeMenu={currentTab}
         selectedMaterial={activeFocusMaterial || selectedCourseDetail || activeQuizMaterial}

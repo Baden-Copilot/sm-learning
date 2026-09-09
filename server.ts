@@ -3322,7 +3322,7 @@ ${CERTIFICATE_SHARED_CSS}
     const queryText = lastUserMsg?.content || '';
 
     // Primary: Call Alesha AI Engine
-    const aleshaBaseUrl = process.env.ALESHA_API_URL || 'http://127.0.0.1:8000';
+    const aleshaBaseUrl = process.env.ALESHA_API_URL || 'https://alesha-be.djalu.co.id';
     try {
       const aleshaRes = await fetch(`${aleshaBaseUrl}/api/chat/learning`, {
         method: 'POST',
@@ -3611,7 +3611,7 @@ ${CERTIFICATE_SHARED_CSS}
 
       // 5. Panggil Engine Alesha AI (Primary) dengan Fallback ke Google Gemini
       let replyText = '';
-      const aleshaBaseUrl = process.env.ALESHA_API_URL || 'http://127.0.0.1:8000';
+      const aleshaBaseUrl = process.env.ALESHA_API_URL || 'https://alesha-be.djalu.co.id';
       let aleshaSuccess = false;
 
       try {

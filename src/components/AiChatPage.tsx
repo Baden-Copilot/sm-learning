@@ -1106,27 +1106,31 @@ function normalizeMarkdown(raw: string): string {
   text = text.replace(/([^\n])\s*(\[[^\]]+\]\s*\((?:https?:\/\/[^\s)]+|\/static\/[^\s)]+|\.[a-z0-9]+[^\s)]*)\))/gi, '$1\n\n$2');
   text = text.replace(/(\[[^\]]+\]\s*\((?:https?:\/\/[^\s)]+|\/static\/[^\s)]+|\.[a-z0-9]+[^\s)]*)\))\s*([^\n])/gi, '$1\n\n$2');
 
-  // 7. Convert any localhost / 127.0.0.1 URLs directly to alesha.djalu.co.id
-  text = text.replace(/https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?/gi, 'https://alesha.djalu.co.id');
+  // 7. Convert all localhost / 127.0.0.1 backend URLs directly to alesha-be.djalu.co.id
+  text = text.replace(/https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?/gi, 'https://alesha-be.djalu.co.id');
+  text = text.replace(/https?:\/\/alesha\.djalu\.co\.id\/static\//gi, 'https://alesha-be.djalu.co.id/static/');
 
   return text;
 }
 
 /**
  * Resolves URLs from Alesha AI: converts localhost / 127.0.0.1 or relative /static/ paths
- * directly to https://alesha.djalu.co.id
+ * directly to backend domain https://alesha-be.djalu.co.id
  */
 function resolveAleshaLink(url: string): string {
   if (!url) return '';
   let resolved = url.trim();
 
-  // If starts with /static/, route directly to https://alesha.djalu.co.id
+  // If starts with /static/, route directly to Alesha backend domain (https://alesha-be.djalu.co.id)
   if (resolved.startsWith('/static/')) {
-    return `https://alesha.djalu.co.id${resolved}`;
+    return `https://alesha-be.djalu.co.id${resolved}`;
   }
 
-  // If starts with localhost or 127.0.0.1 (any port), replace directly with https://alesha.djalu.co.id
-  resolved = resolved.replace(/^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?/i, 'https://alesha.djalu.co.id');
+  // Convert any localhost or 127.0.0.1 URL directly to https://alesha-be.djalu.co.id
+  resolved = resolved.replace(/^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?/i, 'https://alesha-be.djalu.co.id');
+
+  // Fix any static paths pointing to alesha.djalu.co.id/static/ to alesha-be.djalu.co.id/static/
+  resolved = resolved.replace(/^https?:\/\/alesha\.djalu\.co\.id\/static\//i, 'https://alesha-be.djalu.co.id/static/');
 
   return resolved;
 }
