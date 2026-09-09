@@ -35,7 +35,10 @@ export function AskAiWidget({ materials: _materials, onSelectMaterial: _onSelect
       const res = await fetch('/api/ask-ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: nextMessages }),
+        body: JSON.stringify({
+          messages: nextMessages,
+          sessionId: (typeof window !== 'undefined' && localStorage.getItem('sm_learning_alesha_session_id')) || 'session-ask-ai-widget'
+        }),
       });
       if (!res.ok) {
         throw new Error('Server error');

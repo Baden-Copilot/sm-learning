@@ -58,7 +58,7 @@ export default function App() {
         const roleId = u?.user?.roleId || u?.roleId || u?.role?.id;
         if (roleId === 'role-executive') return 'executive';
       }
-    } catch {}
+    } catch { }
     return 'beranda';
   });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
@@ -195,7 +195,7 @@ export default function App() {
           setMaterials(data.data);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     // Live role definitions for every signed-in account. Without this the menus
     // would render against the hardcoded defaults and drift from what the
@@ -207,7 +207,7 @@ export default function App() {
           setUserRoles(data.data.roles);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     // The full account list is only for those who manage it.
     if (!canAccessUserAkses) return;
@@ -224,7 +224,7 @@ export default function App() {
           }
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [isLoggedIn, canAccessUserAkses]);
 
   // Toast Notification Manager
@@ -285,13 +285,13 @@ export default function App() {
           setMaterials(prev => prev.map(m => (m.id === materialId ? { ...m, ...data.data } : m)));
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     fetch('/api/learning-records/progress', {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ materialId, progressPercent, status, completedLessonId }),
-    }).catch(() => {});
+    }).catch(() => { });
   };
 
   // === REST User Management Handlers (Per-item efficient persistence) ===
@@ -583,7 +583,7 @@ export default function App() {
     // the identity headers have to ride along; an anonymous portal visitor has
     // no record to file it in and keeps the toggle in-page only.
     if (isLoggedIn) {
-      fetch(`/api/materials/${id}/bookmark`, { method: 'POST', headers: getAuthHeaders() }).catch(() => {});
+      fetch(`/api/materials/${id}/bookmark`, { method: 'POST', headers: getAuthHeaders() }).catch(() => { });
     }
   };
 
@@ -607,7 +607,7 @@ export default function App() {
         eventType: 'material_view',
         details: { source: isPublicPortalMode ? 'public_portal' : 'internal_catalog' }
       })
-    }).catch(() => {});
+    }).catch(() => { });
   };
 
   // Open Authoring Mode (Add / Edit)
@@ -634,7 +634,7 @@ export default function App() {
         'Unduhan Dimulai',
         `Mengunduh berkas materi resmi POLRI: ${item.title}`
       );
-      fetch(`/api/materials/${id}/download`, { method: 'POST' }).catch(() => {});
+      fetch(`/api/materials/${id}/download`, { method: 'POST' }).catch(() => { });
     }
   };
 
@@ -765,7 +765,7 @@ export default function App() {
                   totalLessons: total
                 })
               }
-              onProgressUpdate={() => {}}
+              onProgressUpdate={() => { }}
             />
           )}
         </div>
@@ -1168,9 +1168,9 @@ export default function App() {
                       setMaterials(data.data);
                     }
                   })
-                  .catch(() => {});
+                  .catch(() => { });
               })
-              .catch(() => {});
+              .catch(() => { });
 
             if (passed) {
               addToast('success', 'Ujian Lulus & Sertifikat Terbit', `Skor Anda: ${score}%. Sertifikat kelulusan dapat diakses di menu Capaian & Sertifikat.`);
@@ -1275,7 +1275,12 @@ export default function App() {
       <AleshaKioskModal
         isOpen={isAleshaModalOpen}
         onClose={() => setIsAleshaModalOpen(false)}
-        kioskUrl={(import.meta as any).env?.VITE_ALESHA_KIOSK_URL || "https://alesha.djalu.co.id/kiosk-public"}
+        kioskUrl={
+          (import.meta as any).env?.VITE_ALESHA_KIOSK_URL ||
+          (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+            ? 'http://localhost:3000/kiosk-public'
+            : 'https://alesha.djalu.co.id/kiosk-public')
+        }
         activeMenu={currentTab}
         selectedMaterial={activeFocusMaterial || selectedCourseDetail || activeQuizMaterial}
         currentUser={currentUser}

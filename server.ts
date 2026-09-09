@@ -5,6 +5,13 @@ import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 
 dotenv.config();
+
+process.on('uncaughtException', (err) => {
+  console.error('[Process UncaughtException]', err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[Process UnhandledRejection]', reason);
+});
 import { INITIAL_MATERIALS } from './src/data/materials';
 import { MaterialItem } from './src/types';
 import {
@@ -201,9 +208,8 @@ function renderCertificateInnerHtml(cert: any, polriLogo: string, korlantasLogo:
   const sessionBlock = cert.sessionName
     ? `<div class="ctx-pill">
         <span class="ctx-badge">KEGIATAN RESMI</span>
-        <span class="ctx-text">${e(cert.sessionName)}${
-          cert.polda ? ` &bull; <strong>${e(cert.polda)}</strong>` : ''
-        }${cert.polres ? ` &bull; ${e(cert.polres)}` : ''}</span>
+        <span class="ctx-text">${e(cert.sessionName)}${cert.polda ? ` &bull; <strong>${e(cert.polda)}</strong>` : ''
+    }${cert.polres ? ` &bull; ${e(cert.polres)}` : ''}</span>
       </div>`
     : '';
 
@@ -3311,7 +3317,32 @@ ${CERTIFICATE_SHARED_CSS}
   });
 
   app.post('/api/ask-ai', async (req, res) => {
-    const { messages } = req.body;
+    const { messages, sessionId } = req.body;
+    const lastUserMsg = Array.isArray(messages) ? [...messages].reverse().find((m: any) => m.role === 'user') : null;
+    const queryText = lastUserMsg?.content || '';
+
+    // Primary: Call Alesha AI Engine
+    const aleshaBaseUrl = process.env.ALESHA_API_URL || 'http://127.0.0.1:8000';
+    try {
+      const aleshaRes = await fetch(`${aleshaBaseUrl}/api/chat/learning`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: queryText,
+          session_id: sessionId || 'session-ask-ai-widget',
+          context_app: 'SM-LEARNING',
+          user_category: 'sm-learning',
+        }),
+      });
+      if (aleshaRes.ok) {
+        const data: any = await aleshaRes.json();
+        if (data.success && data.reply) {
+          return res.json({ reply: data.reply });
+        }
+      }
+    } catch (_e) { }
+
+    // Fallback: Anthropic
     try {
       const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -3517,30 +3548,20 @@ ${CERTIFICATE_SHARED_CSS}
     }
   });
 
-  // 5. Send Prompt to Gemini & Store Messages
+  // 5. Send Prompt to Gemini & Store Messages (Supports Multimodal Files & Voice Note)
   app.post('/api/ai-chat/send', async (req, res) => {
     const caller = resolveCaller(req);
     if (!caller) {
       return res.status(401).json({ success: false, message: 'Harap login terlebih dahulu.' });
     }
 
-    // Cek Cooldown Anti-Spam (30 detik per user)
-    const nowTime = Date.now();
-    const lastChatTime = aiUserLastChatTime.get(caller.id) || 0;
-    const diff = nowTime - lastChatTime;
-    if (diff < AI_CHAT_COOLDOWN_MS) {
-      const remainingSec = Math.ceil((AI_CHAT_COOLDOWN_MS - diff) / 1000);
-      return res.status(429).json({
-        success: false,
-        status: 'rate_limited',
-        cooldownSeconds: remainingSec,
-        message: `Mohon tunggu ${remainingSec} detik sebelum mengirim pesan berikutnya agar tidak membebani sistem.`
-      });
-    }
+    const { sessionId, message, files, audio } = req.body;
+    const hasFiles = Array.isArray(files) && files.length > 0;
+    const hasAudio = audio && typeof audio === 'object' && audio.base64;
+    const rawMessage = (message && typeof message === 'string') ? message.trim() : '';
 
-    const { sessionId, message } = req.body;
-    if (!message || typeof message !== 'string' || !message.trim()) {
-      return res.status(400).json({ success: false, message: 'Pesan pertanyaan tidak boleh kosong.' });
+    if (!rawMessage && !hasFiles && !hasAudio) {
+      return res.status(400).json({ success: false, message: 'Pesan pertanyaan, rekaman suara, atau berkas lampiran tidak boleh kosong.' });
     }
 
     try {
@@ -3558,12 +3579,22 @@ ${CERTIFICATE_SHARED_CSS}
         session = await createAiChatSession(activeSessionId, caller.id, autoTitle);
       }
 
-      // Catat timestamp user mengirim pesan untuk cooldown
-      aiUserLastChatTime.set(caller.id, Date.now());
+      // 1. Format konten pesan user beserta catatan berkas/audio
+      let displayUserContent = rawMessage;
+      if (hasAudio) {
+        displayUserContent = (displayUserContent ? displayUserContent + '\n\n' : '') + '🎙️ [Pesan Suara / Voice Note]';
+      }
+      if (hasFiles) {
+        const fileNames = files.map((f: any) => f.name || 'berkas').join(', ');
+        displayUserContent = (displayUserContent ? displayUserContent + '\n\n' : '') + `📎 [${files.length} Lampiran: ${fileNames}]`;
+      }
+      if (!displayUserContent) {
+        displayUserContent = 'Tolong analisis berkas lampiran ini.';
+      }
 
-      // 1. Simpan pesan user
+      // Simpan pesan user
       const userMsgId = `msg-u-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-      const savedUserMsg = await saveAiChatMessage(userMsgId, activeSessionId, caller.id, 'user', message.trim());
+      const savedUserMsg = await saveAiChatMessage(userMsgId, activeSessionId, caller.id, 'user', displayUserContent);
 
       // 2. Ambil riwayat percakapan sebelumnya untuk multi-turn context (maks 10 pesan terakhir)
       const prevMessages = await getAiChatMessages(activeSessionId, caller.id);
@@ -3578,36 +3609,85 @@ ${CERTIFICATE_SHARED_CSS}
       // 4. Susun System Instruction dinamis berbasis role user
       const systemInstruction = buildAiSystemInstruction(caller.user);
 
-      // 5. Panggil Google Gemini API
+      // 5. Panggil Engine Alesha AI (Primary) dengan Fallback ke Google Gemini
       let replyText = '';
-      try {
-        replyText = await callGeminiApi(systemInstruction, geminiContents);
-      } catch (geminiErr: any) {
-        const errMsg = String(geminiErr?.message || geminiErr || '');
-        const statusCode = geminiErr?.status || geminiErr?.statusCode || geminiErr?.geminiError?.code;
+      const aleshaBaseUrl = process.env.ALESHA_API_URL || 'http://127.0.0.1:8000';
+      let aleshaSuccess = false;
 
-        // Deteksi spesifik HTTP 429 / RESOURCE_EXHAUSTED / Quota Exceeded
-        if (
-          statusCode === 429 ||
-          errMsg.includes('429') ||
-          errMsg.includes('RESOURCE_EXHAUSTED') ||
-          errMsg.includes('Quota exceeded') ||
-          errMsg.includes('quota') ||
-          errMsg.includes('limit')
-        ) {
-          console.warn('[AI Chat Rate Limit 429]', errMsg);
-          return res.status(429).json({
-            status: 'rate_limited',
-            success: false,
-            message: 'Limit free Gemini sudah habis. Silakan update token API atau tunggu beberapa menit sampai limit tersedia kembali.'
-          });
+      try {
+        console.log(`[AI Chat] Routing request to Alesha AI Engine (${aleshaBaseUrl}) for session ${activeSessionId}...`);
+        const clientIp = (req.headers['x-forwarded-for'] as string) || req.ip || '';
+        const aleshaPayload: any = {
+          message: rawMessage,
+          session_id: activeSessionId,
+          context_app: 'SM-LEARNING',
+          user_category: 'sm-learning',
+          user_role: caller.user?.roleId || 'user',
+          user_polda: caller.user?.polda || '',
+          user_polres: caller.user?.polres || '',
+          user_fullname: caller.user?.fullName || 'Pengguna SM-Learning',
+          executive_level: caller.user?.executiveLevel || '',
+          login_user_id: caller.id || '',
+          client_ip: clientIp,
+        };
+        if (hasFiles) {
+          aleshaPayload.files = files;
+        }
+        if (hasAudio) {
+          aleshaPayload.audio = audio;
         }
 
-        console.error('[AI Chat Gemini Error]', geminiErr);
-        return res.status(500).json({
-          success: false,
-          message: 'Terjadi kendala saat menghubungi Google Gemini API: ' + errMsg
+        const aleshaRes = await fetch(`${aleshaBaseUrl}/api/chat/learning`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(aleshaPayload),
         });
+
+        if (aleshaRes.ok) {
+          const aleshaData: any = await aleshaRes.json();
+          if (aleshaData.success && aleshaData.reply) {
+            replyText = aleshaData.reply;
+            aleshaSuccess = true;
+            console.log(`[AI Chat] Alesha AI Engine successfully generated reply (${replyText.length} chars)`);
+          }
+        } else {
+          console.warn(`[AI Chat] Alesha AI Engine returned status ${aleshaRes.status}`);
+        }
+      } catch (aleshaErr: any) {
+        console.warn('[AI Chat] Alesha AI Engine unreachable, falling back to Gemini:', aleshaErr?.message || aleshaErr);
+      }
+
+      // Fallback ke Gemini jika Alesha AI Engine tidak aktif
+      if (!aleshaSuccess) {
+        try {
+          console.log('[AI Chat] Executing fallback to Gemini API...');
+          replyText = await callGeminiApi(systemInstruction, geminiContents);
+        } catch (geminiErr: any) {
+          const errMsg = String(geminiErr?.message || geminiErr || '');
+          const statusCode = geminiErr?.status || geminiErr?.statusCode || geminiErr?.geminiError?.code;
+
+          if (
+            statusCode === 429 ||
+            errMsg.includes('429') ||
+            errMsg.includes('RESOURCE_EXHAUSTED') ||
+            errMsg.includes('Quota exceeded') ||
+            errMsg.includes('quota') ||
+            errMsg.includes('limit')
+          ) {
+            console.warn('[AI Chat Rate Limit 429]', errMsg);
+            return res.status(429).json({
+              status: 'rate_limited',
+              success: false,
+              message: 'Limit free Gemini sudah habis. Silakan periksa koneksi Alesha AI atau tunggu beberapa saat.'
+            });
+          }
+
+          console.error('[AI Chat Gemini Error]', geminiErr);
+          return res.status(500).json({
+            success: false,
+            message: 'Terjadi kendala saat memproses jawaban AI: ' + errMsg
+          });
+        }
       }
 
       // 6. Simpan respons asisten
