@@ -518,8 +518,8 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
                     setRateLimitError(null);
                   }}
                   className={`group relative flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${isActive
-                      ? 'bg-blue-50 text-blue-900 border border-blue-200/80 shadow-2xs font-bold'
-                      : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                    ? 'bg-blue-50 text-blue-900 border border-blue-200/80 shadow-2xs font-bold'
+                    : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
                     }`}
                 >
                   <div className="flex items-center space-x-2.5 min-w-0 flex-1">
@@ -658,8 +658,8 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
                   {/* Avatar */}
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold shadow-2xs ${isUser
-                        ? 'bg-[#0a1d37] text-white'
-                        : 'bg-white border border-slate-200 text-blue-700 ring-2 ring-blue-50'
+                      ? 'bg-[#0a1d37] text-white'
+                      : 'bg-white border border-slate-200 text-blue-700 ring-2 ring-blue-50'
                       }`}
                   >
                     {isUser ? (
@@ -673,8 +673,8 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
                   <div className={`max-w-[85%] sm:max-w-[78%] flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
                     <div
                       className={`relative group rounded-2xl px-4 py-3 text-xs leading-relaxed shadow-2xs ${isUser
-                          ? 'bg-blue-600 text-white rounded-tr-xs'
-                          : 'bg-slate-50 text-slate-800 border border-slate-200/90 rounded-tl-xs'
+                        ? 'bg-blue-600 text-white rounded-tr-xs'
+                        : 'bg-slate-50 text-slate-800 border border-slate-200/90 rounded-tl-xs'
                         }`}
                     >
                       {isUser ? (
@@ -832,10 +832,10 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
               onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
               disabled={isLoading || Boolean(rateLimitError)}
               className={`p-2 rounded-xl transition-colors cursor-pointer shrink-0 ${isRecording
-                  ? 'bg-red-600 text-white animate-pulse'
-                  : voiceNote
-                    ? 'bg-purple-100 text-purple-700'
-                    : 'text-slate-500 hover:text-purple-600 hover:bg-purple-50/60'
+                ? 'bg-red-600 text-white animate-pulse'
+                : voiceNote
+                  ? 'bg-purple-100 text-purple-700'
+                  : 'text-slate-500 hover:text-purple-600 hover:bg-purple-50/60'
                 }`}
               title={isRecording ? 'Hentikan Perekaman' : 'Kirim Pesan Suara (Voice Note)'}
             >
@@ -1285,9 +1285,7 @@ function parseDocumentDownloadCard(line: string, key: string | number): React.Re
 
   // Resolve backend server URL for static exports
   if (fileUrl.startsWith('/static/')) {
-    const apiBase = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
-      ? `http://${window.location.hostname}:8000`
-      : 'http://localhost:8000';
+    const apiBase = typeof window !== 'undefined' && window.location.hostname == 'https://alesha.djalu.co.id';
     fileUrl = `${apiBase}${fileUrl}`;
   }
 
