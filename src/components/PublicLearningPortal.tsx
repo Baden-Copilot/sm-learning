@@ -156,7 +156,7 @@ export function PublicLearningPortal({
   ];
 
   return (
-    <div className="space-y-8 pb-16">
+    <div className="space-y-8 pb-16 w-full max-w-7xl mx-auto min-w-0 font-sans">
       {/* 1. HERO PUBLIC PORTAL WITH JOIN CODE BAR */}
       <section className="bg-gradient-to-br from-[#0a1d37] via-[#0f2d59] to-[#0a1d37] text-white rounded-3xl p-6 sm:p-10 shadow-xl border border-slate-800 relative overflow-hidden">
         <div className="absolute right-0 top-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />

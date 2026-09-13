@@ -217,8 +217,8 @@ export function ActivityResultModal({ sessionId, authHeaders, onClose }: Activit
   ];
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4">
-      <div className="bg-white w-full max-w-4xl rounded-3xl border border-slate-200 shadow-2xl max-h-[92vh] flex flex-col animate-in fade-in zoom-in-95">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-white w-full max-w-4xl rounded-3xl border border-slate-200 shadow-2xl max-h-[92vh] flex flex-col my-auto animate-in fade-in zoom-in-95">
 
         {/* HEADER */}
         <div className="p-5 sm:p-6 border-b border-slate-100 flex items-start justify-between gap-3 shrink-0">

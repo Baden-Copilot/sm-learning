@@ -297,7 +297,7 @@ export function ContentAuthoringPage({
   ];
 
   return (
-    <div className="space-y-6 pb-20 max-w-5xl mx-auto">
+    <div className="space-y-6 pb-20 w-full max-w-6xl mx-auto min-w-0 font-sans">
       {/* 1. TOP AUTHORING TOOLBAR */}
       <header className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
@@ -350,8 +350,8 @@ export function ContentAuthoringPage({
       </header>
 
       {/* 2. STEPPER NAVIGATION */}
-      <nav className="bg-white rounded-2xl border border-slate-200 p-2 shadow-xs">
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+      <nav className="bg-white rounded-2xl border border-slate-200 p-2 shadow-xs overflow-x-auto">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 min-w-[540px] sm:min-w-0">
           {STEPS.map((step) => {
             const isActive = currentStep === step.id;
             return (
@@ -359,7 +359,7 @@ export function ContentAuthoringPage({
                 key={step.id}
                 type="button"
                 onClick={() => setCurrentStep(step.id)}
-                className={`flex items-center gap-2.5 p-3 rounded-xl text-left transition-all cursor-pointer ${
+                className={`flex items-center gap-2 p-2.5 sm:p-3 rounded-xl text-left transition-all cursor-pointer min-w-0 ${
                   isActive
                     ? 'bg-[#0a1d37] text-white shadow-xs'
                     : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -1094,8 +1094,8 @@ export function ContentAuthoringPage({
 
       {/* UNSAVED CHANGES MODAL */}
       {showUnsavedModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto my-auto">
             <div className="flex items-center gap-3 text-amber-600">
               <AlertCircle className="w-6 h-6 shrink-0" />
               <h3 className="font-bold text-base text-slate-900">Perubahan Belum Disimpan</h3>
@@ -1103,7 +1103,7 @@ export function ContentAuthoringPage({
             <p className="text-xs text-slate-600 leading-relaxed">
               Anda memiliki perubahan pada modul yang belum disimpan. Apakah Anda ingin membuang perubahan atau kembali melanjutkan penyuntingan?
             </p>
-            <div className="pt-2 flex justify-end gap-2.5">
+            <div className="pt-2 flex justify-end gap-2.5 border-t border-slate-100 shrink-0">
               <button
                 type="button"
                 onClick={() => setShowUnsavedModal(false)}

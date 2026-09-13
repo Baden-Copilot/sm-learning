@@ -95,7 +95,7 @@ export function MyLearningPage({
   }, [activeTab, inProgressList, completedList, bookmarkedList, historyList, searchQuery]);
 
   return (
-    <div className="space-y-8 pb-20 max-w-6xl mx-auto font-sans">
+    <div className="space-y-8 pb-20 w-full max-w-7xl mx-auto min-w-0 font-sans">
       {/* 1. PERSONAL WORKSPACE HEADER & REAL PROGRESS METRIC */}
       <section className="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-xs">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
@@ -138,7 +138,7 @@ export function MyLearningPage({
       {inProgressList.length > 0 && spotlightCourse && (
         <section className="bg-linear-to-r from-[#0a1d37] to-[#122b52] rounded-3xl p-6 sm:p-7 text-white shadow-md relative overflow-hidden">
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 min-w-0">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 min-w-0 flex-1">
               <div className="w-full sm:w-36 h-24 rounded-2xl overflow-hidden bg-slate-800 shrink-0 border border-white/10 relative">
                 <img
                   src={spotlightCourse.imageUrl}
@@ -150,7 +150,7 @@ export function MyLearningPage({
                 </span>
               </div>
 
-              <div className="space-y-2 min-w-0">
+              <div className="space-y-2 min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-blue-300 bg-blue-900/60 px-2 py-0.5 rounded border border-blue-400/20">
                     Lanjutkan Belajar Terakhir
@@ -188,7 +188,7 @@ export function MyLearningPage({
       {/* 3. TABS & SEARCH BAR */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-2">
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none w-full sm:w-auto">
           {[
             { id: 'in_progress', label: 'Sedang Belajar', count: inProgressList.length, icon: Clock },
             { id: 'completed', label: 'Selesai', count: completedList.length, icon: CheckCircle2 },
@@ -201,7 +201,7 @@ export function MyLearningPage({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
+                className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
                   isActive
                     ? 'bg-[#0a1d37] text-white shadow-xs'
                     : 'bg-white border border-slate-200/80 text-slate-600 hover:bg-slate-50 hover:text-slate-900'

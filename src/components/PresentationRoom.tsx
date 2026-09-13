@@ -126,7 +126,7 @@ export function PresentationRoom({
   const material = liveData?.material;
 
   return (
-    <div className={`space-y-6 pb-12 ${isFullscreen ? 'bg-slate-900 text-white min-h-screen p-6' : ''}`}>
+    <div className={`space-y-6 pb-12 w-full max-w-7xl mx-auto min-w-0 font-sans ${isFullscreen ? 'bg-slate-900 text-white min-h-screen p-4 sm:p-6' : ''}`}>
       {/* TOP NAVIGATION & CONTROLS */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs">
         <div className="flex items-center gap-3">
@@ -441,8 +441,8 @@ export function PresentationRoom({
 
       {/* MATERIAL PREVIEW / PRESENTATION STAGE MODAL */}
       {showMaterialModal && material && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/80 backdrop-blur-md">
-          <div className="bg-slate-900 text-slate-100 rounded-3xl border border-slate-700 max-w-6xl w-full h-[94vh] flex flex-col overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/80 backdrop-blur-md overflow-y-auto">
+          <div className="bg-slate-900 text-slate-100 rounded-3xl border border-slate-700 max-w-6xl w-full max-h-[94vh] flex flex-col my-auto overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
             {/* MODAL HEADER */}
             <div className="p-4 sm:p-6 border-b border-slate-800 flex items-center justify-between bg-slate-950/80 shrink-0">
               <div className="flex items-center gap-3.5 min-w-0">

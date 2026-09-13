@@ -105,7 +105,7 @@ export function CourseDetailPage({
     .slice(0, 3);
 
   return (
-    <div className="space-y-10 pb-24 max-w-5xl mx-auto font-sans">
+    <div className="space-y-8 pb-24 w-full max-w-6xl mx-auto min-w-0 font-sans">
       {/* 1. BREADCRUMB & MANAGEMENT ACTIONS */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-slate-500 flex-wrap">
@@ -476,8 +476,8 @@ export function CourseDetailPage({
 
       {/* DELETE CONFIRMATION DIALOG (RBAC) */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto my-auto">
             <div className="flex items-center gap-3 text-red-600">
               <AlertTriangle className="w-6 h-6 shrink-0" />
               <h3 className="font-bold text-sm text-slate-900">Hapus Materi Pembelajaran?</h3>
@@ -485,7 +485,7 @@ export function CourseDetailPage({
             <p className="text-xs text-slate-600 leading-relaxed">
               Materi <strong>"{material.title}"</strong> akan dihapus secara permanen dari katalog dan silabus.
             </p>
-            <div className="flex items-center justify-end gap-2 pt-2">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 shrink-0">
               <button
                 onClick={() => setShowDeleteModal(false)}
                 className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"

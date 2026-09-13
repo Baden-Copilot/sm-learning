@@ -167,14 +167,14 @@ export function LearningPage({
       {/* 2. JENJANG FILTER TABS & SEARCH CONTROLS */}
       <div className="space-y-4">
         {/* Jenjang Filter Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none w-full">
           {levels.map((lvl) => {
             const isSelected = selectedLevel === lvl.id;
             return (
               <button
                 key={lvl.id}
                 onClick={() => onSelectLevel(lvl.id)}
-                className={`px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-150 flex items-center gap-2 cursor-pointer ${
+                className={`px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-150 flex items-center gap-2 cursor-pointer shrink-0 ${
                   isSelected
                     ? 'bg-[#0a1d37] text-white shadow-xs'
                     : 'bg-white text-slate-600 border border-slate-200/80 hover:bg-slate-50 hover:text-slate-900'
@@ -194,7 +194,7 @@ export function LearningPage({
         {/* Format Bar & Sorting */}
         <div className="bg-white rounded-xl border border-slate-200/80 p-3 sm:px-4 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
           {/* Format pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 scrollbar-none">
+          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 scrollbar-none max-w-full">
             {formats.map((fmt) => {
               const active = selectedType === fmt.id;
               const Icon = fmt.icon;
@@ -202,7 +202,7 @@ export function LearningPage({
                 <button
                   key={fmt.id}
                   onClick={() => onSelectType(fmt.id)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 ${
                     active
                       ? 'bg-blue-50 text-blue-700 font-semibold border border-blue-200'
                       : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'

@@ -99,7 +99,7 @@ export function ContentManagementPage({
   const targetToDelete = materials.find(m => m.id === deleteTargetId);
 
   return (
-    <div className="space-y-8 pb-24 max-w-6xl mx-auto font-sans">
+    <div className="space-y-8 pb-24 w-full max-w-7xl mx-auto font-sans min-w-0">
       {/* 1. TRAINER WORKSPACE HERO & QUICK ACTIONS */}
       <section className="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-xs">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
@@ -176,7 +176,7 @@ export function ContentManagementPage({
       {/* 3. TABS, SEARCH & JENJANG FILTER */}
       <div className="space-y-4">
         {/* Category Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none border-b border-slate-200">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none border-b border-slate-200 w-full">
           {[
             { id: 'all', label: 'Semua Konten', count: totalContent, icon: Layers },
             { id: 'video', label: 'Video Pembelajaran', count: videoCount, icon: Video },
@@ -190,7 +190,7 @@ export function ContentManagementPage({
               <button
                 key={tab.id}
                 onClick={() => setActiveTypeFilter(tab.id)}
-                className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+                className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
                   isActive
                     ? 'bg-[#0a1d37] text-white shadow-xs'
                     : 'bg-white border border-slate-200/80 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
@@ -381,7 +381,7 @@ export function ContentManagementPage({
 
             {/* Desktop Table View (Hidden on mobile) */}
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-xs min-w-[860px]">
                 <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase tracking-wider text-[10px] font-bold">
                   <tr>
                     <th className="px-6 py-4">Materi & Silabus</th>
@@ -536,8 +536,8 @@ export function ContentManagementPage({
 
       {/* DELETE CONFIRMATION DIALOG (RBAC) */}
       {deleteTargetId && targetToDelete && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto my-auto">
             <div className="flex items-center gap-3 text-red-600">
               <AlertTriangle className="w-6 h-6 shrink-0" />
               <h3 className="font-bold text-sm text-slate-900">Hapus Modul Pembelajaran?</h3>
@@ -545,7 +545,7 @@ export function ContentManagementPage({
             <p className="text-xs text-slate-600 leading-relaxed">
               Materi <strong>"{targetToDelete.title}"</strong> akan dihapus permanen dari kurikulum dan katalog.
             </p>
-            <div className="flex items-center justify-end gap-2 pt-2">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 shrink-0">
               <button
                 onClick={() => setDeleteTargetId(null)}
                 className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"

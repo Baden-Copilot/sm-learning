@@ -260,7 +260,7 @@ export function PublicSessionView({
     : null;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-16">
+    <div className="w-full max-w-4xl mx-auto space-y-6 pb-16 min-w-0 font-sans">
       {/* 1. CODE INPUT OR JOIN FORM */}
       {(step === 'code_input' || step === 'join_form') && (
         <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-10 shadow-xl max-w-lg mx-auto space-y-6">

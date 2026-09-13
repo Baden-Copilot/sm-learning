@@ -206,9 +206,9 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
       </div>
 
       {/* Right Controls & Profile */}
-      <div className="flex items-center space-x-4 ml-4">
+      <div className="flex items-center space-x-2 sm:space-x-4 ml-2 sm:ml-4 shrink-0">
         {/* Notification Bell */}
-        <div className="relative" ref={notifRef}>
+        <div className="relative shrink-0" ref={notifRef}>
           <button
             id="btn-notifications-toggle"
             onClick={() => setShowNotifications(!showNotifications)}
@@ -267,26 +267,26 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         </div>
 
         {/* User Profile */}
-        <div className="relative" ref={profileRef}>
+        <div className="relative shrink-0" ref={profileRef}>
           <button
             id="btn-profile-menu-toggle"
             onClick={() => setShowProfileMenu(!showProfileMenu)}
-            className="flex items-center space-x-3 pl-3 border-l border-slate-200 hover:opacity-90 transition-opacity focus:outline-hidden cursor-pointer"
+            className="flex items-center space-x-2 sm:space-x-3 pl-2 sm:pl-3 border-l border-slate-200 hover:opacity-90 transition-opacity focus:outline-hidden cursor-pointer"
             aria-label="Profil Pengguna"
           >
-            <div className="hidden sm:block text-right">
-              <p className="font-semibold text-sm text-slate-900 leading-tight">
+            <div className="hidden sm:block text-right max-w-[140px] md:max-w-[180px] lg:max-w-[220px]">
+              <p className="font-semibold text-sm text-slate-900 leading-tight truncate">
                 {currentUser?.user?.fullName || currentUser?.fullName || 'Super Admin'}
               </p>
-              <p className="text-xs text-blue-600 font-bold uppercase tracking-wider">
+              <p className="text-xs text-blue-600 font-bold uppercase tracking-wider truncate">
                 {currentRole?.name || currentUser?.role?.name || 'Admin / Superuser'}
               </p>
             </div>
-            <div className="relative">
-              <div className="w-10 h-10 rounded-full bg-[#0a1d37] text-white flex items-center justify-center font-bold text-sm border-2 border-slate-200 shadow-2xs">
+            <div className="relative shrink-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#0a1d37] text-white flex items-center justify-center font-bold text-sm border-2 border-slate-200 shadow-2xs">
                 {(currentUser?.user?.fullName || currentUser?.fullName || 'SA')[0]}
               </div>
-              <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full" />
+              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-emerald-500 border-2 border-white rounded-full" />
             </div>
           </button>
 

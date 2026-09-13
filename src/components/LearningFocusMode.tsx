@@ -1095,8 +1095,8 @@ export function LearningFocusMode({
 
       {/* EXIT CONFIRMATION MODAL */}
       {showExitConfirm && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto my-auto">
             <h3 className="font-bold text-sm text-white">
               {reviewMode ? 'Keluar dari Peninjauan Materi?' : 'Keluar dari Ruang Belajar?'}
             </h3>
@@ -1105,7 +1105,7 @@ export function LearningFocusMode({
                 ? 'Peninjauan tidak mengubah data pembelajaran. Anda dapat membuka materi ini lagi kapan saja.'
                 : 'Kemajuan pelajaran Anda tetap tersimpan otomatis. Anda dapat melanjutkan pembelajaran kapan saja.'}
             </p>
-            <div className="flex items-center justify-end gap-2 pt-2">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800 shrink-0">
               <button
                 onClick={() => setShowExitConfirm(false)}
                 className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white transition-colors cursor-pointer"

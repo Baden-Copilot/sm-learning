@@ -82,20 +82,20 @@ export const LearnModal: React.FC<LearnModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-black/70 backdrop-blur-xs animate-in fade-in duration-200">
-      <div 
-        className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200"
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto bg-black/70 backdrop-blur-xs animate-in fade-in duration-200">
+      <div
+        className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col my-auto shadow-2xl overflow-hidden border border-slate-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="bg-[#0a1d37] text-white px-6 py-4 flex items-center justify-between">
+        <div className="bg-[#0a1d37] text-white px-5 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-3">
             <span className="bg-blue-600 text-white text-xs font-extrabold px-2.5 py-1 rounded-sm uppercase tracking-wider">
               {material.badgeTag || material.level}
             </span>
             <div>
               <span className="text-xs text-slate-300 font-medium">{material.typeLabel}</span>
-              <h2 className="font-headline text-lg font-bold text-white line-clamp-1">
+              <h2 className="font-headline text-base sm:text-lg font-bold text-white line-clamp-1">
                 {material.title}
               </h2>
             </div>
@@ -110,10 +110,10 @@ export const LearnModal: React.FC<LearnModalProps> = ({
         </div>
 
         {/* Modal Navigation Tabs */}
-        <div className="flex border-b border-slate-200 bg-slate-50 px-6 pt-2">
+        <div className="flex border-b border-slate-200 bg-slate-50 px-5 sm:px-6 pt-2 shrink-0">
           <button
             onClick={() => setActiveTab('study')}
-            className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors cursor-pointer ${
+            className={`px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-colors cursor-pointer ${
               activeTab === 'study'
                 ? 'border-[#0a1d37] text-[#0a1d37] bg-white rounded-t-lg'
                 : 'border-transparent text-slate-500 hover:text-slate-900'
@@ -123,7 +123,7 @@ export const LearnModal: React.FC<LearnModalProps> = ({
           </button>
           <button
             onClick={() => setActiveTab('quiz')}
-            className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center space-x-1.5 ${
+            className={`px-4 py-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-colors cursor-pointer flex items-center space-x-1.5 ${
               activeTab === 'quiz'
                 ? 'border-[#0a1d37] text-[#0a1d37] bg-white rounded-t-lg'
                 : 'border-transparent text-slate-500 hover:text-slate-900'
@@ -137,7 +137,7 @@ export const LearnModal: React.FC<LearnModalProps> = ({
         </div>
 
         {/* Modal Scrollable Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
           {activeTab === 'study' && (
             <div className="space-y-6">
               {/* Media Player Simulation */}
@@ -341,7 +341,7 @@ export const LearnModal: React.FC<LearnModalProps> = ({
         </div>
 
         {/* Modal Footer Controls */}
-        <div className="p-4 sm:p-5 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+        <div className="p-3.5 sm:p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 shrink-0">
           <div className="flex items-center space-x-2">
             <button
               onClick={(e) => onToggleBookmark(material.id, e)}

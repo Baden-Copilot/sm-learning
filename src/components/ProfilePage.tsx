@@ -355,7 +355,7 @@ export function ProfilePage({
   };
 
   return (
-    <div className="space-y-8 pb-20 max-w-4xl mx-auto font-sans">
+    <div className="space-y-8 pb-20 w-full max-w-5xl mx-auto min-w-0 font-sans">
       {/* 1. PROFILE HEADER CARD */}
       <section className="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-xs">
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">

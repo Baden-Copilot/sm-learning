@@ -325,7 +325,7 @@ export function TrainerOutreachPage({
   const closedSessions = sessions.filter(s => s.status === 'closed' || s.status === 'completed');
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12 w-full max-w-7xl mx-auto min-w-0 font-sans">
       {/* HEADER SECTION */}
       <section className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-xs">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -554,11 +554,11 @@ export function TrainerOutreachPage({
 
       {/* MODAL CREATE SESSION */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-xl rounded-3xl border border-slate-200 shadow-2xl p-6 sm:p-8 max-h-[90vh] overflow-y-auto space-y-6 animate-in fade-in zoom-in-95">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white w-full max-w-xl rounded-3xl border border-slate-200 shadow-2xl p-5 sm:p-6 max-h-[90vh] flex flex-col my-auto space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">Mulai Kegiatan Pemaparan Baru</h3>
+                <h3 className="text-base sm:text-lg font-bold text-slate-900">Mulai Kegiatan Pemaparan Baru</h3>
                 <p className="text-xs text-slate-500">Isi data pelaksanaan untuk menghasilkan kode akses QR sesi.</p>
               </div>
               <button
@@ -570,255 +570,257 @@ export function TrainerOutreachPage({
             </div>
 
             {formError && (
-              <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 font-medium">
+              <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 font-medium shrink-0">
                 {formError}
               </div>
             )}
 
-            <form onSubmit={handleCreateSession} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                  Pilih Modul Pembelajaran / Materi (Library) *
-                </label>
-
-                {libraryMaterials.length === 0 ? (
-                  <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800">
-                    Tidak ada materi terdaftar dalam library.
-                  </div>
-                ) : (
-                  <>
-                    <select
-                      value={selectedMaterialId}
-                      onChange={(e) => setSelectedMaterialId(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                      required
-                    >
-                      {libraryMaterials.map(m => (
-                        <option key={m.id} value={m.id}>
-                          [{m.level}] {m.title}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="text-[11px] text-slate-500 font-medium mt-1.5">
-                      Tersedia {libraryMaterials.length} modul materi dalam library.
-                    </p>
-                  </>
-                )}
-              </div>
-
-              {/* NAMA / PROFIL TRAINER (OTOMATIS) */}
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                  Identitas Trainer / Instruktur (Otomatis dari Profil)
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                  <div>
-                    <span className="text-[11px] text-slate-400 block font-medium">Nama Lengkap</span>
-                    <span className="font-bold text-slate-900">
-                      {currentUser?.user?.fullName || currentUser?.fullName || 'Instruktur Dikmas POLRI'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[11px] text-slate-400 block font-medium">Provinsi</span>
-                    <span className="font-bold text-slate-900">{selectedPolda || '-'}</span>
-                  </div>
-                  <div>
-                    <span className="text-[11px] text-slate-400 block font-medium">Kota / Kabupaten</span>
-                    <span className="font-bold text-slate-900">{selectedPolres || '-'}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                  Nama Kegiatan Edukasi *
-                </label>
-                <input
-                  type="text"
-                  value={activityName}
-                  onChange={(e) => setActivityName(e.target.value)}
-                  placeholder="contoh: Penyuluhan Keselamatan Lalu Lintas SMPN 1 Jakarta"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <form onSubmit={handleCreateSession} className="flex flex-col flex-1 overflow-hidden">
+              <div className="space-y-4 overflow-y-auto flex-1 pr-1 pb-2">
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                    Provinsi * {hasProfileWilayah && '(Terkunci Wilayah Anda)'}
+                    Pilih Modul Pembelajaran / Materi (Library) *
                   </label>
-                  <select
-                    value={selectedPolda}
-                    onChange={(e) => setSelectedPolda(e.target.value)}
-                    disabled={hasProfileWilayah}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 bg-white disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
-                    {(poldaList.length > 0 ? poldaList.map(p => p.nama) : POLDA_LIST).map(p => (
-                      <option key={p} value={p}>{p}</option>
-                    ))}
-                  </select>
+
+                  {libraryMaterials.length === 0 ? (
+                    <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800">
+                      Tidak ada materi terdaftar dalam library.
+                    </div>
+                  ) : (
+                    <>
+                      <select
+                        value={selectedMaterialId}
+                        onChange={(e) => setSelectedMaterialId(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                        required
+                      >
+                        {libraryMaterials.map(m => (
+                          <option key={m.id} value={m.id}>
+                            [{m.level}] {m.title}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-[11px] text-slate-500 font-medium mt-1.5">
+                        Tersedia {libraryMaterials.length} modul materi dalam library.
+                      </p>
+                    </>
+                  )}
+                </div>
+
+                {/* NAMA / PROFIL TRAINER (OTOMATIS) */}
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                    Identitas Trainer / Instruktur (Otomatis dari Profil)
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div>
+                      <span className="text-[11px] text-slate-400 block font-medium">Nama Lengkap</span>
+                      <span className="font-bold text-slate-900 truncate block">
+                        {currentUser?.user?.fullName || currentUser?.fullName || 'Instruktur Dikmas POLRI'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-slate-400 block font-medium">Provinsi</span>
+                      <span className="font-bold text-slate-900 truncate block">{selectedPolda || '-'}</span>
+                    </div>
+                    <div>
+                      <span className="text-[11px] text-slate-400 block font-medium">Kota / Kabupaten</span>
+                      <span className="font-bold text-slate-900 truncate block">{selectedPolres || '-'}</span>
+                    </div>
+                  </div>
                 </div>
 
                 <div>
                   <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                    Kota / Kabupaten * {hasProfileWilayah && selectedPolres && '(Terkunci Wilayah Anda)'}
-                  </label>
-                  <select
-                    value={selectedPolres}
-                    onChange={(e) => setSelectedPolres(e.target.value)}
-                    disabled={hasProfileWilayah && Boolean(selectedPolres)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 bg-white disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
-                    {polresList.length > 0 ? (
-                      polresList.map(p => (
-                        <option key={`${p.poldaId}-${p.polresId}`} value={p.nama}>{p.nama}</option>
-                      ))
-                    ) : (
-                      <option value="">Tidak ada kota / kabupaten</option>
-                    )}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                  Lokasi Belajar (Fisik) *
-                </label>
-                <input
-                  type="text"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="contoh: Aula Utama SMPN 1 Jakarta / Balai Warga RW 05"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                    Tanggal Pelaksanaan *
-                  </label>
-                  <input
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                    Waktu Mulai *
+                    Nama Kegiatan Edukasi *
                   </label>
                   <input
                     type="text"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                    placeholder="contoh: 09:00 WIB"
+                    value={activityName}
+                    onChange={(e) => setActivityName(e.target.value)}
+                    placeholder="contoh: Penyuluhan Keselamatan Lalu Lintas SMPN 1 Jakarta"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
                     required
                   />
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                    Audiens *
-                  </label>
-                  <select
-                    value={audienceType}
-                    onChange={(e) => setAudienceType(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
-                    <option value="SD">SD</option>
-                    <option value="SMP">SMP</option>
-                    <option value="SMA">SMA</option>
-                    <option value="Kampus">Kampus</option>
-                    <option value="Umum">Umum</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                    Jumlah Audiens (Target Peserta) *
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={targetParticipants}
-                    onChange={(e) => setTargetParticipants(parseInt(e.target.value, 10) || 0)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* DOKUMENTASI / FILE */}
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                  Dokumentasi / File Kegiatan (Opsional)
-                </label>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-blue-300 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition">
-                      <Upload className="w-4 h-4" />
-                      <span>{isUploadingFile ? 'Mengunggah...' : 'Pilih Foto / Dokumen'}</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileUpload}
-                        disabled={isUploadingFile}
-                        className="hidden"
-                      />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                      Provinsi * {hasProfileWilayah && '(Terkunci Wilayah Anda)'}
                     </label>
-                    <span className="text-[10px] text-slate-400">JPG, PNG maks 5MB</span>
+                    <select
+                      value={selectedPolda}
+                      onChange={(e) => setSelectedPolda(e.target.value)}
+                      disabled={hasProfileWilayah}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 bg-white disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                      required
+                    >
+                      {(poldaList.length > 0 ? poldaList.map(p => p.nama) : POLDA_LIST).map(p => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
                   </div>
 
-                  {uploadError && (
-                    <p className="text-[11px] text-red-600 font-semibold">{uploadError}</p>
-                  )}
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                      Kota / Kabupaten * {hasProfileWilayah && selectedPolres && '(Terkunci Wilayah Anda)'}
+                    </label>
+                    <select
+                      value={selectedPolres}
+                      onChange={(e) => setSelectedPolres(e.target.value)}
+                      disabled={hasProfileWilayah && Boolean(selectedPolres)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 bg-white disabled:bg-slate-100 disabled:text-slate-600 disabled:cursor-not-allowed focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                      required
+                    >
+                      {polresList.length > 0 ? (
+                        polresList.map(p => (
+                          <option key={`${p.poldaId}-${p.polresId}`} value={p.nama}>{p.nama}</option>
+                        ))
+                      ) : (
+                        <option value="">Tidak ada kota / kabupaten</option>
+                      )}
+                    </select>
+                  </div>
+                </div>
 
-                  {evidenceImages.length > 0 && (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                      {evidenceImages.map((imgUrl, i) => (
-                        <div key={i} className="relative group rounded-xl overflow-hidden border border-slate-200 aspect-video bg-slate-100">
-                          <img src={imgUrl} alt={`Dokumentasi ${i + 1}`} className="w-full h-full object-cover" />
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveEvidence(i)}
-                            className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition cursor-pointer"
-                            title="Hapus file"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
-                      ))}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                    Lokasi Belajar (Fisik) *
+                  </label>
+                  <input
+                    type="text"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="contoh: Aula Utama SMPN 1 Jakarta / Balai Warga RW 05"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                      Tanggal Pelaksanaan *
+                    </label>
+                    <input
+                      type="date"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                      Waktu Mulai *
+                    </label>
+                    <input
+                      type="text"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      placeholder="contoh: 09:00 WIB"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                      Audiens *
+                    </label>
+                    <select
+                      value={audienceType}
+                      onChange={(e) => setAudienceType(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                      required
+                    >
+                      <option value="SD">SD</option>
+                      <option value="SMP">SMP</option>
+                      <option value="SMA">SMA</option>
+                      <option value="Kampus">Kampus</option>
+                      <option value="Umum">Umum</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                      Jumlah Audiens (Target Peserta) *
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={targetParticipants}
+                      onChange={(e) => setTargetParticipants(parseInt(e.target.value, 10) || 0)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* DOKUMENTASI / FILE */}
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                    Dokumentasi / File Kegiatan (Opsional)
+                  </label>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-blue-300 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition">
+                        <Upload className="w-4 h-4" />
+                        <span>{isUploadingFile ? 'Mengunggah...' : 'Pilih Foto / Dokumen'}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileUpload}
+                          disabled={isUploadingFile}
+                          className="hidden"
+                        />
+                      </label>
+                      <span className="text-[10px] text-slate-400">JPG, PNG maks 5MB</span>
                     </div>
-                  )}
+
+                    {uploadError && (
+                      <p className="text-[11px] text-red-600 font-semibold">{uploadError}</p>
+                    )}
+
+                    {evidenceImages.length > 0 && (
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                        {evidenceImages.map((imgUrl, i) => (
+                          <div key={i} className="relative group rounded-xl overflow-hidden border border-slate-200 aspect-video bg-slate-100">
+                            <img src={imgUrl} alt={`Dokumentasi ${i + 1}`} className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveEvidence(i)}
+                              className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition cursor-pointer"
+                              title="Hapus file"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                    Keterangan / Catatan Singkat
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="contoh: Sosialisasi tata tertib rambu dan helm SNI untuk kelas 7 dan 8."
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                  Keterangan / Catatan Singkat
-                </label>
-                <textarea
-                  rows={2}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="contoh: Sosialisasi tata tertib rambu dan helm SNI untuk kelas 7 dan 8."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-3 shrink-0">
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}

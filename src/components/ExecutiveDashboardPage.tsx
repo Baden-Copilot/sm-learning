@@ -259,7 +259,7 @@ export function ExecutiveDashboardPage({
   const hasFieldData = kpi.totalSessions > 0;
 
   return (
-    <div className="space-y-6 pb-20 max-w-7xl mx-auto font-sans">
+    <div className="space-y-6 pb-20 w-full max-w-7xl mx-auto font-sans min-w-0">
       {/* 1. HEADER & FILTERS */}
       <section className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs">
         <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">

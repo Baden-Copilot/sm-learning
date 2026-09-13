@@ -144,51 +144,51 @@ export function BerandaPage({
       </section>
 
       {/* 2. LEARNING OVERVIEW / REAL STATS CARDS */}
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-700 shrink-0">
-            <BookOpen className="w-6 h-6" />
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-xs flex items-center gap-3 sm:gap-4 min-w-0">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-700 shrink-0">
+            <BookOpen className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
-          <div>
-            <p className="text-xs font-medium text-slate-500">Total Modul</p>
-            <p className="text-xl font-bold text-slate-900 mt-0.5">{totalCourses} <span className="text-xs font-normal text-slate-500">Materi</span></p>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
-            <CheckCircle2 className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-xs font-medium text-slate-500">Tingkat Penyelesaian</p>
-            <p className="text-xl font-bold text-slate-900 mt-0.5">{completionRate}% <span className="text-xs font-normal text-emerald-600">({completedCourses.length} Selesai)</span></p>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium text-slate-500 truncate">Total Modul</p>
+            <p className="text-lg sm:text-xl font-bold text-slate-900 mt-0.5 truncate">{totalCourses} <span className="text-xs font-normal text-slate-500">Materi</span></p>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-700 shrink-0">
-            <Clock className="w-6 h-6" />
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-xs flex items-center gap-3 sm:gap-4 min-w-0">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
+            <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
-          <div>
-            <p className="text-xs font-medium text-slate-500">Waktu Belajar</p>
-            <p className="text-xl font-bold text-slate-900 mt-0.5">{totalLearningHours} <span className="text-xs font-normal text-slate-500">Jam Aktif</span></p>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium text-slate-500 truncate">Penyelesaian</p>
+            <p className="text-lg sm:text-xl font-bold text-slate-900 mt-0.5 truncate">{completionRate}% <span className="text-xs font-normal text-emerald-600">({completedCourses.length} Selesai)</span></p>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-700 shrink-0">
-            <Award className="w-6 h-6" />
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-xs flex items-center gap-3 sm:gap-4 min-w-0">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-700 shrink-0">
+            <Clock className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
-          <div>
-            <p className="text-xs font-medium text-slate-500">Sertifikat Kelulusan</p>
-            <p className="text-xl font-bold text-slate-900 mt-0.5">{completedCourses.length} <span className="text-xs font-normal text-slate-500">Terbit</span></p>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium text-slate-500 truncate">Waktu Belajar</p>
+            <p className="text-lg sm:text-xl font-bold text-slate-900 mt-0.5 truncate">{totalLearningHours} <span className="text-xs font-normal text-slate-500">Jam Aktif</span></p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-xs flex items-center gap-3 sm:gap-4 min-w-0">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-700 shrink-0">
+            <Award className="w-5 h-5 sm:w-6 sm:h-6" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium text-slate-500 truncate">Sertifikat Kelulusan</p>
+            <p className="text-lg sm:text-xl font-bold text-slate-900 mt-0.5 truncate">{completedCourses.length} <span className="text-xs font-normal text-slate-500">Terbit</span></p>
           </div>
         </div>
       </section>
 
       {/* 3. CONTINUE LEARNING (DYNAMIC & REAL PROGRESS) */}
-      <section className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-7 shadow-xs">
-        <div className="flex items-center justify-between mb-5">
+      <section className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-7 shadow-xs">
+        <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
           <div>
             <h2 className="font-headline text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-blue-600" />
@@ -205,8 +205,8 @@ export function BerandaPage({
 
         {activeContinueLearningMaterial ? (
           <div className="bg-slate-50 rounded-xl p-4 sm:p-5 border border-slate-200/70 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
-            <div className="flex items-start sm:items-center gap-4">
-              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg bg-slate-200 overflow-hidden shrink-0 relative">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1 min-w-0">
+              <div className="w-full sm:w-24 h-32 sm:h-24 rounded-lg bg-slate-200 overflow-hidden shrink-0 relative">
                 <img
                   src={activeContinueLearningMaterial.imageUrl}
                   alt={activeContinueLearningMaterial.title}
@@ -216,8 +216,8 @@ export function BerandaPage({
                   {activeContinueLearningMaterial.level}
                 </span>
               </div>
-              <div className="space-y-1.5">
-                <span className="text-[11px] font-semibold text-blue-600 uppercase tracking-wider block">
+              <div className="space-y-1.5 flex-1 min-w-0">
+                <span className="text-[11px] font-semibold text-blue-600 uppercase tracking-wider block truncate">
                   {activeContinueLearningMaterial.typeLabel} • {activeContinueLearningMaterial.metadataText}
                 </span>
                 <h3 className="font-bold text-slate-900 text-sm sm:text-base leading-snug line-clamp-1">
@@ -308,7 +308,7 @@ export function BerandaPage({
                 onSelectLevel(item.level);
                 onSelectTab('katalog');
               }}
-              className={`p-4 rounded-2xl border ${item.color} transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-sm flex flex-col justify-between h-32 group`}
+              className={`p-4 rounded-2xl border ${item.color} transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-sm flex flex-col justify-between min-h-[128px] group`}
             >
               <div className="flex items-center justify-between">
                 <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded text-white ${item.badge}`}>

@@ -306,7 +306,7 @@ export function ReportsPage({
   };
 
   return (
-    <div className="space-y-8 pb-24 max-w-6xl mx-auto font-sans">
+    <div className="space-y-8 pb-24 w-full max-w-7xl mx-auto font-sans min-w-0">
       {/* 1. REPORT HERO & ACTION TOOLBAR */}
       <section className="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-xs">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
@@ -347,7 +347,7 @@ export function ReportsPage({
       </section>
 
       {/* 2. REPORT TYPE SELECTOR TABS */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none border-b border-slate-200">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none border-b border-slate-200 w-full">
         {[
           { id: 'learning' as const, label: 'Laporan Pembelajaran (Learning Report)', count: learningData.length, icon: BookOpen },
           { id: 'content' as const, label: 'Laporan Konten & Interaksi', count: contentData.length, icon: Layers },
@@ -361,7 +361,7 @@ export function ReportsPage({
             <button
               key={tab.id}
               onClick={() => setActiveReport(tab.id)}
-              className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+              className={`px-4 py-2.5 text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
                 isActive
                   ? 'bg-[#0a1d37] text-white shadow-xs'
                   : 'bg-white border border-slate-200/80 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
@@ -491,7 +491,7 @@ export function ReportsPage({
 
             {/* Desktop Table View */}
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-xs min-w-[760px]">
                 <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase tracking-wider text-[10px] font-bold">
                   <tr>
                     <th className="px-6 py-4">Judul Materi & Silabus</th>
@@ -572,7 +572,7 @@ export function ReportsPage({
 
             {/* Desktop Table View */}
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-xs min-w-[800px]">
                 <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase tracking-wider text-[10px] font-bold">
                   <tr>
                     <th className="px-6 py-4">Materi Pembelajaran</th>
@@ -642,7 +642,7 @@ export function ReportsPage({
 
             {/* Desktop Table View */}
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-xs min-w-[760px]">
                 <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase tracking-wider text-[10px] font-bold">
                   <tr>
                     <th className="px-6 py-4">Materi Evaluasi Kuis</th>
@@ -724,7 +724,7 @@ export function ReportsPage({
                   Belum ada data laporan kegiatan lapangan resmi dari instruktur.
                 </div>
               ) : (
-                <table className="w-full text-left text-xs">
+                <table className="w-full text-left text-xs min-w-[860px]">
                   <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase tracking-wider text-[10px] font-bold">
                     <tr>
                       <th className="px-6 py-4">Nama Kegiatan</th>
@@ -792,7 +792,7 @@ export function ReportsPage({
 
             {/* Desktop Table View */}
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-xs min-w-[760px]">
                 <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase tracking-wider text-[10px] font-bold">
                   <tr>
                     <th className="px-6 py-4">Nama Personel & Akun</th>

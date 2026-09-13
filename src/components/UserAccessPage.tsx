@@ -630,7 +630,7 @@ export function UserAccessPage({
   }, [users, roleFilter, searchQuery]);
 
   return (
-    <div className="space-y-8 pb-20 max-w-6xl mx-auto font-sans">
+    <div className="space-y-8 pb-20 w-full max-w-7xl mx-auto font-sans min-w-0">
       {/* 1. ADMIN WORKSPACE HEADER */}
       <section className="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-xs">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
@@ -659,7 +659,7 @@ export function UserAccessPage({
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 mt-6 border-t border-slate-100 pt-4 overflow-x-auto">
+        <div className="flex items-center gap-2 mt-6 border-t border-slate-100 pt-4 overflow-x-auto w-full scrollbar-none">
           {[
             { id: 'overview', label: 'Ringkasan Sistem', icon: Activity },
             { id: 'users', label: 'Daftar Pengguna', count: totalUsers, icon: Users },
@@ -673,7 +673,7 @@ export function UserAccessPage({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as ActiveTab)}
-                className={`px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
+                className={`px-4 py-2 text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
                   isActive
                     ? 'bg-[#0a1d37] text-white shadow-xs'
                     : 'bg-slate-50 border border-slate-200/80 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -898,7 +898,7 @@ export function UserAccessPage({
 
           {/* Users Table (Desktop) */}
           <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs min-w-[720px]">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-[10px] font-bold">
                 <tr>
                   <th className="px-4 py-3">Nama & Username</th>
@@ -1020,7 +1020,7 @@ export function UserAccessPage({
 
                 {/* Role Permissions Matrix Preview */}
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
+                  <table className="w-full text-left text-xs min-w-[500px]">
                     <thead className="bg-slate-50 text-slate-500 uppercase text-[9px] font-bold">
                       <tr>
                         <th className="px-3 py-2">Menu Layanan</th>
@@ -1139,7 +1139,7 @@ export function UserAccessPage({
             <div className="py-12 text-center text-slate-400 text-xs">Memuat data master...</div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-xs min-w-[540px]">
                 <thead className="bg-slate-50 text-slate-600 uppercase text-[10px] font-bold">
                   <tr>
                     <th className="px-4 py-3">Kode / ID Entitas</th>
@@ -1187,9 +1187,9 @@ export function UserAccessPage({
 
       {/* MASTER DATA ADD MODAL */}
       {showMasterModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl max-h-[90vh] flex flex-col my-auto space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
               <h3 className="font-bold text-base text-slate-900">
                 Tambah Master {masterKedinasanType.toUpperCase().replace('_', ' ')}
               </h3>
@@ -1198,53 +1198,55 @@ export function UserAccessPage({
               </button>
             </div>
 
-            <form onSubmit={handleSaveMaster} className="space-y-3 text-xs">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">ID / Kode Unik *</label>
-                <input
-                  type="text"
-                  value={masterForm.id}
-                  onChange={e => setMasterForm({ ...masterForm, id: e.target.value })}
-                  placeholder={`e.g. ${masterKedinasanType === 'instansi' ? 'ins-kemendagri' : masterKedinasanType === 'organisasi' ? 'org-polri-korlantas' : masterKedinasanType === 'sub_organisasi' ? 'sub-polri-ditlantas' : 'stk-satlantas-polres'}`}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none font-mono"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Nama Lengkap Master *</label>
-                <input
-                  type="text"
-                  value={masterForm.nama}
-                  onChange={e => setMasterForm({ ...masterForm, nama: e.target.value })}
-                  placeholder="e.g. Korps Lalu Lintas"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none font-semibold"
-                  required
-                />
-              </div>
-
-              {masterKedinasanType !== 'instansi' && (
+            <form onSubmit={handleSaveMaster} className="text-xs flex flex-col flex-1 overflow-hidden">
+              <div className="space-y-3 overflow-y-auto flex-1 pr-1 pb-2">
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">
-                    Induk {masterKedinasanType === 'organisasi' ? 'Instansi' : masterKedinasanType === 'sub_organisasi' ? 'Organisasi' : 'Sub-Organisasi'} *
-                  </label>
-                  <select
-                    value={masterForm.parentId}
-                    onChange={e => setMasterForm({ ...masterForm, parentId: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none font-semibold cursor-pointer"
+                  <label className="font-bold text-slate-700 block mb-1">ID / Kode Unik *</label>
+                  <input
+                    type="text"
+                    value={masterForm.id}
+                    onChange={e => setMasterForm({ ...masterForm, id: e.target.value })}
+                    placeholder={`e.g. ${masterKedinasanType === 'instansi' ? 'ins-kemendagri' : masterKedinasanType === 'organisasi' ? 'org-polri-korlantas' : masterKedinasanType === 'sub_organisasi' ? 'sub-polri-ditlantas' : 'stk-satlantas-polres'}`}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none font-mono"
                     required
-                  >
-                    <option value="">-- Pilih Induk --</option>
-                    {masterParentOptions.map((opt: any) => (
-                      <option key={opt.id} value={opt.id}>
-                        {opt.nama} ({opt.id})
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </div>
-              )}
 
-              <div className="pt-3 flex items-center justify-end gap-2">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Nama Lengkap Master *</label>
+                  <input
+                    type="text"
+                    value={masterForm.nama}
+                    onChange={e => setMasterForm({ ...masterForm, nama: e.target.value })}
+                    placeholder="e.g. Korps Lalu Lintas"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none font-semibold"
+                    required
+                  />
+                </div>
+
+                {masterKedinasanType !== 'instansi' && (
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">
+                      Induk {masterKedinasanType === 'organisasi' ? 'Instansi' : masterKedinasanType === 'sub_organisasi' ? 'Organisasi' : 'Sub-Organisasi'} *
+                    </label>
+                    <select
+                      value={masterForm.parentId}
+                      onChange={e => setMasterForm({ ...masterForm, parentId: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none font-semibold cursor-pointer"
+                      required
+                    >
+                      <option value="">-- Pilih Induk --</option>
+                      {masterParentOptions.map((opt: any) => (
+                        <option key={opt.id} value={opt.id}>
+                          {opt.nama} ({opt.id})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => setShowMasterModal(false)}
@@ -1304,9 +1306,9 @@ export function UserAccessPage({
 
       {/* USER EDIT / CREATE MODAL */}
       {showUserModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl max-h-[90vh] flex flex-col my-auto space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
               <h3 className="font-bold text-base text-slate-900">
                 {editingUser ? 'Edit Akun Pengguna' : 'Tambah Akun Pengguna Baru'}
               </h3>
@@ -1315,7 +1317,7 @@ export function UserAccessPage({
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
+            <div className="space-y-3 text-xs overflow-y-auto flex-1 pr-1 pb-2">
               <div>
                 <label className="font-bold text-slate-700 block mb-1">Nama Lengkap</label>
                 <input
@@ -1502,7 +1504,7 @@ export function UserAccessPage({
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 shrink-0">
               <button
                 onClick={() => setShowUserModal(false)}
                 className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
@@ -1523,8 +1525,8 @@ export function UserAccessPage({
 
       {/* ROLE EDIT / CREATE MODAL WITH PERMISSION MATRIX */}
       {showRoleModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl max-h-[90vh] flex flex-col my-auto space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
               <h3 className="font-bold text-base text-slate-900">
                 {editingRole ? `Konfigurasi Matriks RBAC: ${editingRole.name}` : 'Tambah Role Baru'}
@@ -1561,7 +1563,7 @@ export function UserAccessPage({
               <div>
                 <label className="font-bold text-slate-800 block mb-2">Matriks Izin Menu (Action Matrix)</label>
                 <div className="border border-slate-200 rounded-2xl overflow-hidden">
-                  <table className="w-full text-left text-xs">
+                  <table className="w-full text-left text-xs min-w-[500px]">
                     <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-[9px] font-bold">
                       <tr>
                         <th className="px-4 py-2.5">Menu</th>
@@ -1605,7 +1607,7 @@ export function UserAccessPage({
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100 shrink-0">
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 shrink-0">
               <button
                 onClick={() => setShowRoleModal(false)}
                 className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
@@ -1626,8 +1628,8 @@ export function UserAccessPage({
 
       {/* DELETE CONFIRMATION DIALOG */}
       {deleteConfirm && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto my-auto">
             <div className="flex items-center gap-3 text-red-600">
               <AlertTriangle className="w-6 h-6 shrink-0" />
               <h3 className="font-bold text-sm text-slate-900">
@@ -1637,7 +1639,7 @@ export function UserAccessPage({
             <p className="text-xs text-slate-600 leading-relaxed">
               Anda akan menghapus <strong>"{deleteConfirm.name}"</strong> secara permanen dari sistem tata kelola SM-Learning.
             </p>
-            <div className="flex items-center justify-end gap-2 pt-2">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 shrink-0">
               <button
                 onClick={() => setDeleteConfirm(null)}
                 className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"

@@ -727,8 +727,8 @@ export default function App() {
           />
 
           {selectedCourseDetail && (
-            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-              <div className="bg-white rounded-3xl max-w-4xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+              <div className="bg-white rounded-3xl max-w-4xl w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto my-auto">
                 <CourseDetailPage
                   material={selectedCourseDetail}
                   allMaterials={materials.filter(m => m.publicAccess !== 'restricted' && m.publishStatus === 'published')}
@@ -806,7 +806,7 @@ export default function App() {
       />
 
       {/* Main Content Wrapper */}
-      <div className="flex-1 md:ml-[260px] min-h-screen flex flex-col">
+      <div className="flex-1 md:ml-[260px] min-h-screen flex flex-col min-w-0 w-full">
         {/* Sticky Top Header */}
         <TopHeader
           searchQuery={searchQuery}
@@ -826,7 +826,7 @@ export default function App() {
         />
 
         {/* Main Content Body */}
-        <main className="flex-1 mt-16 p-3 sm:p-6 md:p-10 pb-24 md:pb-12 space-y-6 sm:space-y-8 max-w-[1440px] mx-auto w-full overflow-x-hidden">
+        <main className="flex-1 mt-16 p-3 sm:p-6 md:p-8 pb-24 md:pb-12 space-y-6 sm:space-y-8 max-w-[1440px] mx-auto w-full min-w-0">
           {/* 1. CONTENT AUTHORING WORKSPACE (FULL PAGE AUTHORING) */}
           {isAuthoringOpen ? (
             <ContentAuthoringPage
@@ -1184,10 +1184,10 @@ export default function App() {
 
       {/* HELP MODAL */}
       {showHelpModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="font-headline text-lg font-bold text-slate-900">Pusat Bantuan & Layanan POLRI</h3>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl max-h-[90vh] flex flex-col my-auto space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
+              <h3 className="font-headline text-base sm:text-lg font-bold text-slate-900">Pusat Bantuan & Layanan POLRI</h3>
               <button
                 onClick={() => setShowHelpModal(false)}
                 className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
@@ -1195,7 +1195,7 @@ export default function App() {
                 ✕
               </button>
             </div>
-            <div className="space-y-3 text-xs text-slate-600">
+            <div className="space-y-3 text-xs text-slate-600 overflow-y-auto flex-1 pr-1">
               <div className="p-3 bg-blue-50 rounded-xl border border-blue-100">
                 <h4 className="font-bold text-blue-900 text-sm mb-1">Layanan Kontak Darurat 110</h4>
                 <p className="text-blue-800">Hubungi layanan kepolisian bebas pulsa 24 jam untuk laporan kedaruratan atau konsultasi kamtibmas.</p>
@@ -1209,7 +1209,7 @@ export default function App() {
                 <p>Setelah lulus kuis dengan nilai minimum 70%, buka menu <strong>Capaian & Sertifikat</strong> untuk mengunduh dokumen transkrip dan sertifikat digital Anda.</p>
               </div>
             </div>
-            <div className="pt-2 flex justify-end">
+            <div className="pt-3 border-t border-slate-100 flex justify-end shrink-0">
               <button
                 onClick={() => setShowHelpModal(false)}
                 className="bg-[#0a1d37] text-white px-5 py-2 rounded-lg text-xs font-semibold hover:bg-slate-800 cursor-pointer"
@@ -1223,10 +1223,10 @@ export default function App() {
 
       {/* ABOUT MODAL */}
       {showAboutModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="font-headline text-lg font-bold text-slate-900">Tentang SM-Learning Dikmas Lantas POLRI</h3>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl max-h-[90vh] flex flex-col my-auto space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
+              <h3 className="font-headline text-base sm:text-lg font-bold text-slate-900">Tentang SM-Learning Dikmas Lantas POLRI</h3>
               <button
                 onClick={() => setShowAboutModal(false)}
                 className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
@@ -1234,7 +1234,7 @@ export default function App() {
                 ✕
               </button>
             </div>
-            <div className="space-y-3 text-xs text-slate-600">
+            <div className="space-y-3 text-xs text-slate-600 overflow-y-auto flex-1 pr-1">
               <p className="leading-relaxed">
                 Platform <strong>SM-Learning (Safety & Moral Learning) Dikmas Lantas POLRI</strong> merupakan ekosistem pendidikan digital modern yang dirancang oleh <strong>Korlantas POLRI</strong> bersama <strong>Ditbinmas POLRI</strong> guna menanamkan pemahaman etika berlalu lintas, kesadaran hukum, dan pencegahan kenakalan remaja di seluruh jenjang pendidikan nasional.
               </p>
@@ -1244,7 +1244,7 @@ export default function App() {
                 <div className="text-[11px] text-slate-500">Arsitektur: React 19 + Express Engine + RBAC Engine</div>
               </div>
             </div>
-            <div className="pt-2 flex justify-end">
+            <div className="pt-3 border-t border-slate-100 flex justify-end shrink-0">
               <button
                 onClick={() => setShowAboutModal(false)}
                 className="bg-[#0a1d37] text-white px-5 py-2 rounded-lg text-xs font-semibold hover:bg-slate-800 cursor-pointer"

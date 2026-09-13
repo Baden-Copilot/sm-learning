@@ -134,7 +134,7 @@ export function ProgressPage({
   };
 
   return (
-    <div className="space-y-8 pb-20 max-w-6xl mx-auto font-sans">
+    <div className="space-y-8 pb-20 w-full max-w-7xl mx-auto min-w-0 font-sans">
       {/* 1. HEADER & USER PROFILE OVERVIEW */}
       <section className="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-xs">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
@@ -318,9 +318,9 @@ export function ProgressPage({
 
       {/* 4. OFFICIAL VERIFICATION MODAL */}
       {showVerifyModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl space-y-6">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl max-h-[90vh] flex flex-col my-auto space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
                   <ShieldCheck className="w-5 h-5" />
@@ -342,76 +342,78 @@ export function ProgressPage({
               </button>
             </div>
 
-            <form onSubmit={handleVerifyCertificate} className="space-y-3">
-              <label className="text-xs font-bold text-slate-700 block">
-                Masukkan Nomor Sertifikat:
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={verifyQuery}
-                  onChange={(e) => setVerifyQuery(e.target.value)}
-                  placeholder="contoh: POLRI/DIKMAS/2026/000001"
-                  className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-mono focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-                />
-                <button
-                  type="submit"
-                  disabled={isVerifying || !verifyQuery.trim()}
-                  className="bg-[#0a1d37] hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl text-xs font-bold disabled:opacity-40 cursor-pointer flex items-center gap-1.5"
-                >
-                  {isVerifying ? 'Memeriksa...' : 'Verifikasi'}
-                </button>
-              </div>
-            </form>
-
-            {/* Error Result */}
-            {verifyError && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-xs text-red-700 space-y-1">
-                <span className="font-bold block">Status: Tidak Ditemukan / Tidak Sah</span>
-                <p>{verifyError}</p>
-              </div>
-            )}
-
-            {/* Success Result */}
-            {verifyResult && (
-              <div className="p-5 bg-emerald-50/80 border border-emerald-200 rounded-2xl space-y-3">
-                <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Sertifikat Sah & Terdaftar Resmi</span>
+            <div className="space-y-4 overflow-y-auto flex-1 pr-1 pb-1">
+              <form onSubmit={handleVerifyCertificate} className="space-y-3">
+                <label className="text-xs font-bold text-slate-700 block">
+                  Masukkan Nomor Sertifikat:
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={verifyQuery}
+                    onChange={(e) => setVerifyQuery(e.target.value)}
+                    placeholder="contoh: POLRI/DIKMAS/2026/000001"
+                    className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-mono focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isVerifying || !verifyQuery.trim()}
+                    className="bg-[#0a1d37] hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl text-xs font-bold disabled:opacity-40 cursor-pointer flex items-center gap-1.5 shrink-0"
+                  >
+                    {isVerifying ? 'Memeriksa...' : 'Verifikasi'}
+                  </button>
                 </div>
+              </form>
 
-                <div className="space-y-2 text-xs text-slate-700 font-sans border-t border-emerald-200/60 pt-3">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Nomor:</span>
-                    <span className="font-mono font-bold text-slate-900">{verifyResult.certificateNumber}</span>
+              {/* Error Result */}
+              {verifyError && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-2xl text-xs text-red-700 space-y-1">
+                  <span className="font-bold block">Status: Tidak Ditemukan / Tidak Sah</span>
+                  <p>{verifyError}</p>
+                </div>
+              )}
+
+              {/* Success Result */}
+              {verifyResult && (
+                <div className="p-4 sm:p-5 bg-emerald-50/80 border border-emerald-200 rounded-2xl space-y-3">
+                  <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Sertifikat Sah & Terdaftar Resmi</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Penerima:</span>
-                    <span className="font-bold text-slate-900">{verifyResult.recipientName}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Modul Edukasi:</span>
-                    <span className="font-semibold text-slate-900 text-right max-w-xs">{verifyResult.materialTitle}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Instansi Penerbit:</span>
-                    <span className="font-semibold text-slate-900">{verifyResult.institution}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Status Kelulusan:</span>
-                    <span className="font-bold text-emerald-700">
-                      {typeof verifyResult.score === 'number'
-                        ? `${verifyResult.score}% (Lulus Kuis)`
-                        : '100% (Tuntas Silabus)'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Tanggal Terbit:</span>
-                    <span className="font-medium text-slate-900">{verifyResult.issuedAt}</span>
+
+                  <div className="space-y-2 text-xs text-slate-700 font-sans border-t border-emerald-200/60 pt-3">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Nomor:</span>
+                      <span className="font-mono font-bold text-slate-900">{verifyResult.certificateNumber}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Penerima:</span>
+                      <span className="font-bold text-slate-900">{verifyResult.recipientName}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Modul Edukasi:</span>
+                      <span className="font-semibold text-slate-900 text-right max-w-xs">{verifyResult.materialTitle}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Instansi Penerbit:</span>
+                      <span className="font-semibold text-slate-900">{verifyResult.institution}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Status Kelulusan:</span>
+                      <span className="font-bold text-emerald-700">
+                        {typeof verifyResult.score === 'number'
+                          ? `${verifyResult.score}% (Lulus Kuis)`
+                          : '100% (Tuntas Silabus)'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Tanggal Terbit:</span>
+                      <span className="font-medium text-slate-900">{verifyResult.issuedAt}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       )}

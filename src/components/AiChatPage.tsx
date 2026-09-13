@@ -305,7 +305,7 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-140px)] min-h-[580px] max-w-7xl mx-auto">
+    <div className="flex flex-col lg:flex-row gap-5 h-[calc(100vh-11rem)] min-h-[500px] w-full max-w-7xl mx-auto min-w-0">
       {/* 1. SIDEBAR RIWAYAT SESI CHAT */}
       <div className="w-full lg:w-80 bg-white rounded-2xl border border-slate-200/80 shadow-xs flex flex-col overflow-hidden shrink-0">
         {/* Tombol New Chat */}
