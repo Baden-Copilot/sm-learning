@@ -8,10 +8,13 @@ import {
   Upload,
   CheckCircle2,
   X,
-  Lock,
   User,
   ShieldCheck,
-  Sparkles
+  MapPin,
+  BadgeCheck,
+  RefreshCw,
+  ArrowRight,
+  Key
 } from 'lucide-react';
 import { DEFAULT_34_POLDA, fetchPoldaList, fetchPolresByPolda, WilayahPoldaItem, WilayahPolresItem } from '../utils/wilayah';
 
@@ -21,7 +24,7 @@ interface LoginPageProps {
   onOpenPublicSession?: (code?: string) => void;
 }
 
-export function LoginPage({ onLogin }: LoginPageProps) {
+export function LoginPage({ onLogin, onOpenPublicPortal }: LoginPageProps) {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -58,6 +61,19 @@ export function LoginPage({ onLogin }: LoginPageProps) {
       setPolresList(list);
     });
   }, [regPolda]);
+
+  const resetRegister = () => {
+    setRegFullName('');
+    setRegPhone('');
+    setRegEmail('');
+    setRegPolda('');
+    setRegPolres('');
+    setRegPhoto('');
+    setUsername('');
+    setPassword('');
+    setError('');
+    setSuccessMsg('');
+  };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -179,325 +195,463 @@ export function LoginPage({ onLogin }: LoginPageProps) {
   };
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-slate-100 via-sky-50/40 to-slate-200 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 font-sans text-slate-800 antialiased relative overflow-hidden select-none">
-      {/* 1. AMBIENT ANIMATED BACKGROUND & SUBTLE CYBER GRID */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        {/* Subtle Tech Dot Pattern */}
-        <div
-          className="absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage: `radial-gradient(circle at 1px 1px, #0369a1 1.2px, transparent 0)`,
-            backgroundSize: '28px 28px',
-          }}
-        />
+    <div className="auth-split-theme fixed inset-0 w-screen h-[100dvh] min-h-[100dvh] bg-[#0B1C33] overflow-hidden select-none">
+      <style>{`
+        .auth-split-theme {
+          font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        .auth-split-shell {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .auth-split-card {
+          background: rgba(15, 23, 42, 0.72);
+          backdrop-filter: blur(18px);
+          -webkit-backdrop-filter: blur(18px);
+          position: relative;
+          overflow: hidden;
+          border-radius: 1rem;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        .auth-form-panel {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          transition: opacity 0.35s ease, transform 0.55s ease-in-out;
+          background: rgba(30, 41, 59, 0.92);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          overflow: hidden;
+        }
+        .auth-sign-in {
+          z-index: 2;
+          opacity: 1;
+          pointer-events: auto;
+        }
+        .auth-sign-up {
+          z-index: 1;
+          opacity: 0;
+          pointer-events: none;
+        }
+        .auth-overlay-container {
+          position: absolute;
+          top: 0;
+          left: 50%;
+          width: 50%;
+          height: 100%;
+          overflow: hidden;
+          transition: transform 0.55s ease-in-out;
+          z-index: 100;
+        }
+        .auth-overlay {
+          background: #0A2647;
+          position: relative;
+          left: -100%;
+          height: 100%;
+          width: 200%;
+          transform: translateX(0);
+          transition: transform 0.55s ease-in-out;
+        }
+        .auth-overlay-panel {
+          position: absolute;
+          top: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          height: 100%;
+          width: 50%;
+          text-align: center;
+          transform: translateX(0);
+          transition: transform 0.55s ease-in-out;
+        }
+        .auth-overlay-left {
+          transform: translateX(-20%);
+        }
+        .auth-overlay-right {
+          right: 0;
+          transform: translateX(0);
+        }
+        @media (max-width: 767px) {
+          .auth-split-shell {
+            align-items: stretch !important;
+            padding: 0 !important;
+          }
+          .auth-split-card {
+            max-width: none !important;
+            height: 100% !important;
+            min-height: 100dvh;
+            border-radius: 0 !important;
+            border: none !important;
+          }
+          .auth-form-panel {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            transform: none !important;
+          }
+          .auth-sign-in {
+            opacity: 1;
+            pointer-events: auto;
+            z-index: 2;
+          }
+          .auth-sign-up {
+            opacity: 0;
+            pointer-events: none;
+            z-index: 1;
+          }
+          .auth-split-card.right-panel-active .auth-sign-in {
+            opacity: 0;
+            pointer-events: none;
+            z-index: 1;
+          }
+          .auth-split-card.right-panel-active .auth-sign-up {
+            opacity: 1;
+            pointer-events: auto;
+            z-index: 5;
+          }
+          .auth-overlay-container {
+            display: none !important;
+          }
+        }
+        @media (min-width: 768px) {
+          .auth-sign-in, .auth-sign-up {
+            width: 50%;
+          }
+          .auth-sign-up {
+            transform: translateX(100%);
+          }
+          .auth-split-card.right-panel-active .auth-sign-in {
+            transform: translateX(100%);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 1;
+          }
+          .auth-split-card.right-panel-active .auth-sign-up {
+            transform: translateX(100%);
+            opacity: 1;
+            pointer-events: auto;
+            z-index: 5;
+          }
+          .auth-split-card.right-panel-active .auth-overlay-container {
+            transform: translateX(-100%);
+          }
+          .auth-split-card.right-panel-active .auth-overlay {
+            transform: translateX(50%);
+          }
+          .auth-split-card.right-panel-active .auth-overlay-left {
+            transform: translateX(0);
+          }
+          .auth-split-card.right-panel-active .auth-overlay-right {
+            transform: translateX(20%);
+          }
+        }
+        @media (min-width: 768px) and (max-width: 1023px) {
+          .auth-split-card {
+            height: min(680px, 90dvh) !important;
+          }
+          .auth-overlay-panel h2 {
+            font-size: 1.35rem;
+          }
+        }
+        @media (max-height: 700px) and (min-width: 768px) {
+          .auth-split-card {
+            height: min(640px, 96dvh) !important;
+          }
+        }
 
-        {/* Luminous Animated Fluid Aura Blobs */}
-        <div className="absolute -top-40 -right-40 w-[550px] h-[550px] bg-gradient-to-br from-blue-400/25 to-sky-300/20 rounded-full blur-[120px] animate-pulse duration-[6000ms]" />
-        <div className="absolute -bottom-40 -left-40 w-[550px] h-[550px] bg-gradient-to-tr from-indigo-400/20 to-purple-300/15 rounded-full blur-[130px] animate-pulse duration-[8000ms]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-cyan-300/15 rounded-full blur-[160px] pointer-events-none" />
-      </div>
+        /* sm.djalu.co.id Input overrides */
+        .auth-split-theme input[type="text"],
+        .auth-split-theme input[type="password"],
+        .auth-split-theme input[type="email"],
+        .auth-split-theme input[type="tel"],
+        .auth-split-theme select {
+          height: 2.75rem !important;
+          border-radius: 0.5rem !important;
+          background-color: rgba(255, 255, 255, 0.95) !important;
+          border: 1px solid #e2e8f0 !important;
+          color: #0f172a !important;
+          font-size: 0.875rem !important;
+          box-shadow: none !important;
+          transition: all 0.15s ease-in-out !important;
+        }
+        .auth-split-theme input::placeholder {
+          color: #94a3b8 !important;
+        }
+        .auth-split-theme input:focus,
+        .auth-split-theme select:focus {
+          background-color: #ffffff !important;
+          border-color: #3b82f6 !important;
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
+          outline: none !important;
+        }
+        .auth-split-theme select option {
+          background-color: #ffffff !important;
+          color: #0f172a !important;
+        }
 
-      {/* 2. DYNAMIC GLASSMORPHISM CARD CONTAINER */}
-      <div
-        className={`w-full ${
-          mode === 'register' ? 'max-w-3xl' : 'max-w-md'
-        } relative z-10 transition-all duration-500 ease-in-out space-y-3.5 my-auto animate-in fade-in zoom-in-95 duration-500`}
-      >
-        <div className="bg-white/85 backdrop-blur-xl rounded-[32px] border border-white/80 shadow-[0_20px_60px_-15px_rgba(15,23,42,0.08),0_0_0_1px_rgba(226,232,240,0.8)] p-6 sm:p-8 relative overflow-hidden">
-          {/* Subtle Top Glow Accent */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent rounded-full opacity-60" />
+        /* sm.djalu.co.id Button overrides */
+        .auth-split-theme form button[type="submit"] {
+          height: 3rem !important;
+          border-radius: 0.5rem !important;
+          background: linear-gradient(to right, #2563eb, #3b82f6) !important;
+          color: #ffffff !important;
+          font-size: 0.9375rem !important;
+          font-weight: 700 !important;
+          box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.4) !important;
+          border: none !important;
+          transition: all 0.2s ease-in-out !important;
+        }
+        .auth-split-theme form button[type="submit"]:hover {
+          background: linear-gradient(to right, #3b82f6, #60a5fa) !important;
+          box-shadow: 0 12px 20px -3px rgba(30, 58, 138, 0.5) !important;
+        }
+        .auth-split-theme form button[type="submit"]:active {
+          transform: scale(0.98) !important;
+        }
+      `}</style>
 
-          {/* HEADER & LOGO SECTION */}
-          <div className="text-center space-y-2.5 pb-2">
-            <div className="relative inline-block group">
-              <div className="absolute -inset-1.5 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-3xl blur-md opacity-20 group-hover:opacity-40 transition duration-500" />
-              <div className="relative inline-flex rounded-2xl bg-gradient-to-b from-white to-slate-50 border border-slate-200/90 shadow-sm p-2.5 mx-auto">
-                <img
-                  src="/korlantas-logo-new.png"
-                  alt="Logo Korlantas POLRI"
-                  className="w-14 h-14 sm:w-16 sm:h-16 object-contain transform group-hover:scale-105 transition-transform duration-300"
-                />
-              </div>
-            </div>
+      {/* Background radial glowing ambient orbs */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] rounded-full bg-blue-600/20 blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] rounded-full bg-amber-500/10 blur-[100px] pointer-events-none" />
 
-            <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-blue-50 border border-blue-200/60 text-blue-700 text-[10px] font-bold tracking-wide uppercase mb-1">
-                <ShieldCheck className="w-3 h-3 text-blue-600" />
-                <span>Portal Presisi Edukasi</span>
-              </div>
-              <h1 className="font-headline text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                E-Learning Dikmas Lantas
-              </h1>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">
-                Korps Lalu Lintas Kepolisian Negara Republik Indonesia
-              </p>
-            </div>
-
-            {/* Segmented Control Tab Switcher */}
-            <div className="flex rounded-2xl bg-slate-100/90 p-1.5 border border-slate-200/80 max-w-md mx-auto mt-3 shadow-inner">
-              <button
-                type="button"
-                onClick={() => { setMode('login'); setError(''); setSuccessMsg(''); }}
-                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all duration-300 cursor-pointer flex items-center justify-center gap-1.5 ${
-                  mode === 'login'
-                    ? 'bg-white text-blue-900 shadow-sm shadow-slate-300/50 scale-[1.02]'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
-                }`}
-              >
-                <LogIn className="w-3.5 h-3.5" />
-                <span>Masuk Personel</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => { setMode('register'); setError(''); setSuccessMsg(''); }}
-                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all duration-300 cursor-pointer flex items-center justify-center gap-1.5 ${
-                  mode === 'register'
-                    ? 'bg-white text-blue-900 shadow-sm shadow-slate-300/50 scale-[1.02]'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
-                }`}
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                <span>Registrasi Akun</span>
-              </button>
-            </div>
-          </div>
-
-          {/* SMOOTH ANIMATED ALERT FEEDBACK */}
-          {error && (
-            <div className="my-3 bg-red-50/90 border border-red-200 rounded-2xl p-3 flex items-center gap-2.5 text-red-700 text-xs font-semibold animate-in slide-in-from-top-2 fade-in duration-300 shadow-xs">
-              <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {successMsg && (
-            <div className="my-3 bg-emerald-50/90 border border-emerald-200 rounded-2xl p-3 flex items-center gap-2.5 text-emerald-800 text-xs font-semibold animate-in slide-in-from-top-2 fade-in duration-300 shadow-xs">
-              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
-              <span>{successMsg}</span>
-            </div>
-          )}
-
-          {/* FORM AREA */}
-          {mode === 'login' ? (
-            /* TAB 1: FORM LOGIN (Compact & High-Contrast) */
-            <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-              <div>
-                <label htmlFor="username" className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Username Personel
-                </label>
-                <div className="relative group">
-                  <User className="w-4 h-4 text-slate-400 group-focus-within:text-blue-600 absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200" />
-                  <input
-                    id="username"
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Masukkan username (contoh: superuser, trainer1)"
-                    autoComplete="username"
-                    className="w-full pl-10 pr-3.5 py-2.5 bg-slate-50/80 border border-slate-200 rounded-2xl text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_4px_rgba(59,130,246,0.12)] transition-all duration-200"
-                    required
-                  />
+      {/* Main Split Screen Shell & Card */}
+      <main className="auth-split-shell absolute inset-0 w-full h-full z-10 flex items-center justify-center p-3 sm:p-5 md:p-6">
+        <div className={`auth-split-card relative w-full max-w-[980px] h-[min(720px,92dvh)] rounded-2xl overflow-hidden border border-white/10 shadow-2xl ${mode === 'register' ? 'right-panel-active' : ''}`}>
+          
+          {/* 1. SIGN UP PANEL (Registrasi Akun) */}
+          <div className="auth-form-panel auth-sign-up">
+            <div className="h-full overflow-y-auto overscroll-contain custom-scrollbar px-4 sm:px-8 md:px-10 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+              <div className="max-w-md mx-auto w-full">
+                {/* Header */}
+                <div className="mb-4 sm:mb-5 text-center">
+                  <div className="md:hidden flex items-center justify-center gap-2 mb-3">
+                    <img
+                      src="/korlantas-logo-new.png"
+                      alt="Logo Korlantas POLRI"
+                      className="w-10 h-10 object-contain"
+                    />
+                    <div className="text-left">
+                      <div className="text-[9px] font-bold uppercase tracking-[0.16em] text-amber-400">Korlantas Polri</div>
+                      <div className="text-sm font-black text-white leading-tight">E-Learning Dikmas Lantas</div>
+                    </div>
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-white mb-1">Buat akun Anda</h2>
+                  <p className="text-xs sm:text-sm text-slate-400">Registrasi personel E-Learning Dikmas Lantas Korlantas Polri. Akun aktif setelah verifikasi instansi.</p>
                 </div>
-              </div>
 
-              <div>
-                <label htmlFor="password" className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Kata Sandi
-                </label>
-                <div className="relative group">
-                  <Lock className="w-4 h-4 text-slate-400 group-focus-within:text-blue-600 absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200" />
-                  <input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Masukkan kata sandi"
-                    autoComplete="current-password"
-                    className="w-full pl-10 pr-10 py-2.5 bg-slate-50/80 border border-slate-200 rounded-2xl text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_4px_rgba(59,130,246,0.12)] transition-all duration-200"
-                    required
-                  />
+                {/* Segmented Control Tab Switcher (Mobile Only) */}
+                <div className="md:hidden flex rounded-xl bg-slate-900/80 p-1 border border-slate-700/80 max-w-xs mx-auto mb-3 shadow-inner">
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer"
+                    onClick={() => { setMode('login'); setError(''); setSuccessMsg(''); }}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all duration-300 cursor-pointer flex items-center justify-center gap-1.5 ${
+                      mode === 'login'
+                        ? 'bg-blue-600 text-white shadow-sm scale-[1.02]'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    <LogIn className="w-3.5 h-3.5" />
+                    <span>Masuk</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMode('register'); setError(''); setSuccessMsg(''); }}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all duration-300 cursor-pointer flex items-center justify-center gap-1.5 ${
+                      mode === 'register'
+                        ? 'bg-blue-600 text-white shadow-sm scale-[1.02]'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    <span>Registrasi</span>
                   </button>
                 </div>
-              </div>
 
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-600 hover:to-indigo-600 text-white py-3 rounded-2xl text-xs font-bold tracking-wide transition-all duration-200 flex items-center justify-center gap-2 shadow-md shadow-blue-700/20 hover:shadow-lg hover:shadow-blue-600/30 active:scale-[0.98] disabled:opacity-60 cursor-pointer border border-blue-600/30"
-              >
-                {isLoading ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Memverifikasi Akun...</span>
-                  </>
-                ) : (
-                  <>
-                    <LogIn className="w-4 h-4" />
-                    <span>Masuk ke Dashboard</span>
-                  </>
+                {/* Alerts */}
+                {error && mode === 'register' && (
+                  <div className="my-2 bg-red-500/10 border border-red-500/30 rounded-lg p-2.5 flex items-center gap-2 text-red-300 text-xs font-semibold animate-in slide-in-from-top-2 fade-in duration-300">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+                    <span>{error}</span>
+                  </div>
                 )}
-              </button>
-            </form>
-          ) : (
-            /* TAB 2: FORM REGISTRASI (Dual-Column Zero-Scroll Layout) */
-            <form onSubmit={handleRegisterSubmit} className="space-y-3.5 pt-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                {/* KOLOM KIRI: Data Penugasan & Profil */}
-                <div className="space-y-2.5 bg-slate-50/80 border border-slate-200/80 p-3.5 rounded-2xl">
-                  <p className="text-[10px] font-bold text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
-                    <span>1. Data Penugasan & Profil</span>
-                  </p>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-0.5">
-                        Provinsi *
-                      </label>
-                      <select
-                        value={regPolda}
-                        onChange={(e) => setRegPolda(e.target.value)}
-                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.12)] transition duration-200 cursor-pointer"
-                        required
-                      >
-                        <option value="">Pilih</option>
-                        {(poldaList.length > 0 ? poldaList.map(p => p.nama) : DEFAULT_34_POLDA).map(p => (
-                          <option key={p} value={p}>{p}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-0.5">
-                        Satker / Polres *
-                      </label>
-                      <select
-                        value={regPolres}
-                        onChange={(e) => setRegPolres(e.target.value)}
-                        disabled={!regPolda}
-                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 disabled:opacity-50 focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.12)] transition duration-200 cursor-pointer"
-                        required
-                      >
-                        <option value="">Pilih</option>
-                        {polresList.map(p => (
-                          <option key={`${p.poldaId}-${p.polresId}`} value={p.nama}>{p.nama}</option>
-                        ))}
-                      </select>
-                    </div>
+                {successMsg && (
+                  <div className="my-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-2.5 flex items-center gap-2 text-emerald-300 text-xs font-semibold animate-in slide-in-from-top-2 fade-in duration-300">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                    <span>{successMsg}</span>
                   </div>
+                )}
 
+                {/* TAB 2: FORM REGISTRASI (Sections matching sm.djalu.co.id) */}
+                <form onSubmit={handleRegisterSubmit} className="flex flex-col gap-3.5 sm:gap-4 w-full pt-1">
+                  {/* SEKSI 1: Polda dan Polres */}
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-0.5">
-                      Nama Lengkap & Pangkat / NRP *
-                    </label>
-                    <input
-                      type="text"
-                      value={regFullName}
-                      onChange={(e) => setRegFullName(e.target.value)}
-                      placeholder="e.g. Bripka Dian Pratama, S.H."
-                      className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.12)] transition duration-200"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-0.5">
-                      Pas Foto (Opsional)
-                    </label>
-                    <div className="flex items-center gap-2.5">
-                      {regPhoto ? (
-                        <div className="relative w-9 h-9 rounded-full overflow-hidden border-2 border-blue-200 shrink-0 shadow-xs">
-                          <img src={regPhoto} alt="Preview" className="w-full h-full object-cover" />
-                          <button
-                            type="button"
-                            onClick={() => setRegPhoto('')}
-                            className="absolute inset-0 bg-black/40 text-white flex items-center justify-center opacity-0 hover:opacity-100 transition cursor-pointer"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="w-9 h-9 rounded-full bg-slate-200/80 border border-slate-300 flex items-center justify-center text-[10px] font-bold text-slate-500 shrink-0 shadow-inner">
-                          Foto
-                        </div>
-                      )}
-
-                      <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-dashed border-blue-300 bg-blue-50/80 hover:bg-blue-100 text-blue-700 text-[11px] font-bold transition duration-200 active:scale-95">
-                        <Upload className="w-3 h-3" />
-                        <span>{isUploadingPhoto ? 'Mengunggah...' : 'Pilih File'}</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handlePhotoUpload}
-                          disabled={isUploadingPhoto}
-                          className="hidden"
-                        />
-                      </label>
-                      <span className="text-[10px] text-slate-400">Maks 5MB</span>
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-2">
+                      <MapPin className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                      <span>Polda dan Polres</span>
                     </div>
-                  </div>
-                </div>
-
-                {/* KOLOM KANAN: Akses Akun & Kontak */}
-                <div className="space-y-2.5 bg-slate-50/80 border border-slate-200/80 p-3.5 rounded-2xl flex flex-col justify-between">
-                  <div>
-                    <p className="text-[10px] font-bold text-blue-900 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
-                      <span>2. Akses Akun & Kontak</span>
-                    </p>
-
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-700 mb-0.5">
-                          Username *
+                        <label className="block text-[11px] font-semibold text-slate-300 mb-1 ml-0.5">
+                          Polda <span className="text-red-400">*</span>
+                        </label>
+                        <select
+                          value={regPolda}
+                          onChange={(e) => setRegPolda(e.target.value)}
+                          className="w-full h-11 px-3.5 rounded-lg text-sm text-slate-900 bg-white/95 border border-slate-200 focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(37,99,235,0.12)] transition duration-200 cursor-pointer"
+                          required
+                        >
+                          <option value="">— Pilih Polda —</option>
+                          {(poldaList.length > 0 ? poldaList.map(p => p.nama) : DEFAULT_34_POLDA).map(p => (
+                            <option key={p} value={p}>{p}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-300 mb-1 ml-0.5">
+                          Polres <span className="text-red-400">*</span>
+                        </label>
+                        <select
+                          value={regPolres}
+                          onChange={(e) => setRegPolres(e.target.value)}
+                          disabled={!regPolda}
+                          className="w-full h-11 px-3.5 rounded-lg text-sm text-slate-900 bg-white/95 border border-slate-200 focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(37,99,235,0.12)] disabled:bg-slate-100 disabled:text-slate-400 transition duration-200 cursor-pointer"
+                          required
+                        >
+                          <option value="">{!regPolda ? '— Pilih Polda dulu —' : '— Pilih Polres —'}</option>
+                          {polresList.map(p => (
+                            <option key={`${p.poldaId}-${p.polresId}`} value={p.nama}>{p.nama}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* SEKSI 2: Identitas Personel */}
+                  <div>
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-2">
+                      <User className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                      <span>Identitas Personel</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-300 mb-1 ml-0.5">
+                          Nama & Pangkat / NRP <span className="text-red-400">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={regFullName}
+                          onChange={(e) => setRegFullName(e.target.value)}
+                          placeholder="e.g. Bripka Dian Pratama, S.H."
+                          className="w-full h-11 px-3.5 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 bg-white/95 border border-slate-200 focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(37,99,235,0.12)] transition duration-200"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-300 mb-1 ml-0.5">
+                          Pas Foto Personel (Opsional)
+                        </label>
+                        <div className="flex items-center gap-2.5 h-11">
+                          {regPhoto ? (
+                            <div className="relative w-10 h-10 rounded-lg overflow-hidden border border-blue-400 shrink-0 shadow-sm">
+                              <img src={regPhoto} alt="Preview" className="w-full h-full object-cover" />
+                              <button
+                                type="button"
+                                onClick={() => setRegPhoto('')}
+                                className="absolute inset-0 bg-black/40 text-white flex items-center justify-center opacity-0 hover:opacity-100 transition cursor-pointer"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-400 shrink-0">
+                              Foto
+                            </div>
+                          )}
+
+                          <label className="cursor-pointer inline-flex items-center gap-1.5 h-10 px-3.5 rounded-lg border border-dashed border-blue-400/40 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 text-xs font-semibold transition duration-200 active:scale-95">
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>{isUploadingPhoto ? 'Mengunggah...' : 'Pilih File'}</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handlePhotoUpload}
+                              disabled={isUploadingPhoto}
+                              className="hidden"
+                            />
+                          </label>
+                          <span className="text-[10px] text-slate-400">Maks 5MB</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* SEKSI 3: Akun dan Akses */}
+                  <div>
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-2">
+                      <Key className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span>Akun dan Akses</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-300 mb-1 ml-0.5">
+                          Username <span className="text-red-400">*</span>
                         </label>
                         <input
                           type="text"
                           value={username}
                           onChange={(e) => setUsername(e.target.value)}
                           placeholder="e.g. dian.pratama"
-                          className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.12)] transition duration-200"
+                          className="w-full h-11 px-3.5 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 bg-white/95 border border-slate-200 focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(37,99,235,0.12)] transition duration-200"
                           required
                         />
                       </div>
 
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-700 mb-0.5">
-                          Kata Sandi *
+                        <label className="block text-[11px] font-semibold text-slate-300 mb-1 ml-0.5">
+                          Kata Sandi <span className="text-red-400">*</span>
                         </label>
                         <input
                           type="password"
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           placeholder="Min 6 karakter"
-                          className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.12)] transition duration-200"
+                          className="w-full h-11 px-3.5 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 bg-white/95 border border-slate-200 focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(37,99,235,0.12)] transition duration-200"
                           required
                         />
                       </div>
                     </div>
+                  </div>
 
-                    <div className="grid grid-cols-2 gap-2 mt-2">
+                  {/* SEKSI 4: Kontak */}
+                  <div>
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-400 mb-2">
+                      <BadgeCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                      <span>Kontak</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-700 mb-0.5">
+                        <label className="block text-[11px] font-semibold text-slate-300 mb-1 ml-0.5">
                           No. WhatsApp
                         </label>
                         <input
-                          type="text"
+                          type="tel"
                           value={regPhone}
                           onChange={(e) => setRegPhone(e.target.value)}
                           placeholder="08xxxxxxxxxx"
-                          className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.12)] transition duration-200"
+                          className="w-full h-11 px-3.5 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 bg-white/95 border border-slate-200 focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(37,99,235,0.12)] transition duration-200"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-700 mb-0.5">
+                        <label className="block text-[11px] font-semibold text-slate-300 mb-1 ml-0.5">
                           Email Dinas
                         </label>
                         <input
@@ -505,42 +659,279 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                           value={regEmail}
                           onChange={(e) => setRegEmail(e.target.value)}
                           placeholder="nama@polri.go.id"
-                          className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.12)] transition duration-200"
+                          className="w-full h-11 px-3.5 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 bg-white/95 border border-slate-200 focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(37,99,235,0.12)] transition duration-200"
                         />
                       </div>
                     </div>
                   </div>
 
+                  {/* Actions: Reset & Submit */}
+                  <div className="flex flex-col-reverse sm:flex-row flex-wrap gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={resetRegister}
+                      className="inline-flex items-center justify-center gap-1.5 h-11 px-4 rounded-lg border border-slate-600 text-slate-200 text-sm font-semibold hover:bg-slate-800 transition cursor-pointer"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      <span>Muat ulang</span>
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isLoading || isUploadingPhoto}
+                      className="flex-1 min-w-[8rem] inline-flex items-center justify-center gap-2 h-11 px-5 rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-sm font-bold shadow-lg shadow-blue-900/40 disabled:opacity-60 transition cursor-pointer"
+                    >
+                      {isLoading ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Mendaftarkan Akun...</span>
+                        </>
+                      ) : (
+                        <>
+                          <UserPlus className="w-4 h-4" />
+                          <span>Daftar</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+
+                {/* Switch to login toggle for mobile */}
+                <button
+                  type="button"
+                  onClick={() => { setMode('login'); setError(''); setSuccessMsg(''); }}
+                  className="md:hidden w-full text-center text-sm text-slate-400 mt-3 py-2 cursor-pointer"
+                >
+                  Sudah punya akun? <span className="text-blue-400 font-semibold">Masuk</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. SIGN IN PANEL (Masuk Personel) */}
+          <div className="auth-form-panel auth-sign-in">
+            <div className="h-full overflow-y-auto overscroll-contain custom-scrollbar flex flex-col justify-start sm:justify-center px-4 sm:px-8 md:px-10 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+              <div className="max-w-md mx-auto w-full my-auto">
+                {/* Header */}
+                <div className="mb-5 sm:mb-6 text-center">
+                  <div className="flex items-center justify-center gap-2.5 mb-3 sm:mb-4">
+                    <img
+                      src="/korlantas-logo-new.png"
+                      alt="Logo Korlantas POLRI"
+                      className="w-11 h-11 object-contain"
+                    />
+                    <div className="text-left">
+                      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-400">Korlantas Polri</div>
+                      <h1 className="text-lg sm:text-xl font-black text-white tracking-tight">E-Learning Dikmas Lantas</h1>
+                    </div>
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-white mb-1">Selamat datang kembali</h2>
+                  <p className="text-xs sm:text-sm text-slate-400">Masuk ke portal operasional pembelajaran.</p>
+                </div>
+
+                {/* Segmented Control Tab Switcher (Mobile Only) */}
+                <div className="md:hidden flex rounded-xl bg-slate-900/80 p-1 border border-slate-700/80 max-w-xs mx-auto mb-3 shadow-inner">
+                  <button
+                    type="button"
+                    onClick={() => { setMode('login'); setError(''); setSuccessMsg(''); }}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all duration-300 cursor-pointer flex items-center justify-center gap-1.5 ${
+                      mode === 'login'
+                        ? 'bg-blue-600 text-white shadow-sm scale-[1.02]'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <LogIn className="w-3.5 h-3.5" />
+                    <span>Masuk</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMode('register'); setError(''); setSuccessMsg(''); }}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all duration-300 cursor-pointer flex items-center justify-center gap-1.5 ${
+                      mode === 'register'
+                        ? 'bg-blue-600 text-white shadow-sm scale-[1.02]'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    <span>Registrasi</span>
+                  </button>
+                </div>
+
+                {/* Alerts */}
+                {error && mode === 'login' && (
+                  <div className="my-2 bg-red-500/10 border border-red-500/30 rounded-lg p-2.5 flex items-center gap-2 text-red-300 text-xs font-semibold animate-in slide-in-from-top-2 fade-in duration-300">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+                    <span>{error}</span>
+                  </div>
+                )}
+                {successMsg && mode === 'login' && (
+                  <div className="my-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-2.5 flex items-center gap-2 text-emerald-300 text-xs font-semibold animate-in slide-in-from-top-2 fade-in duration-300">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                    <span>{successMsg}</span>
+                  </div>
+                )}
+
+                {/* TAB 1: FORM LOGIN */}
+                <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-full pt-2">
+                  <div>
+                    <label htmlFor="username" className="block text-[11px] font-semibold text-slate-300 mb-1 ml-0.5">
+                      Username / NRP
+                    </label>
+                    <div className="relative">
+                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        id="username"
+                        type="text"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        placeholder="superadmin.korlantas"
+                        autoComplete="username"
+                        className="w-full h-11 pl-10 pr-3.5 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 bg-white/95 border border-slate-200 focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(37,99,235,0.12)] transition duration-200"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="password" className="block text-[11px] font-semibold text-slate-300 mb-1 ml-0.5">
+                      Kata Sandi
+                    </label>
+                    <div className="relative">
+                      <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        autoComplete="current-password"
+                        className="w-full h-11 pl-10 pr-10 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 bg-white/95 border border-slate-200 focus:outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(37,99,235,0.12)] transition duration-200"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                        aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-2 text-xs sm:text-sm text-slate-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        defaultChecked
+                        className="rounded border-slate-500 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span>Ingat saya</span>
+                    </label>
+                    {onOpenPublicPortal && (
+                      <button
+                        type="button"
+                        onClick={onOpenPublicPortal}
+                        className="text-xs text-blue-400 hover:text-blue-300 transition cursor-pointer"
+                      >
+                        Portal Edukasi Publik →
+                      </button>
+                    )}
+                  </div>
+
                   <button
                     type="submit"
-                    disabled={isLoading || isUploadingPhoto}
-                    className="w-full mt-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white py-2.5 rounded-xl text-xs font-bold tracking-wide transition-all duration-200 flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20 hover:shadow-lg hover:shadow-emerald-500/30 active:scale-[0.98] disabled:opacity-60 cursor-pointer border border-emerald-500/30"
+                    disabled={isLoading}
+                    className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-base font-bold shadow-lg shadow-blue-900/40 disabled:opacity-60 transition cursor-pointer"
                   >
                     {isLoading ? (
                       <>
                         <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        <span>Mendaftarkan Akun...</span>
+                        <span>Memverifikasi Akun...</span>
                       </>
                     ) : (
                       <>
-                        <UserPlus className="w-4 h-4" />
-                        <span>Daftarkan Akun</span>
+                        <span>Masuk</span>
+                        <ArrowRight className="w-5 h-5" />
                       </>
                     )}
                   </button>
+                </form>
+
+                {/* Switch to register toggle for mobile */}
+                <button
+                  type="button"
+                  onClick={() => { setMode('register'); setError(''); setSuccessMsg(''); }}
+                  className="md:hidden w-full text-center text-sm text-slate-400 mt-4 py-2 cursor-pointer"
+                >
+                  Belum punya akun? <span className="text-blue-400 font-semibold">Daftar</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. OVERLAY CONTAINER (Sliding Split Hero) */}
+          <div className="auth-overlay-container pointer-events-none hidden md:block">
+            <div className="auth-overlay">
+              {/* OVERLAY LEFT (Shown when user is in Register mode) */}
+              <div className="auth-overlay-panel auth-overlay-left pointer-events-auto">
+                <div
+                  className="absolute inset-0 bg-cover bg-center"
+                  style={{
+                    backgroundImage: "url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1200&q=80')",
+                    filter: "brightness(0.45) contrast(1.2)",
+                  }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-br from-[#0A2647]/80 via-blue-950/70 to-[#0A2647]/85" />
+                <div className="relative z-10 flex flex-col items-center justify-center h-full px-5 lg:px-8 text-center">
+                  <ShieldCheck className="w-12 h-12 text-white/90 mb-3 lg:mb-4" />
+                  <h2 className="text-2xl lg:text-3xl font-bold text-white mb-2 lg:mb-3">Selamat datang kembali!</h2>
+                  <p className="text-white/75 mb-6 lg:mb-8 max-w-[260px] text-xs lg:text-sm leading-relaxed">
+                    Masuk dengan akun personel untuk mengakses portal E-Learning Dikmas Lantas.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => { setMode('login'); setError(''); setSuccessMsg(''); }}
+                    className="px-6 lg:px-8 py-2.5 lg:py-3 rounded-lg border-2 border-white/30 text-white font-semibold hover:bg-white/10 transition-colors cursor-pointer"
+                  >
+                    Masuk
+                  </button>
                 </div>
               </div>
-            </form>
-          )}
-        </div>
 
-        {/* FOOTER */}
-        <div className="text-center pt-1">
-          <p className="text-[10px] text-slate-400 font-medium tracking-wide">
-            © 2026 Korlantas POLRI — Sistem Edukasi Keselamatan Nasional
-          </p>
+              {/* OVERLAY RIGHT (Shown when user is in Login mode) */}
+              <div className="auth-overlay-panel auth-overlay-right pointer-events-auto">
+                <div
+                  className="absolute inset-0 bg-cover bg-center"
+                  style={{
+                    backgroundImage: "url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1200&q=80')",
+                    filter: "brightness(0.45) contrast(1.2)",
+                  }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-br from-[#0A2647]/80 via-slate-900/70 to-blue-950/85" />
+                <div className="relative z-10 flex flex-col items-center justify-center h-full px-5 lg:px-8 text-center">
+                  <img
+                    src="/korlantas-logo-new.png"
+                    alt="Logo Korlantas POLRI"
+                    className="w-14 h-14 lg:w-16 lg:h-16 object-contain mb-3 lg:mb-4 filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]"
+                  />
+                  <h2 className="text-2xl lg:text-3xl font-bold text-white mb-2 lg:mb-3">Halo, Personel!</h2>
+                  <p className="text-white/75 mb-6 lg:mb-8 max-w-[260px] text-xs lg:text-sm leading-relaxed">
+                    Buat akun baru untuk bergabung ke sistem edukasi Dikmas Lantas Korlantas Polri.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => { setMode('register'); setError(''); setSuccessMsg(''); }}
+                    className="px-6 lg:px-8 py-2.5 lg:py-3 rounded-lg border-2 border-white/30 text-white font-semibold hover:bg-white/10 transition-colors cursor-pointer"
+                  >
+                    Daftar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
-      </div>
+      </main>
     </div>
   );
 }
