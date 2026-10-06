@@ -28,7 +28,7 @@ export default defineConfig(() => {
           '**/public/uploads/**',
         ],
       },
-      allowedHosts: ['sm-learning.djalu.co.id'],
+      allowedHosts: ['sm-learning.djalu.co.id','dikmaslantas.djalu.co.id'],
     },
   };
 });
