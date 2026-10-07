@@ -87,44 +87,23 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
   const userName = currentUser?.user?.fullName || currentUser?.fullName || 'Pengguna SM-Learning';
   const userWilayah = currentUser?.polda ? `${currentUser.polda}${currentUser.polres ? ` - ${currentUser.polres}` : ''}` : 'Nasional';
 
-  // Quick Prompt Chips berdasarkan Role Pengguna
+  // Quick Prompt Chips Umum untuk Semua Role (Alesha Dikmas Lantas)
   const quickPrompts = useMemo(() => {
-    switch (roleId) {
-      case 'role-admin':
-        return [
-          { label: '📊 Rekap Nasional Dikmas', prompt: 'Berikan ringkasan data operasional nasional: jumlah materi, sesi sosialisasi, dan status keaktifan sistem.' },
-          { label: '🛡️ Panduan Hak Akses Role', prompt: 'Jelaskan matriks wewenang hak akses antara Admin, Trainer, dan Eksekutif di sistem SM-Learning.' },
-          { label: '📚 Audit Katalog Modul', prompt: 'Tampilkan pembagian kategori materi per jenjang pendidikan (TK, SD, SMP, SMA) dan rekomendasinya.' },
-        ];
-      case 'role-trainer':
-        return [
-          { label: '🎯 Ide Kuis Siswa SD/SMP', prompt: 'Buatkan 5 soal kuis pilihan ganda interaktif beserta kunci jawaban tentang rambu lalu lintas untuk siswa SD.' },
-          { label: '📝 Rencana Materi Lapangan', prompt: 'Susun rencana materi penyuluhan tatap muka 45 menit untuk pelajar SMA tentang etika berkendara dan bahaya balap liar.' },
-          { label: '📈 Rekap Sesi Sosialisasi', prompt: 'Bagaimana ringkasan capaian peserta dan rata-rata nilai kuis dari sesi sosialisasi yang saya bimbing?' },
-        ];
-      case 'role-executive-1':
-        return [
-          { label: '📍 Rekap Kinerja Polres', prompt: 'Tampilkan ringkasan data kegiatan penyuluhan dan rata-rata skor pemahaman masyarakat di wilayah Polres saya.' },
-          { label: '🚦 Evaluasi Edukasi Wilayah', prompt: 'Berikan rekomendasi langkah strategis peningkatan kepatuhan lalu lintas untuk jajaran Satlantas Polres.' },
-        ];
-      case 'role-executive-2':
-        return [
-          { label: '🗺️ Rekap Sebaran Se-Polda', prompt: 'Tampilkan evaluasi sebaran kegiatan Dikmas Lantas di seluruh Polres jajaran Polda saya.' },
-          { label: '📊 Indeks Capaian Polda', prompt: 'Bagaimana tren capaian peserta dan efektivitas modul edukasi di wilayah Polda ini?' },
-        ];
-      case 'role-executive-3':
-        return [
-          { label: '🇮🇩 Ringkasan Strategis Nasional', prompt: 'Sajikan ringkasan eksekutif capaian sosialisasi keselamatan lalu lintas nasional dari 34 Polda.' },
-          { label: '📈 Rekomendasi Kebijakan Korlantas', prompt: 'Berdasarkan data dikmas nasional, apa poin evaluasi utama untuk penguatan kurikulum keselamatan jalan?' },
-        ];
-      default:
-        return [
-          { label: '🚦 Arti Rambu Peringatan', prompt: 'Jelaskan perbedaan rambu peringatan, rambu larangan, dan rambu perintah beserta contohnya.' },
-          { label: '🪖 Tips Aman Naik Motor', prompt: 'Apa saja perlengkapan keselamatan wajib dan etika berkendara aman bagi pemula?' },
-          { label: '🏆 Modul Rekomendasi', prompt: 'Rekomendasikan materi belajar yang cocok untuk saya tingkatkan pemahaman lalu lintas.' },
-        ];
-    }
-  }, [roleId]);
+    return [
+      {
+        label: '📊 Rangkuman Kegiatan Dikmas',
+        prompt: 'Buat rangkuman kegiatan dikmas minggu ini.',
+      },
+      {
+        label: '📚 Materi Hanjar Komunitas',
+        prompt: 'Buat Materi Hanjar untuk Komunitas',
+      },
+      {
+        label: '🛵 Slogan Kampanye Keselamatan OJOL',
+        prompt: 'Buat Slogan Kampanye Keselamatan Untuk Pengemudi OJOL',
+      },
+    ];
+  }, []);
 
   // Load daftar sesi
   const loadSessions = async () => {
