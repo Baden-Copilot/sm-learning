@@ -2821,6 +2821,12 @@ export async function deleteAiChatSession(sessionId: string, userId: string): Pr
   await p.query('DELETE FROM ai_chat_sessions WHERE id = ? AND user_id = ?', [sessionId, userId]);
 }
 
+export async function deleteAllAiChatSessions(userId: string): Promise<void> {
+  const p = getPool();
+  await p.query('DELETE FROM ai_chat_messages WHERE user_id = ?', [userId]);
+  await p.query('DELETE FROM ai_chat_sessions WHERE user_id = ?', [userId]);
+}
+
 export async function getAiChatMessages(sessionId: string, userId: string): Promise<AiChatMessageRow[]> {
   const p = getPool();
   const [rows]: any = await p.query(

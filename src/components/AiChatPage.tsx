@@ -1,5 +1,6 @@
-function round(val: number, dec: number = 0): number { return Math.round(val * Math.pow(10, dec)) / Math.pow(10, dec); }
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { toPng } from 'html-to-image';
+import html2canvas from 'html2canvas';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   Bot,
   Sparkles,
@@ -26,11 +27,24 @@ import {
   Archive,
   Download,
   X,
-  File as FileGeneric
+  File as FileGeneric,
+  BarChart2,
+  PieChart as PieIcon,
+  TrendingUp,
+  Maximize2,
+  Minimize2,
+  Search,
+  HelpCircle,
+  Layers,
+  CheckCircle2,
+  BookmarkCheck,
+  BookOpen,
+  GraduationCap,
+  Zap
 } from 'lucide-react';
 import { POLRI_LOGO_URL } from '../data/materials';
 
-interface AiChatSession {
+export interface AiChatSession {
   id: string;
   userId: string;
   title: string;
@@ -38,20 +52,35 @@ interface AiChatSession {
   updatedAt: string;
 }
 
-interface AiChatMessage {
+export interface AiChatMessage {
   id: string;
   sessionId: string;
   userId: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
   createdAt: string;
+  attachments?: Array<{ name: string; type: string; size: number }>;
 }
 
-interface AiChatPageProps {
+export interface AiChatPageProps {
   currentUser?: any;
   currentRole?: any;
   authHeaders: Record<string, string>;
 }
+
+// Chart Colors matching Dikmas Lantas POLRI theme
+const CHART_PALETTE = [
+  '#2563eb', // Blue 600
+  '#0d9488', // Teal 600
+  '#f59e0b', // Amber 500
+  '#ef4444', // Rose 500
+  '#8b5cf6', // Violet 500
+  '#06b6d4', // Cyan 500
+  '#ec4899', // Pink 500
+  '#10b981', // Emerald 500
+  '#64748b', // Slate 500
+  '#6366f1', // Indigo 500
+];
 
 export const AiChatPage: React.FC<AiChatPageProps> = ({
   currentUser,
@@ -64,14 +93,16 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSessionsLoading, setIsSessionsLoading] = useState(true);
+  const [sessionSearch, setSessionSearch] = useState('');
   const [rateLimitError, setRateLimitError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [expandedChart, setExpandedChart] = useState<any | null>(null);
 
-  // ── MULTIMODAL ATTACHMENTS STATE ──
+  // Multimodal file attachments state
   const [selectedFiles, setSelectedFiles] = useState<Array<{ file: File; name: string; size: number; type: string; base64?: string }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ── VOICE NOTE RECORDING STATE ──
+  // Voice note recording state
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [voiceNote, setVoiceNote] = useState<{ base64: string; duration: number } | null>(null);
@@ -82,31 +113,120 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const roleId = currentRole?.id || currentUser?.roleId || 'role-learner';
-  const roleName = currentRole?.name || currentUser?.role?.name || 'Peserta Belajar';
-  const userName = currentUser?.user?.fullName || currentUser?.fullName || 'Pengguna SM-Learning';
-  const userWilayah = currentUser?.polda ? `${currentUser.polda}${currentUser.polres ? ` - ${currentUser.polres}` : ''}` : 'Nasional';
-
-  // Quick Prompt Chips Umum untuk Semua Role (Alesha Dikmas Lantas)
-  const quickPrompts = useMemo(() => {
-    return [
-      {
-        label: '📊 Rangkuman Kegiatan Dikmas',
-        prompt: 'Buat rangkuman kegiatan dikmas minggu ini.',
-      },
-      {
-        label: '📚 Materi Hanjar Komunitas',
-        prompt: 'Buat Materi Hanjar untuk Komunitas',
-      },
-      {
-        label: '🛵 Slogan Kampanye Keselamatan OJOL',
-        prompt: 'Buat Slogan Kampanye Keselamatan Untuk Pengemudi OJOL',
-      },
-    ];
+  // Ekstraksi data pengguna dengan fallback berlapis (props currentUser, nested user, sessionStorage)
+  const sessionUserData = useMemo(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const raw = sessionStorage.getItem('currentUser');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
   }, []);
 
+  const activeUser = currentUser?.user || currentUser || sessionUserData?.user || sessionUserData || {};
+  const activeRoleObj = currentRole || currentUser?.role || sessionUserData?.role || null;
+
+  const roleId = activeRoleObj?.id || activeUser?.roleId || 'role-learner';
+  const roleName = activeRoleObj?.name || activeUser?.role?.name || 'Peserta Dikmas Lantas';
+  const userName = activeUser?.fullName || activeUser?.name || 'Personel Korlantas';
+
+  // Penentuan tingkat/level wilayah terakhir yang sedang login:
+  // 1. Jika polres ada nilainya -> Level Polres dari wilayah tersebut
+  // 2. Jika polres kosong & polda ada nilainya -> Level Polda dari wilayah tersebut
+  // 3. Jika keduanya kosong atau Korlantas/Mabes -> Level Nasional
+  const userWilayahInfo = useMemo(() => {
+    const rawPolres = String(activeUser?.polres || '').trim();
+    const rawPolda = String(activeUser?.polda || '').trim();
+
+    const isVal = (val: string) => {
+      const clean = val.toLowerCase();
+      return clean !== '' && clean !== '-' && clean !== 'null' && clean !== 'undefined' && clean !== 'none';
+    };
+
+    const hasPolres = isVal(rawPolres);
+    const hasPolda = isVal(rawPolda);
+
+    const toCapitalized = (str: string) => {
+      return str
+        .toLowerCase()
+        .split(' ')
+        .map(word => word ? word.charAt(0).toUpperCase() + word.slice(1) : '')
+        .join(' ');
+    };
+
+    // Helper untuk membersihkan prefiks dan mengubah format ke Capitalized (Title Case)
+    const cleanName = (val: string) => {
+      const stripped = val
+        .replace(/^(POLRES\s+METRO|POLRESTABES|POLRESTA|POLRES|POLDA)\s+/i, '')
+        .trim();
+      return toCapitalized(stripped);
+    };
+
+    const isPusat = (p: string) => {
+      const up = p.toUpperCase();
+      return up.includes('KORLANTAS') || up.includes('MABES') || up.includes('PUSAT') || up.includes('NASIONAL');
+    };
+
+    // 1. Level Terakhir POLRES: Ambil murni nama polresnya saja (tanpa kata 'Polres')
+    if (hasPolres) {
+      return {
+        level: 'polres',
+        levelLabel: 'Polres',
+        displayName: cleanName(rawPolres),
+        rawPolres,
+        rawPolda,
+      };
+    }
+
+    // 2. Level Terakhir POLDA: Ambil murni nama poldanya saja (tanpa kata 'Polda')
+    if (hasPolda && !isPusat(rawPolda)) {
+      return {
+        level: 'polda',
+        levelLabel: 'Polda',
+        displayName: cleanName(rawPolda),
+        rawPolres,
+        rawPolda,
+      };
+    }
+
+    // 3. Level PUSAT / KOSONG: Set murni 'Nasional'
+    return {
+      level: 'nasional',
+      levelLabel: 'Nasional',
+      displayName: 'Nasional',
+      rawPolres,
+      rawPolda,
+    };
+  }, [activeUser]);
+
+  const userWilayah = userWilayahInfo.displayName;
+
+  // Quick Suggestion Chips khusus Menu SM-Learning
+  const quickCategories = useMemo(() => [
+    {
+      label: '📊 Rangkuman Kegiatan Dikmas',
+      prompt: 'Buat rangkuman kegiatan dikmas minggu ini.',
+    },
+    {
+      label: '📚 Materi Hanjar Komunitas',
+      prompt: 'Buat Materi Hanjar untuk Komunitas',
+    },
+    {
+      label: '🛵 Slogan Kampanye Keselamatan OJOL',
+      prompt: 'Buat Slogan Kampanye Keselamatan Untuk Pengemudi OJOL',
+    },
+  ], []);
+
+  // Filtered Sessions
+  const filteredSessions = useMemo(() => {
+    if (!sessionSearch.trim()) return sessions;
+    const q = sessionSearch.toLowerCase();
+    return sessions.filter(s => s.title.toLowerCase().includes(q));
+  }, [sessions, sessionSearch]);
+
   // Load daftar sesi
-  const loadSessions = async () => {
+  const loadSessions = useCallback(async () => {
     setIsSessionsLoading(true);
     try {
       const res = await fetch('/api/ai-chat/sessions', { headers: authHeaders });
@@ -124,11 +244,11 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
     } finally {
       setIsSessionsLoading(false);
     }
-  };
+  }, [authHeaders, activeSessionId]);
 
   useEffect(() => {
     loadSessions();
-  }, []);
+  }, [loadSessions]);
 
   // Load pesan dalam sesi aktif
   useEffect(() => {
@@ -152,9 +272,9 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
     };
 
     loadMessages();
-  }, [activeSessionId]);
+  }, [activeSessionId, authHeaders]);
 
-  // Sinkronisasi session_id aktif ke localStorage untuk memori terpadu dengan Avatar Voice Kiosk
+  // Sinkronisasi session_id aktif ke localStorage
   useEffect(() => {
     if (activeSessionId && typeof window !== 'undefined') {
       localStorage.setItem('sm_learning_alesha_session_id', activeSessionId);
@@ -166,7 +286,14 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading, rateLimitError]);
 
-
+  // Stop speech when unmounting or switching session
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, [activeSessionId]);
 
   // Handle Buat Sesi Baru
   const handleCreateNewSession = async () => {
@@ -219,8 +346,27 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
     }
   };
 
-  // Handle Kirim Pesan
-  // ── File Selection & Helper Functions ──
+  // Handle Bersihkan Semua Sesi
+  const handleClearAllSessions = async () => {
+    if (!window.confirm('Bersihkan seluruh riwayat percakapan AI? Tindakan ini tidak dapat dibatalkan.')) return;
+
+    try {
+      const res = await fetch('/api/ai-chat/sessions', {
+        method: 'DELETE',
+        headers: authHeaders,
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSessions([]);
+        setActiveSessionId(null);
+        setMessages([]);
+      }
+    } catch (e) {
+      console.error('Failed to clear all chat sessions:', e);
+    }
+  };
+
+  // File Selection
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -253,21 +399,7 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const getFileCategoryIcon = (fileName: string, mimeType: string) => {
-    const ext = fileName.split('.').pop()?.toLowerCase() || '';
-    if (['png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif'].includes(ext) || mimeType.startsWith('image/')) {
-      return <ImageIcon className="w-3.5 h-3.5 text-blue-600" />;
-    }
-    if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(ext) || mimeType.startsWith('video/')) {
-      return <Film className="w-3.5 h-3.5 text-purple-600" />;
-    }
-    if (['zip', 'rar', 'tar', 'gz', '7z'].includes(ext)) {
-      return <Archive className="w-3.5 h-3.5 text-amber-600" />;
-    }
-    return <FileText className="w-3.5 h-3.5 text-slate-600" />;
-  };
-
-  // ── Voice Note Recording Functions ──
+  // Voice Note Recording
   const startVoiceRecording = async () => {
     try {
       if (!navigator.mediaDevices?.getUserMedia) {
@@ -306,7 +438,7 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
       }, 1000);
     } catch (err) {
       console.error('Gagal mengakses mikrofon:', err);
-      alert('Tidak dapat mengakses mikrofon. Pastikan izin akses mikrofon telah diizinkan.');
+      alert('Tidak dapat mengakses mikrofon. Pastikan izin mikrofon telah diberikan.');
     }
   };
 
@@ -322,7 +454,7 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
 
   const cancelVoiceRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
+      mediaRecorderRef.current.stream?.getTracks().forEach(t => t.stop());
       setIsRecording(false);
       if (recordingIntervalRef.current) {
         clearInterval(recordingIntervalRef.current);
@@ -338,6 +470,7 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
     return `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
+  // Handle Kirim Pesan
   const handleSendMessage = async (customPrompt?: string) => {
     const textToSend = customPrompt !== undefined ? customPrompt : inputText;
     const hasFilesToSend = selectedFiles.length > 0;
@@ -355,10 +488,10 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
     setVoiceNote(null);
     setRateLimitError(null);
 
-    // Build optimistic user message display
+    // Optimistic user display
     let displayContent = userText;
     if (currentAudio) {
-      displayContent = (displayContent ? displayContent + '\n\n' : '') + '🎙️ [Pesan Suara / Voice Note]';
+      displayContent = (displayContent ? displayContent + '\n\n' : '') + '🎤 [Pesan Suara / Voice Note Dikirim]';
     }
     if (currentFiles.length > 0) {
       const fileNames = currentFiles.map(f => f.name).join(', ');
@@ -408,7 +541,7 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
       if (res.status === 429 || data.status === 'rate_limited') {
         setRateLimitError(
           data.message ||
-          '⚠️ Limit free Gemini sudah habis. Silakan update token API di pengaturan atau tunggu beberapa menit sampai limit tersedia kembali.'
+          'Limit kuota sementara habis. Silakan coba kembali dalam beberapa saat.'
         );
         return;
       }
@@ -424,7 +557,6 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
 
       if (data.assistantMessage) {
         setMessages(prev => {
-          // Replace temp with persistent user message and append assistant message
           const filtered = prev.filter(m => m.id !== tempUserMsg.id);
           return [...filtered, data.userMessage || tempUserMsg, data.assistantMessage];
         });
@@ -452,42 +584,68 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-5 h-[calc(100vh-11rem)] min-h-[500px] w-full max-w-7xl mx-auto min-w-0">
+    <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-10.5rem)] min-h-[560px] w-full max-w-7xl mx-auto min-w-0">
       {/* 1. SIDEBAR RIWAYAT SESI CHAT */}
-      <div className="w-full lg:w-80 bg-white rounded-2xl border border-slate-200/80 shadow-xs flex flex-col overflow-hidden shrink-0">
-        {/* Tombol New Chat */}
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-2">
+      <div className="w-full lg:w-80 bg-white rounded-2xl border border-slate-200/90 shadow-xs flex flex-col overflow-hidden shrink-0">
+        {/* Tombol New Chat & Refresh */}
+        <div className="p-3.5 border-b border-slate-100 flex items-center justify-between gap-2 bg-slate-50/50">
           <button
             onClick={handleCreateNewSession}
-            className="flex-1 flex items-center justify-center space-x-2 px-4 py-2.5 bg-[#0a1d37] hover:bg-[#132c4f] text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-98 cursor-pointer"
+            className="flex-1 flex items-center justify-center space-x-2 px-3.5 py-2.5 bg-[#0a1d37] hover:bg-[#132c4f] text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-98 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Percakapan Baru</span>
           </button>
           <button
             onClick={loadSessions}
-            className="p-2.5 text-slate-500 hover:text-[#0a1d37] hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+            className="p-2 text-slate-500 hover:text-[#0a1d37] hover:bg-slate-200/70 rounded-xl transition-colors cursor-pointer"
             title="Muat Ulang Riwayat"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
 
+        {/* Search Session Filter */}
+        <div className="p-2.5 border-b border-slate-100">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={sessionSearch}
+              onChange={(e) => setSessionSearch(e.target.value)}
+              placeholder="Cari riwayat percakapan..."
+              className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            {sessionSearch && (
+              <button
+                onClick={() => setSessionSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* Daftar Sesi */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-1.5 divide-y divide-transparent">
+        <div className="flex-1 overflow-y-auto p-2.5 space-y-1">
           {isSessionsLoading ? (
             <div className="p-6 text-center text-xs text-slate-400 flex flex-col items-center justify-center space-y-2">
               <RefreshCw className="w-5 h-5 animate-spin text-blue-500" />
               <span>Memuat riwayat chat...</span>
             </div>
-          ) : sessions.length === 0 ? (
+          ) : filteredSessions.length === 0 ? (
             <div className="p-8 text-center text-xs text-slate-400">
               <MessageSquare className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-              <p className="font-semibold text-slate-600">Belum Ada Riwayat</p>
-              <p className="mt-1">Mulai percakapan pertama Anda dengan AI Dikmas.</p>
+              <p className="font-semibold text-slate-600">
+                {sessionSearch ? 'Tidak Ditemukan' : 'Belum Ada Riwayat'}
+              </p>
+              <p className="mt-1">
+                {sessionSearch ? 'Coba kata kunci pencarian lain.' : 'Mulai percakapan pertama Anda dengan Alesha Dikmas.'}
+              </p>
             </div>
           ) : (
-            sessions.map((s) => {
+            filteredSessions.map((s) => {
               const isActive = s.id === activeSessionId;
               return (
                 <div
@@ -496,9 +654,9 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
                     setActiveSessionId(s.id);
                     setRateLimitError(null);
                   }}
-                  className={`group relative flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${isActive
-                      ? 'bg-blue-50 text-blue-900 border border-blue-200/80 shadow-2xs font-bold'
-                      : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                  className={`group relative flex items-center justify-between px-3 py-2.5 rounded-xl text-xs transition-all cursor-pointer ${isActive
+                    ? 'bg-blue-50/90 text-blue-950 border border-blue-200 shadow-2xs font-bold'
+                    : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900 border border-transparent'
                     }`}
                 >
                   <div className="flex items-center space-x-2.5 min-w-0 flex-1">
@@ -518,8 +676,21 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
           )}
         </div>
 
+        {/* Clear All Sessions Button */}
+        {sessions.length > 0 && (
+          <div className="p-2 border-t border-slate-100 bg-slate-50/40">
+            <button
+              onClick={handleClearAllSessions}
+              className="w-full flex items-center justify-center gap-1.5 py-1.5 text-[11px] text-slate-500 hover:text-red-600 hover:bg-red-50/80 rounded-lg transition-colors cursor-pointer"
+            >
+              <Trash2 className="w-3 h-3" />
+              <span>Bersihkan Seluruh Riwayat</span>
+            </button>
+          </div>
+        )}
+
         {/* User Role Badge Footer */}
-        <div className="p-3.5 bg-slate-50 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
+        <div className="p-3 bg-slate-50 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
           <div className="flex items-center space-x-2 truncate">
             <Shield className="w-3.5 h-3.5 text-blue-600 shrink-0" />
             <span className="truncate font-semibold text-slate-700">{roleName}</span>
@@ -531,9 +702,9 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
       </div>
 
       {/* 2. CHAT MAIN CONTAINER */}
-      <div className="flex-1 bg-white rounded-2xl border border-slate-200/80 shadow-xs flex flex-col overflow-hidden">
+      <div className="flex-1 bg-white rounded-2xl border border-slate-200/90 shadow-xs flex flex-col overflow-hidden">
         {/* Header Chat */}
-        <div className="px-5 py-4 border-b border-slate-100 bg-linear-to-r from-slate-900 to-[#0a1d37] text-white flex items-center justify-between">
+        <div className="px-5 py-3.5 border-b border-slate-100 bg-gradient-to-r from-slate-900 via-[#0a1d37] to-[#132c4f] text-white flex items-center justify-between">
           <div className="flex items-center space-x-3.5">
             <div className="relative">
               <div className="w-10 h-10 rounded-full bg-blue-600/30 ring-2 ring-blue-400/40 p-1 flex items-center justify-center shadow-inner">
@@ -543,40 +714,41 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
                   className="w-8 h-8 object-contain drop-shadow"
                 />
               </div>
-              <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-400 border-2 border-[#0a1d37] rounded-full" />
+              <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-400 border-2 border-[#0a1d37] rounded-full animate-pulse" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
                 <h2 className="font-bold text-sm text-white flex items-center tracking-wide">
-                  Ai Dikmas
+                  Alesha Dikmas Lantas
                   <Sparkles className="w-3.5 h-3.5 ml-1.5 text-amber-300" />
                 </h2>
+                <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                  Online • Siap Melayani
+                </span>
               </div>
               <p className="text-[11px] text-slate-300 flex items-center mt-0.5">
                 <MapPin className="w-3 h-3 mr-1 text-slate-400" />
-                <span className="truncate max-w-[280px] sm:max-w-md">Wilayah: {userWilayah}</span>
+                <span className="truncate max-w-[280px] sm:max-w-md">Wilayah: <span className="capitalize font-medium text-slate-200">{userWilayah}</span></span>
               </p>
             </div>
           </div>
 
-          <div className="hidden sm:flex items-center space-x-2 text-xs text-slate-300">
-            <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Asisten Aktif</span>
+          <div className="flex items-center gap-2">
+            {/* Read-Only Badge */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-400/30 text-blue-200 text-[11px] font-semibold">
+              <Shield className="w-3 h-3 text-blue-300" />
+              <span className="hidden md:inline">Mode Read-Only Aktif</span>
+            </div>
           </div>
         </div>
 
-        {/* BANNER NOTIFIKASI RATE LIMIT (FREE TIER EXHAUSTED) */}
+        {/* BANNER NOTIFIKASI RATE LIMIT */}
         {rateLimitError && (
-          <div className="mx-4 mt-4 p-3.5 bg-amber-50 border border-amber-200/90 rounded-xl text-amber-900 flex items-start space-x-3 text-xs animate-in fade-in duration-200 shadow-xs">
-            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="mx-4 mt-3 p-3 bg-amber-50 border border-amber-200/90 rounded-xl text-amber-900 flex items-start space-x-3 text-xs animate-in fade-in duration-200 shadow-xs">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="font-bold text-amber-950 flex items-center">
-                Pemberitahuan Kuota Gemini API
-              </p>
+              <p className="font-bold text-amber-950">Pemberitahuan Sistem</p>
               <p className="text-amber-800 mt-0.5 leading-relaxed">{rateLimitError}</p>
-              <p className="text-[11px] text-amber-700/80 mt-1">
-                Tombol kirim sementara dinonaktifkan untuk mencegah spamming. Silakan coba kembali sesaat lagi.
-              </p>
             </div>
             <button
               onClick={() => setRateLimitError(null)}
@@ -588,38 +760,42 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
         )}
 
         {/* MESSAGE FEED */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5">
           {messages.length === 0 ? (
             /* Welcome / Empty Screen */
-            <div className="h-full flex flex-col items-center justify-center text-center max-w-lg mx-auto py-8">
-              <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-200/80 flex items-center justify-center mb-4 text-blue-600 shadow-xs">
+            <div className="h-full flex flex-col items-center justify-center text-center max-w-xl mx-auto py-6">
+              <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-200/80 flex items-center justify-center mb-3.5 text-blue-600 shadow-xs">
                 <Bot className="w-8 h-8" />
               </div>
               <h3 className="font-bold text-base text-slate-900">
                 Selamat Datang, {userName}
               </h3>
-              <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
-                AI Dikmas siap mendampingi Anda menjalankan tugas kepolisian dan edukasi masyarakat sesuai wewenang <strong>{roleName}</strong>.
+              <p className="text-xs text-slate-600 mt-1 leading-relaxed max-w-md">
+                Alesha siap menyajikan data real-time, grafik analitik, modul hanjar, serta laporan kegiatan SM-Learning Korlantas POLRI dalam wewenang <strong>{roleName}</strong>.
               </p>
 
-              {/* Quick Prompt Chips */}
+              {/* Quick Categories Bar */}
               <div className="w-full mt-6 space-y-2 text-left">
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider text-center mb-3">
-                  Saran Pertanyaan Cepat:
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider text-center mb-2.5">
+                  Pilih Pertanyaan Cepat Berdasarkan Menu:
                 </p>
-                <div className="grid grid-cols-1 gap-2">
-                  {quickPrompts.map((qp, idx) => (
+                <div className="grid grid-cols-1 sm:grid-cols-1 gap-2">
+                  {quickCategories.map((qc, idx) => (
                     <button
                       key={idx}
-                      onClick={() => handleSendMessage(qp.prompt)}
+                      onClick={() => handleSendMessage(qc.prompt)}
                       disabled={Boolean(rateLimitError) || isLoading}
-                      className="w-full text-left p-3 rounded-xl border border-slate-200/80 hover:border-blue-300 hover:bg-blue-50/50 transition-all text-xs text-slate-700 hover:text-blue-900 flex items-center justify-between group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs"
+                      className="text-left p-3 rounded-xl border border-slate-200/90 hover:border-blue-300 hover:bg-blue-50/50 transition-all text-xs text-slate-700 hover:text-blue-950 flex items-center justify-between group cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs"
                     >
-                      <div className="font-medium">
-                        <span className="font-bold text-slate-900 group-hover:text-blue-700 block">{qp.label}</span>
-                        <span className="text-slate-500 text-[11px] line-clamp-1 mt-0.5">{qp.prompt}</span>
+                      <div className="font-medium pr-2">
+                        <span className="font-bold text-slate-900 group-hover:text-blue-700 block text-xs">
+                          {qc.label}
+                        </span>
+                        <span className="text-slate-500 text-[11px] line-clamp-1 mt-0.5">
+                          {qc.prompt}
+                        </span>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all shrink-0 ml-2" />
+                      <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-0.5 transition-all shrink-0" />
                     </button>
                   ))}
                 </div>
@@ -637,8 +813,8 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
                   {/* Avatar */}
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold shadow-2xs ${isUser
-                        ? 'bg-[#0a1d37] text-white'
-                        : 'bg-white border border-slate-200 text-blue-700 ring-2 ring-blue-50'
+                      ? 'bg-[#0a1d37] text-white'
+                      : 'bg-white border border-slate-200 text-blue-700 ring-2 ring-blue-50'
                       }`}
                   >
                     {isUser ? (
@@ -649,32 +825,44 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
                   </div>
 
                   {/* Bubble Content */}
-                  <div className={`max-w-[85%] sm:max-w-[78%] flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
+                  <div className={`max-w-[90%] sm:max-w-[82%] flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
                     <div
                       className={`relative group rounded-2xl px-4 py-3 text-xs leading-relaxed shadow-2xs ${isUser
-                          ? 'bg-blue-600 text-white rounded-tr-xs'
-                          : 'bg-slate-50 text-slate-800 border border-slate-200/90 rounded-tl-xs'
+                        ? 'bg-blue-600 text-white rounded-tr-xs'
+                        : 'bg-slate-50/90 text-slate-800 border border-slate-200/90 rounded-tl-xs'
                         }`}
                     >
                       {isUser ? (
                         <div className="whitespace-pre-wrap font-medium">{m.content}</div>
                       ) : (
-                        <MarkdownViewer content={m.content} />
+                        <MarkdownViewer
+                          content={m.content}
+                          onExpandChart={(chart) => setExpandedChart(chart)}
+                          onAction={(actionPrompt) => handleSendMessage(actionPrompt)}
+                        />
                       )}
 
-                      {/* Copy Button */}
+                      {/* Assistant Actions Bar: Copy & TTS Voice Reader */}
                       {!isUser && (
-                        <button
-                          onClick={() => handleCopyText(m.content, m.id)}
-                          className="opacity-0 group-hover:opacity-100 absolute top-2 right-2 p-1 rounded-md bg-white border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-all cursor-pointer shadow-2xs"
-                          title="Salin Pesan"
-                        >
-                          {copiedId === m.id ? (
-                            <Check className="w-3 h-3 text-emerald-600" />
-                          ) : (
-                            <Copy className="w-3 h-3" />
-                          )}
-                        </button>
+                        <div className="flex items-center gap-1.5 mt-2.5 pt-2 border-t border-slate-200/70 text-slate-500">
+                          <button
+                            onClick={() => handleCopyText(m.content, m.id)}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium hover:bg-slate-200/70 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+                            title="Salin Teks Jawaban"
+                          >
+                            {copiedId === m.id ? (
+                              <>
+                                <Check className="w-3 h-3 text-emerald-600" />
+                                <span className="text-emerald-700 font-bold">Disalin</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3 h-3" />
+                                <span>Salin</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
                       )}
                     </div>
 
@@ -700,7 +888,7 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
                 <span className="w-2 h-2 rounded-full bg-blue-600 animate-bounce" />
                 <span className="w-2 h-2 rounded-full bg-blue-600 animate-bounce [animation-delay:0.2s]" />
                 <span className="w-2 h-2 rounded-full bg-blue-600 animate-bounce [animation-delay:0.4s]" />
-                <span className="text-xs text-slate-500 font-medium ml-2">AI Dikmas sedang menyusun jawaban...</span>
+                <span className="text-xs text-slate-600 font-medium ml-2">Alesha sedang membaca database & menyusun jawaban...</span>
               </div>
             </div>
           )}
@@ -709,8 +897,8 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
         </div>
 
         {/* INPUT BAR WITH MULTIMODAL & VOICE NOTE */}
-        <div className="p-4 border-t border-slate-200/80 bg-slate-50/50">
-          {/* Hidden File Input (multiple files & multi-extensions) */}
+        <div className="p-3.5 border-t border-slate-200/90 bg-slate-50/50">
+          {/* Hidden File Input */}
           <input
             type="file"
             multiple
@@ -720,7 +908,7 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
             accept="image/*,.pdf,.docx,.doc,.txt,.csv,.xlsx,.xls,.zip,.rar,.tar,.gz,.7z,video/*"
           />
 
-          {/* Active Recording Banner */}
+          {/* Active Voice Recording Banner */}
           {isRecording && (
             <div className="mb-2 p-2.5 px-4 rounded-xl bg-red-50 border border-red-200 flex items-center justify-between animate-pulse">
               <div className="flex items-center gap-2.5">
@@ -747,41 +935,33 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
             </div>
           )}
 
-          {/* Attachments Preview Chips */}
-          {(selectedFiles.length > 0 || voiceNote) && !isRecording && (
-            <div className="mb-2 flex flex-wrap gap-1.5 max-h-24 overflow-y-auto p-1">
-              {/* Voice Note Chip */}
-              {voiceNote && (
-                <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-xl bg-purple-50 border border-purple-200 text-purple-800 text-xs font-medium shadow-2xs">
-                  <Mic className="w-3.5 h-3.5 text-purple-600" />
-                  <span>Pesan Suara ({formatSeconds(voiceNote.duration)})</span>
-                  <button
-                    onClick={() => setVoiceNote(null)}
-                    className="p-0.5 hover:bg-purple-200 rounded-full cursor-pointer text-purple-600"
-                    title="Hapus Rekaman Suara"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              )}
+          {/* Active Voice Note Preview */}
+          {voiceNote && (
+            <div className="mb-2 flex items-center gap-2 p-2 px-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs">
+              <Mic className="w-4 h-4 text-blue-600 animate-pulse" />
+              <span className="font-semibold">Rekaman Suara ({voiceNote.duration} detik) siap dikirim.</span>
+              <button
+                onClick={() => setVoiceNote(null)}
+                className="ml-auto p-1 text-slate-400 hover:text-red-600 rounded cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
 
-              {/* Selected Files Chips */}
-              {selectedFiles.map((fileItem, idx) => (
+          {/* Selected Files Chips */}
+          {selectedFiles.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+              {selectedFiles.map((file, idx) => (
                 <div
                   key={idx}
-                  className="inline-flex items-center gap-2 px-2.5 py-1 rounded-xl bg-slate-100 border border-slate-200 text-slate-800 text-xs shadow-2xs hover:bg-slate-200/70 transition-colors"
+                  className="flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-lg bg-white border border-slate-200 shadow-2xs text-[11px] text-slate-700"
                 >
-                  {getFileCategoryIcon(fileItem.name, fileItem.type)}
-                  <span className="max-w-[140px] sm:max-w-[200px] truncate font-medium">
-                    {fileItem.name}
-                  </span>
-                  <span className="text-[10px] text-slate-500 font-mono">
-                    ({round(fileItem.size / 1024, 0)}KB)
-                  </span>
+                  <Paperclip className="w-3 h-3 text-blue-600" />
+                  <span className="truncate max-w-[140px] font-medium">{file.name}</span>
                   <button
                     onClick={() => removeFile(idx)}
-                    className="p-0.5 hover:bg-slate-300 rounded-full cursor-pointer text-slate-500 hover:text-slate-800"
-                    title="Hapus Berkas"
+                    className="p-0.5 text-slate-400 hover:text-red-600 rounded"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -790,33 +970,25 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
             </div>
           )}
 
-          <div className="flex items-end space-x-2 bg-white rounded-2xl border border-slate-300/80 p-2 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all shadow-2xs">
-            {/* Attachment Button */}
+          {/* Main Input Textarea and Actions */}
+          <div className="flex items-end gap-2 bg-white rounded-xl border border-slate-300/90 p-1.5 focus-within:ring-2 focus-within:ring-blue-500/30 focus-within:border-blue-500 transition-all shadow-2xs">
             <button
+              type="button"
               onClick={() => fileInputRef.current?.click()}
-              disabled={isLoading || Boolean(rateLimitError)}
-              className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50/60 rounded-xl transition-colors cursor-pointer relative shrink-0"
-              title="Unggah Gambar, Dokumen (PDF/Word), Arsip (ZIP), atau Video"
+              className="p-2 text-slate-400 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer shrink-0"
+              title="Lampirkan Dokumen / Gambar"
             >
               <Paperclip className="w-4 h-4" />
-              {selectedFiles.length > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-bold flex items-center justify-center shadow-xs">
-                  {selectedFiles.length}
-                </span>
-              )}
             </button>
 
-            {/* Voice Note Button */}
             <button
+              type="button"
               onClick={isRecording ? stopVoiceRecording : startVoiceRecording}
-              disabled={isLoading || Boolean(rateLimitError)}
-              className={`p-2 rounded-xl transition-colors cursor-pointer shrink-0 ${isRecording
-                  ? 'bg-red-600 text-white animate-pulse'
-                  : voiceNote
-                    ? 'bg-purple-100 text-purple-700'
-                    : 'text-slate-500 hover:text-purple-600 hover:bg-purple-50/60'
+              className={`p-2 rounded-lg transition-colors cursor-pointer shrink-0 ${isRecording
+                ? 'bg-red-100 text-red-600 animate-pulse'
+                : 'text-slate-400 hover:text-blue-600 hover:bg-slate-100'
                 }`}
-              title={isRecording ? 'Hentikan Perekaman' : 'Kirim Pesan Suara (Voice Note)'}
+              title={isRecording ? 'Hentikan Rekaman' : 'Rekam Pesan Suara'}
             >
               <Mic className="w-4 h-4" />
             </button>
@@ -826,50 +998,627 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={Boolean(rateLimitError) || isLoading}
-              placeholder={
-                rateLimitError
-                  ? 'Kendala sistem atau limit tercapai. Silakan coba kembali sesaat lagi...'
-                  : selectedFiles.length > 0
-                    ? `Ketik pertanyaan atau instruksi untuk ${selectedFiles.length} berkas yang dilampirkan...`
-                    : voiceNote
-                      ? 'Pesan suara siap dikirim (dapat menambahkan teks keterangan jika diinginkan)...'
-                      : 'Ketik pertanyaan, rekam suara, atau lampirkan berkas (gambar/pdf/zip/video)...'
-              }
+              placeholder="Tanyakan data materi, outreach, evaluasi kuis, atau personel SM-Learning..."
               rows={1}
-              className="flex-1 max-h-32 min-h-[40px] p-2 text-xs text-slate-800 bg-transparent resize-none focus:outline-hidden disabled:bg-slate-50 disabled:text-slate-400"
+              className="flex-1 py-1.5 px-2 text-xs text-slate-900 placeholder:text-slate-400 resize-none max-h-32 focus:outline-none leading-relaxed bg-transparent"
+              style={{ minHeight: '36px' }}
             />
+
             <button
               onClick={() => handleSendMessage()}
-              disabled={(!inputText.trim() && selectedFiles.length === 0 && !voiceNote) || isLoading || Boolean(rateLimitError)}
-              className="p-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-xs active:scale-95 cursor-pointer shrink-0 flex items-center space-x-1"
-              title="Kirim Pesan"
+              disabled={isLoading || (!inputText.trim() && selectedFiles.length === 0 && !voiceNote)}
+              className="p-2.5 rounded-xl bg-[#0a1d37] hover:bg-[#132c4f] disabled:opacity-40 disabled:hover:bg-[#0a1d37] text-white shadow-xs transition-all cursor-pointer shrink-0"
             >
               <Send className="w-4 h-4" />
             </button>
           </div>
+
           <div className="flex items-center justify-between mt-2 px-1 text-[11px] text-slate-400">
             <span>
-              Tekan <strong>Enter</strong> untuk mengirim, <strong>Shift + Enter</strong> untuk baris baru.
+              Tekan <strong>Enter</strong> kirim, <strong>Shift + Enter</strong> baris baru.
             </span>
-            <span className="hidden sm:inline">Didukung OCR, Voice Note & PDF Generator</span>
+            <span className="hidden sm:flex items-center gap-1 text-slate-500">
+              <Shield className="w-3 h-3 text-blue-600" />
+              Mode Read-Only Aktif
+            </span>
           </div>
         </div>
       </div>
+
+      {/* MODAL EXPANDED CHART PREVIEW */}
+      {expandedChart && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border border-slate-200">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-2.5">
+                {expandedChart.isMulti ? (
+                  <div className="w-8 h-8 rounded-lg bg-blue-100 border border-blue-200 flex items-center justify-center">
+                    <Layers className="w-4 h-4 text-blue-700" />
+                  </div>
+                ) : (
+                  <div className="w-8 h-8 rounded-lg bg-blue-100 border border-blue-200 flex items-center justify-center">
+                    <BarChart2 className="w-4 h-4 text-blue-700" />
+                  </div>
+                )}
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900">{expandedChart.title || 'Preview Visual Grafik'}</h3>
+                  <p className="text-[11px] text-slate-500">
+                    {expandedChart.subtitle || (expandedChart.isMulti ? 'Tampilan penuh seluruh grafik dan kesimpulan analisis' : 'Visualisasi data grafik statistik')}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setExpandedChart(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
+                title="Tutup Modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1 bg-slate-50/50">
+              {expandedChart.isMulti ? (
+                <AleshaMultiChartBoard
+                  charts={expandedChart.charts}
+                  title={expandedChart.title}
+                  summaryText={expandedChart.summaryText}
+                  isModal={true}
+                />
+              ) : (
+                <AleshaChartViewer chartData={expandedChart} isModal={true} />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-/**
- * Lightweight Markdown Parser & Renderer Component (No External Lib Dependencies)
- */
-function MarkdownViewer({ content }: { content: string }) {
+// ==========================================
+// MARKDOWN & RICH CONTENT PARSER
+// ==========================================
+
+
+// ==========================================
+// RESILIENT CHART JSON PARSER & RENDERERS
+// ==========================================
+
+// Safe PNG export supporting modern oklab / oklch Tailwind colors
+async function exportElementToPng(element: HTMLElement, filename: string): Promise<void> {
+  try {
+    const dataUrl = await toPng(element, {
+      cacheBust: true,
+      pixelRatio: 2, // 2x Retina resolution for razor-sharp text & graphics
+      backgroundColor: '#ffffff',
+    });
+    const link = document.createElement('a');
+    link.download = filename;
+    link.href = dataUrl;
+    link.click();
+  } catch (err) {
+    console.warn('html-to-image failed, falling back to html2canvas:', err);
+    try {
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+      });
+      const dataUrl = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = dataUrl;
+      link.click();
+    } catch (fallbackErr) {
+      console.error('All PNG export methods failed:', fallbackErr);
+      throw fallbackErr;
+    }
+  }
+}
+
+function safeParseChartJson(rawText: string): any {
+  if (!rawText || typeof rawText !== 'string') return null;
+  let text = rawText.trim();
+
+  // Strip wrapping markdown code blocks if present
+  text = text.replace(/^```[a-z0-9_:-]*\s*/i, '').replace(/\s*```$/i, '').trim();
+
+  // Fast check: must have chart data indicators
+  const hasDataKey = text.includes('"data"') || text.includes('"items"') || text.includes('"charts"') ||
+    text.includes("'data'") || text.includes("'items'") || text.includes("'charts'");
+  if (!hasDataKey) return null;
+
+  // 1. Direct JSON.parse
+  try {
+    const direct = JSON.parse(text);
+    if (direct && (direct.data || direct.items || direct.charts)) return direct;
+  } catch (e) { }
+
+  // 2. Resilient normalization: fix literal newlines in strings, trailing commas
+  try {
+    const fixedNewlines = text.replace(/"([^"\\]*(?:\\.[^"\\]*)*)"/g, (_m, str) => {
+      return '"' + str.replace(/[\r\n]+/g, ' ') + '"';
+    });
+    const cleanCommas = fixedNewlines.replace(/,\s*([}\]])/g, '$1');
+    const parsed = JSON.parse(cleanCommas);
+    if (parsed && (parsed.data || parsed.items || parsed.charts)) return parsed;
+  } catch (e) { }
+
+  // 3. Fallback regex extraction of chart title & array data
+  try {
+    const titleMatch = text.match(/["']title["']\s*:\s*["']([^"']+)["']/i) ||
+      text.match(/["']title["']\s*:\s*["']([\s\S]*?)["']\s*,/i);
+    const subtitleMatch = text.match(/["']subtitle["']\s*:\s*["']([^"']+)["']/i);
+    const typeMatch = text.match(/["'](?:type|chart_type)["']\s*:\s*["']([a-z0-9_-]+)["']/i);
+
+    const dataMatch = text.match(/["'](?:data|items)["']\s*:\s*(\[[\s\S]*?\])(?:\s*[,}]|$)/i);
+    if (dataMatch) {
+      let arrayStr = dataMatch[1]
+        .replace(/"([^"\\]*(?:\\.[^"\\]*)*)"/g, (_m, str) => '"' + str.replace(/[\r\n]+/g, ' ') + '"')
+        .replace(/,\s*\]/g, ']')
+        .replace(/[\r\n]+/g, ' ');
+      const parsedData = JSON.parse(arrayStr);
+      if (Array.isArray(parsedData) && parsedData.length > 0) {
+        return {
+          title: titleMatch ? titleMatch[1].replace(/[\r\n]+/g, ' ').trim() : 'Statistik SM-Learning',
+          subtitle: subtitleMatch ? subtitleMatch[1].replace(/[\r\n]+/g, ' ').trim() : undefined,
+          type: typeMatch ? typeMatch[1] : 'bar',
+          data: parsedData
+        };
+      }
+    }
+  } catch (e) { }
+
+  return null;
+}
+
+interface AleshaChartViewerProps {
+  chartData: any;
+  onExpand?: (chart: any) => void;
+  isModal?: boolean;
+  hideDownload?: boolean;
+}
+
+function AleshaChartViewer({ chartData, onExpand, isModal = false, hideDownload = false }: AleshaChartViewerProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const rawList = Array.isArray(chartData.data)
+    ? chartData.data
+    : Array.isArray(chartData.items)
+      ? chartData.items
+      : [];
+
+  const rawType = (chartData.type || chartData.chart_type || 'bar').toLowerCase();
+  const type = ['pie', 'donut'].includes(rawType)
+    ? 'pie'
+    : ['line', 'area', 'tren'].includes(rawType)
+      ? 'line'
+      : 'bar';
+
+  // Smart mapping: strictly extract human-readable name, NEVER an ID
+  const data = useMemo(() => {
+    return rawList.map((item: any, idx: number) => {
+      let rawName = (
+        item.name ||
+        item.nama ||
+        item.full_name ||
+        item.nama_lengkap ||
+        item.title ||
+        item.judul ||
+        item.role_name ||
+        item.label ||
+        item.kategori ||
+        item.category ||
+        item.polres ||
+        item.polda ||
+        item.jenis ||
+        item.level ||
+        item.status ||
+        `Data ${idx + 1}`
+      );
+      let cleanName = String(rawName).replace(/[*_`]/g, '').trim();
+
+      if (/^(user-|mat-|sess-|cert-|role-|trc_|[0-9a-f]{8}-[0-9a-f]{4}|[0-9]+$)/i.test(cleanName)) {
+        cleanName = (
+          item.full_name ||
+          item.nama ||
+          item.title ||
+          item.judul ||
+          item.role_name ||
+          item.polres ||
+          item.polda ||
+          item.label ||
+          `Item ${idx + 1}`
+        );
+      }
+
+      if (cleanName === 'role-admin') cleanName = 'Admin / Superuser';
+      else if (cleanName === 'role-executive-3') cleanName = 'Eksekutif 3 (Nasional)';
+      else if (cleanName === 'role-executive-2') cleanName = 'Eksekutif 2 (Polda)';
+      else if (cleanName === 'role-executive-1') cleanName = 'Eksekutif 1 (Polres)';
+      else if (cleanName === 'role-trainer') cleanName = 'Trainer / Instruktur';
+
+      const value = Number(item.value || item.count || item.total || item.jumlah || item.views || item.downloads || 0);
+      const color = item.color || CHART_PALETTE[idx % CHART_PALETTE.length];
+      return { ...item, name: cleanName, value, color };
+    });
+  }, [rawList]);
+
+  const totalValue = useMemo(() => data.reduce((sum, d) => sum + d.value, 0), [data]);
+  const maxValue = useMemo(() => Math.max(...data.map(d => d.value), 1), [data]);
+
+  const title = chartData.title || 'Statistik SM-Learning Korlantas POLRI';
+  const subtitle = chartData.subtitle || 'Visualisasi Data Edukasi & Dikmas Lantas';
+
+  // Export PNG Function with oklab/oklch support
+  const handleDownloadPng = async () => {
+    if (!containerRef.current || isExporting) return;
+    try {
+      setIsExporting(true);
+      const safeTitle = title.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 30);
+      await exportElementToPng(containerRef.current, `${safeTitle}_${Date.now()}.png`);
+    } catch (err) {
+      console.error('Failed to export chart PNG:', err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      className={`my-3.5 rounded-2xl border border-slate-200/90 overflow-hidden shadow-xs bg-white ${isModal ? 'w-full' : 'max-w-2xl'
+        }`}
+    >
+      {/* Chart Header Bar */}
+      <div className="bg-gradient-to-r from-slate-900 via-[#0a1d37] to-[#132c4f] text-white px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-blue-500/20 border border-blue-400/30 flex items-center justify-center">
+            {type === 'pie' ? (
+              <PieIcon className="w-4 h-4 text-blue-300" />
+            ) : type === 'line' ? (
+              <TrendingUp className="w-4 h-4 text-blue-300" />
+            ) : (
+              <BarChart2 className="w-4 h-4 text-blue-300" />
+            )}
+          </div>
+          <div>
+            <h4 className="font-bold text-xs text-white leading-snug">{title}</h4>
+            <p className="text-[10px] text-slate-300">{subtitle}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          {!hideDownload && (
+            <button
+              onClick={handleDownloadPng}
+              disabled={isExporting}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[11px] font-semibold transition-colors cursor-pointer border border-white/10"
+              title="Unduh Gambar Grafik HD (PNG)"
+            >
+              <Download className="w-3 h-3" />
+              <span>{isExporting ? 'Memproses...' : 'Unduh PNG'}</span>
+            </button>
+          )}
+          {!isModal && onExpand && (
+            <button
+              onClick={() => onExpand({ ...chartData, title, subtitle, data, type })}
+              className="p-1 rounded-lg hover:bg-white/10 text-slate-300 hover:text-white transition-colors cursor-pointer"
+              title="Perbesar Grafik"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Chart Body */}
+      <div className="p-4 bg-slate-50/50">
+        {data.length === 0 ? (
+          <div className="py-8 text-center text-xs text-slate-400">Tidak ada data untuk ditampilkan.</div>
+        ) : type === 'bar' ? (
+          <div className="space-y-2.5">
+            {data.map((item, idx) => {
+              const pct = Math.round((item.value / maxValue) * 100);
+              return (
+                <div key={idx} className="group">
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="font-medium text-slate-700 truncate max-w-[260px]">{item.name}</span>
+                    <span className="font-bold text-slate-900 ml-2">
+                      {Number(item.value).toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                  <div className="w-full h-3 bg-slate-200/80 rounded-full overflow-hidden flex">
+                    <div
+                      className="h-full rounded-full transition-all duration-500 group-hover:brightness-110"
+                      style={{
+                        width: `${Math.max(4, pct)}%`,
+                        backgroundColor: item.color,
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : type === 'pie' ? (
+          <div className="flex flex-col sm:flex-row items-center justify-around gap-4 py-2">
+            {/* SVG Donut */}
+            <div className="relative w-40 h-40 shrink-0">
+              <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                {(() => {
+                  let accumulatedPercent = 0;
+                  return data.map((d, i) => {
+                    const percent = (d.value / (totalValue || 1)) * 100;
+                    const strokeDasharray = `${percent} ${100 - percent}`;
+                    const strokeDashoffset = -accumulatedPercent;
+                    accumulatedPercent += percent;
+
+                    return (
+                      <circle
+                        key={i}
+                        cx="50"
+                        cy="50"
+                        r="40"
+                        fill="transparent"
+                        stroke={d.color}
+                        strokeWidth="18"
+                        strokeDasharray={strokeDasharray}
+                        strokeDashoffset={strokeDashoffset}
+                        className="transition-all duration-500 hover:opacity-80"
+                      />
+                    );
+                  });
+                })()}
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-[10px] text-slate-400 font-medium">Total</span>
+                <span className="text-sm font-black text-slate-800">{Number(totalValue).toLocaleString('id-ID')}</span>
+              </div>
+            </div>
+
+            {/* Legend */}
+            <div className="flex-1 max-w-[260px] space-y-1.5">
+              {data.map((item, idx) => {
+                const pct = totalValue > 0 ? Math.round((item.value / totalValue) * 100) : 0;
+                return (
+                  <div key={idx} className="flex items-center justify-between text-xs py-0.5 border-b border-slate-100 last:border-0">
+                    <div className="flex items-center gap-2 truncate">
+                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                      <span className="text-slate-600 truncate">{item.name}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                      <span className="font-bold text-slate-900">{Number(item.value).toLocaleString('id-ID')}</span>
+                      <span className="text-[10px] text-slate-400 w-8 text-right">({pct}%)</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          /* Line / Area View */
+          <div className="space-y-2">
+            <div className="h-32 flex items-end gap-2 pt-4 px-2 border-b border-slate-200">
+              {data.map((item, idx) => {
+                const heightPct = Math.max(8, Math.round((item.value / maxValue) * 100));
+                return (
+                  <div key={idx} className="flex-1 flex flex-col items-center gap-1 group h-full justify-end">
+                    <span className="text-[10px] font-bold text-slate-700 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {item.value}
+                    </span>
+                    <div
+                      className="w-full rounded-t-md transition-all group-hover:brightness-110"
+                      style={{
+                        height: `${heightPct}%`,
+                        backgroundColor: item.color,
+                      }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex justify-between text-[10px] text-slate-500 px-1">
+              {data.map((item, idx) => (
+                <span key={idx} className="truncate max-w-[60px] text-center">{item.name}</span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Unified Multi Chart Board: Consolidates all fragmented charts into 1 unified graphic & 1 file download
+interface AleshaMultiChartBoardProps {
+  charts: any[];
+  title?: string;
+  summaryText?: string;
+  onExpand?: (c: any) => void;
+  isModal?: boolean;
+}
+
+function AleshaMultiChartBoard({
+  charts,
+  title,
+  summaryText,
+  onExpand,
+  isModal = false
+}: AleshaMultiChartBoardProps) {
+  const boardRef = useRef<HTMLDivElement>(null);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const boardTitle = title || 'Ringkasan Visual Terpadu SM-Learning';
+  const boardSubtitle = `Menampilkan ${charts.length} visualisasi data analisis dalam 1 laporan grafik terpadu`;
+
+  // Download entire composite board in 1 single PNG file (Retina resolution, identical visual, oklab safe)
+  const handleDownloadUnifiedPng = async () => {
+    if (!boardRef.current || isExporting) return;
+    try {
+      setIsExporting(true);
+      await exportElementToPng(boardRef.current, `rekap_grafik_terpadu_${Date.now()}.png`);
+    } catch (err) {
+      console.error('Failed to export unified chart board:', err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  return (
+    <div
+      ref={boardRef}
+      className={`my-4 rounded-2xl border border-slate-200/90 overflow-hidden shadow-xs bg-white ${isModal ? 'w-full max-w-full' : 'max-w-2xl w-full'
+        }`}
+    >
+      {/* Unified Top Header Bar */}
+      <div className="bg-gradient-to-r from-slate-900 via-[#0a1d37] to-[#132c4f] text-white px-4 py-3 flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-blue-500/20 border border-blue-400/30 flex items-center justify-center">
+            <Layers className="w-4 h-4 text-blue-300" />
+          </div>
+          <div>
+            <h4 className="font-bold text-xs text-white leading-snug">{boardTitle}</h4>
+            <p className="text-[10px] text-slate-300">{boardSubtitle}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Modal Preview Button (if not already inside modal) */}
+          {!isModal && onExpand && (
+            <button
+              onClick={() => onExpand({ isMulti: true, charts, title: boardTitle, subtitle: boardSubtitle, summaryText })}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[11px] font-semibold transition-all cursor-pointer border border-white/20 shadow-2xs"
+              title="Perbesar Preview Grafik ke Modal Layar Penuh"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Preview Modal</span>
+            </button>
+          )}
+
+          {/* 1 Single Download Button for the entire composite chart */}
+          <button
+            onClick={handleDownloadUnifiedPng}
+            disabled={isExporting}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-semibold transition-all cursor-pointer border border-blue-400/30 shadow-2xs"
+            title="Unduh Seluruh Grafik dalam 1 File Gambar HD (PNG)"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>{isExporting ? 'Memproses...' : 'Unduh Semua Grafik (1 File PNG)'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* AI Conclusion / Summary Banner (Included directly inside the downloaded graphic!) */}
+      {summaryText && (
+        <div className="mx-4 mt-3.5 p-3.5 rounded-xl bg-gradient-to-r from-blue-50/90 via-indigo-50/80 to-slate-50 border border-blue-200/80 shadow-2xs">
+          <div className="flex items-center gap-2 mb-1.5 text-blue-900 font-bold text-xs">
+            <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+            <span>Kesimpulan & Ringkasan Analisis AI Alesha:</span>
+          </div>
+          <p className="text-xs text-slate-700 leading-relaxed font-normal whitespace-pre-line">
+            {summaryText}
+          </p>
+        </div>
+      )}
+
+      {/* Unified Body: All charts rendered together seamlessly */}
+      <div className="p-4 bg-slate-50/50 space-y-4 divide-y divide-slate-200/70">
+        {charts.map((c, i) => (
+          <div key={i} className={i > 0 ? 'pt-4' : ''}>
+            <AleshaChartViewer chartData={c} onExpand={onExpand} hideDownload={true} />
+          </div>
+        ))}
+      </div>
+
+      {/* Official Footer Branding on Downloaded Image */}
+      <div className="px-4 py-2 bg-slate-100 border-t border-slate-200 text-slate-500 flex items-center justify-between text-[10px]">
+        <span className="font-semibold text-slate-700">KORLANTAS POLRI &bull; SM-Learning Dikmas Lantas</span>
+        <span>Laporan Visual Terpadu &bull; Alesha AI Analytics</span>
+      </div>
+    </div>
+  );
+}
+
+
+interface MarkdownViewerProps {
+  content: string;
+  onExpandChart?: (chart: any) => void;
+  onAction?: (prompt: string) => void;
+}
+
+function MarkdownViewer({ content, onExpandChart, onAction }: MarkdownViewerProps) {
   const renderedElements = useMemo(() => {
     if (!content) return null;
 
-    // Pre-process and normalize markdown strings
-    const normalized = normalizeMarkdown(content);
+    // 1. Extract action chips [action:Label|Prompt]
+    const { cleanContent, actions } = parseActionChips(content);
+
+    // 2. Pre-scan and collect ALL chart blocks in this message
+    const allCharts: any[] = [];
+
+    // Pre-scan A: Code blocks ```...```
+    const chartRegex = /```(?:[a-z0-9_:-]*)?\s*([\s\S]*?)```/gi;
+    let m;
+    while ((m = chartRegex.exec(cleanContent)) !== null) {
+      const parsed = safeParseChartJson(m[1]);
+      if (parsed) {
+        if (parsed.charts && Array.isArray(parsed.charts)) {
+          allCharts.push(...parsed.charts);
+        } else if (parsed.data || parsed.items) {
+          allCharts.push(parsed);
+        }
+      }
+    }
+
+    // Pre-scan B: Standalone JSON objects not in code blocks
+    const rawJsonRegex = /\{(?:[^{}]|"(?:\\.|[^"\\])*")*"(?:data|items)"\s*:\s*\[[\s\S]*?\][\s\S]*?\}/g;
+    let rj;
+    while ((rj = rawJsonRegex.exec(cleanContent)) !== null) {
+      const parsed = safeParseChartJson(rj[0]);
+      if (parsed && (parsed.data || parsed.items)) {
+        const isDuplicate = allCharts.some(
+          c => (c.title && parsed.title && c.title.trim().toLowerCase() === parsed.title.trim().toLowerCase()) ||
+            (JSON.stringify(c.data) === JSON.stringify(parsed.data))
+        );
+        if (!isDuplicate) {
+          allCharts.push(parsed);
+        }
+      }
+    }
+
+    const normalized = normalizeMarkdown(cleanContent);
     const lines = normalized.split('\n');
+
+    // Pre-scan C: Extract conclusion / summary text for the visual infographic
+    let summaryText = '';
+    const cleanTextLines = lines.map(l => l.trim()).filter(l => {
+      if (!l) return false;
+      if (l.startsWith('```') || l.startsWith('|') || l.startsWith('{') || l.startsWith('}')) return false;
+      if (l.startsWith('#')) return false;
+      if (l.includes('[action:') || l.includes('/static/exports/')) return false;
+      return true;
+    });
+
+    const conclusionLines = cleanTextLines.filter(l => {
+      const lower = l.toLowerCase();
+      return (
+        lower.startsWith('kesimpulan') ||
+        lower.startsWith('ringkasan') ||
+        lower.startsWith('catatan') ||
+        lower.startsWith('rekap') ||
+        lower.startsWith('berdasarkan') ||
+        lower.startsWith('total')
+      );
+    });
+
+    if (conclusionLines.length > 0) {
+      summaryText = conclusionLines.join('\n');
+    } else if (cleanTextLines.length > 0) {
+      summaryText = cleanTextLines.slice(0, 3).join('\n');
+    }
+    summaryText = summaryText.replace(/[*_#`]/g, '').trim();
     const elements: React.ReactNode[] = [];
     let inTable = false;
     let tableRows: string[][] = [];
@@ -877,18 +1626,46 @@ function MarkdownViewer({ content }: { content: string }) {
     let codeBlockText = '';
     let codeLanguage = '';
     let currentListIndex = 0;
+    let unifiedChartRendered = false;
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
 
-      // Code Block Boundary
+      // Code Block Boundary (```)
       if (line.trim().startsWith('```')) {
         if (inCodeBlock) {
-          elements.push(
-            <pre key={`code-${i}`} className="p-3.5 my-2.5 bg-slate-900 text-slate-100 rounded-xl overflow-x-auto text-[11px] font-mono leading-relaxed shadow-inner">
-              <code>{codeBlockText.trim()}</code>
-            </pre>
-          );
+          const parsedChart = safeParseChartJson(codeBlockText);
+          if (parsedChart) {
+            // Chart detected: render consolidated chart board at the position of the first chart
+            if (!unifiedChartRendered) {
+              unifiedChartRendered = true;
+              if (allCharts.length > 1) {
+                elements.push(
+                  <AleshaMultiChartBoard
+                    key={`chart-unified-${i}`}
+                    charts={allCharts}
+                    summaryText={summaryText}
+                    onExpand={onExpandChart}
+                  />
+                );
+              } else if (allCharts.length === 1) {
+                elements.push(
+                  <AleshaChartViewer
+                    key={`chart-single-${i}`}
+                    chartData={allCharts[0]}
+                    onExpand={onExpandChart}
+                  />
+                );
+              }
+            }
+          } else {
+            // Normal code block
+            elements.push(
+              <pre key={`code-${i}`} className="p-3 my-2 bg-slate-900 text-slate-100 rounded-xl overflow-x-auto text-[11px] font-mono leading-relaxed shadow-inner">
+                <code>{codeBlockText.trim()}</code>
+              </pre>
+            );
+          }
           inCodeBlock = false;
           codeBlockText = '';
           codeLanguage = '';
@@ -905,6 +1682,58 @@ function MarkdownViewer({ content }: { content: string }) {
         continue;
       }
 
+      // Check if line starts a raw JSON chart string (without code fences)
+      if (line.trim().startsWith('{') && (line.includes('"title"') || line.includes('"data"') || line.includes('"charts"'))) {
+        let rawJsonBlock = line;
+        let openBraces = (line.match(/\{/g) || []).length - (line.match(/\}/g) || []).length;
+        let j = i + 1;
+        while (openBraces > 0 && j < lines.length) {
+          rawJsonBlock += '\n' + lines[j];
+          openBraces += (lines[j].match(/\{/g) || []).length - (lines[j].match(/\}/g) || []).length;
+          j++;
+        }
+        const rawChart = safeParseChartJson(rawJsonBlock);
+        if (rawChart) {
+          i = j - 1; // Advance loop past the consumed JSON lines
+          if (!unifiedChartRendered) {
+            unifiedChartRendered = true;
+            if (allCharts.length > 1) {
+              elements.push(
+                <AleshaMultiChartBoard
+                  key={`chart-raw-unified-${i}`}
+                  charts={allCharts}
+                  summaryText={summaryText}
+                  onExpand={onExpandChart}
+                />
+              );
+            } else {
+              elements.push(
+                <AleshaChartViewer
+                  key={`chart-raw-single-${i}`}
+                  chartData={rawChart}
+                  onExpand={onExpandChart}
+                />
+              );
+            }
+          }
+          continue;
+        }
+      }
+
+      // Suppress redundant individual chart heading lines (e.g. "*3. Tayangan per Materi (Top 4)*")
+      // if the unified composite chart board has already been rendered
+      if (unifiedChartRendered && allCharts.length > 1) {
+        const isChartHeading = allCharts.some(c => {
+          if (!c.title) return false;
+          const cleanL = line.replace(/[*_#`\d.]/g, '').trim().toLowerCase();
+          const cleanT = c.title.replace(/[*_#`\d.]/g, '').trim().toLowerCase();
+          return cleanL.length > 4 && (cleanT.includes(cleanL) || cleanL.includes(cleanT.slice(0, 15)));
+        });
+        if (isChartHeading) {
+          continue;
+        }
+      }
+
       // Markdown Table Parser
       if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
         const cells = line
@@ -913,7 +1742,6 @@ function MarkdownViewer({ content }: { content: string }) {
           .slice(1, -1)
           .map(c => c.trim());
 
-        // Skip divider row |---|---|
         if (cells.every(c => /^[-:\s]+$/.test(c))) {
           continue;
         }
@@ -927,13 +1755,11 @@ function MarkdownViewer({ content }: { content: string }) {
         currentListIndex = 0;
         continue;
       } else if (inTable) {
-        // Table finished, render table
-        elements.push(renderInformativeTable(tableRows, `table-${i}`));
+        elements.push(<InformativeTableViewer key={`table-${i}`} tableRows={tableRows} onExpandChart={onExpandChart} />);
         inTable = false;
         tableRows = [];
       }
 
-      // Reset list numbering if empty line or header
       if (!line.trim() || line.startsWith('#')) {
         currentListIndex = 0;
       }
@@ -941,7 +1767,7 @@ function MarkdownViewer({ content }: { content: string }) {
       // Headings
       if (line.startsWith('### ')) {
         elements.push(
-          <h4 key={i} className="font-bold text-xs text-slate-900 mt-3.5 mb-1.5 flex items-center gap-1.5">
+          <h4 key={i} className="font-bold text-xs text-slate-900 mt-3 mb-1.5 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-600 inline-block" />
             {parseInlineFormatting(line.slice(4))}
           </h4>
@@ -950,7 +1776,7 @@ function MarkdownViewer({ content }: { content: string }) {
       }
       if (line.startsWith('## ')) {
         elements.push(
-          <h3 key={i} className="font-extrabold text-sm text-slate-900 mt-4 mb-2 border-b border-slate-200/80 pb-1.5 flex items-center gap-2">
+          <h3 key={i} className="font-extrabold text-sm text-slate-900 mt-3.5 mb-2 border-b border-slate-200 pb-1 flex items-center gap-2">
             <span className="w-2 h-2 rounded bg-indigo-600 inline-block" />
             {parseInlineFormatting(line.slice(3))}
           </h3>
@@ -959,60 +1785,90 @@ function MarkdownViewer({ content }: { content: string }) {
       }
       if (line.startsWith('# ')) {
         elements.push(
-          <h2 key={i} className="font-extrabold text-sm text-slate-950 mt-4 mb-2.5">
+          <h2 key={i} className="font-extrabold text-sm text-slate-950 mt-4 mb-2">
             {parseInlineFormatting(line.slice(2))}
           </h2>
         );
         continue;
       }
 
-      // Bullet List (- or *)
-      if (/^\s*[-*]\s+/.test(line)) {
+      // Bullet List
+      if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
+        const bulletText = line.trim().slice(2);
         currentListIndex = 0;
-        const itemText = line.replace(/^\s*[-*]\s+/, '');
         elements.push(
-          <div key={i} className="flex items-start gap-2.5 my-1.5 pl-1.5 text-slate-700 text-[12.5px] leading-relaxed">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-2 flex-shrink-0 shadow-xs" />
-            <div className="flex-1">
-              {parseInlineFormatting(itemText)}
-            </div>
+          <div key={i} className="flex items-start gap-2 my-1 text-xs text-slate-700 pl-1 leading-relaxed">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0 mt-1.5" />
+            <div className="flex-1">{parseInlineFormatting(bulletText)}</div>
           </div>
         );
         continue;
       }
 
-      // Numbered List Item (rendered as high-visibility dedicated card row)
-      const numberMatch = line.match(/^\s*(\d+)\.\s+(.*)/);
-      if (numberMatch) {
-        currentListIndex += 1;
-        const rawNum = parseInt(numberMatch[1], 10);
-        // Use sequential count if numbers repeated like 1. and 1., otherwise use specified number
-        const displayNum = (rawNum === 1 && currentListIndex > 1) ? currentListIndex : rawNum;
-        const itemText = numberMatch[2];
+      // Numbered List (Styled Executive Row)
+      const numMatch = line.trim().match(/^(\d+)\.\s+(.*)/);
+      if (numMatch) {
+        const itemNumber = numMatch[1];
+        const rawItemContent = numMatch[2];
 
         elements.push(
           <div
             key={i}
-            className="flex items-start gap-3 my-2.5 p-3 rounded-xl bg-slate-50/90 border border-slate-200/80 hover:bg-blue-50/40 hover:border-blue-200 transition-all duration-200 shadow-2xs group"
+            className="flex items-start gap-2.5 my-1.5 p-2.5 rounded-xl bg-slate-50/90 hover:bg-blue-50/40 border border-slate-200/70 transition-colors shadow-2xs"
           >
-            <div className="flex-shrink-0 w-6 h-6 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-bold text-xs flex items-center justify-center shadow-xs mt-0.5 group-hover:scale-105 transition-transform">
-              {displayNum}
-            </div>
-            <div className="flex-1 text-slate-800 text-[12.5px] leading-relaxed">
-              {parseInlineFormatting(itemText)}
+            <span className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
+              {itemNumber}
+            </span>
+            <div className="flex-1 text-xs text-slate-700 leading-relaxed font-normal">
+              {parseInlineFormatting(rawItemContent)}
             </div>
           </div>
         );
         continue;
       }
 
-      // Empty Line
-      if (!line.trim()) {
-        elements.push(<div key={i} className="h-1.5" />);
+      // Contextual Section: Kemungkinan penyebabnya:
+      if (/^kemungkinan\s+(?:penyebab|alasan)/i.test(line.trim())) {
+        elements.push(
+          <div key={i} className="mt-3.5 mb-1.5 flex items-center gap-2 text-xs font-bold text-slate-900">
+            <HelpCircle className="w-4 h-4 text-amber-500 shrink-0" />
+            <span>{parseInlineFormatting(line.trim())}</span>
+          </div>
+        );
         continue;
       }
 
-      // Detect Document Download Card Link (PDF, Word, Excel, CSV, PPTX, etc.)
+      // Contextual Alert: Belum ada data / 0 sesi outreach
+      const lineLower = line.trim().toLowerCase();
+      if (
+        (lineLower.includes('belum ada data') || lineLower.includes('tidak ada data')) &&
+        (lineLower.includes('0 sesi') || lineLower.includes('0 laporan') || lineLower.includes('wilayah'))
+      ) {
+        elements.push(
+          <div key={i} className="my-2.5 p-3.5 rounded-xl bg-amber-50/80 border border-amber-200/90 flex items-start gap-2.5 shadow-2xs">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="flex-1 text-xs text-slate-800 leading-relaxed font-normal">
+              {parseInlineFormatting(line.trim())}
+            </div>
+          </div>
+        );
+        continue;
+      }
+
+      // Contextual Recommendation / Tip: Silakan cek kembali... / Hubungi admin...
+      if (/^(?:silakan\s+cek|silakan\s+hubungi|mohon\s+cek|rekomendasi:)/i.test(line.trim())) {
+        elements.push(
+          <div key={i} className="my-2.5 p-3 rounded-xl bg-blue-50/70 border border-blue-200/80 flex items-start gap-2.5 shadow-2xs">
+            <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+            <div className="flex-1 text-xs text-slate-700 leading-relaxed font-normal">
+              {parseInlineFormatting(line.trim())}
+            </div>
+          </div>
+        );
+        continue;
+      }
+
+      // Check document download card [document:Title|URL]
       const docCard = parseDocumentDownloadCard(line, i);
       if (docCard) {
         elements.push(docCard);
@@ -1022,39 +1878,154 @@ function MarkdownViewer({ content }: { content: string }) {
       // Regular Paragraph
       currentListIndex = 0;
       elements.push(
-        <p key={i} className="text-slate-800 my-1 leading-relaxed text-[12.5px]">
+        <p key={i} className="text-slate-800 my-1 leading-relaxed text-xs">
           {parseInlineFormatting(line)}
         </p>
       );
     }
 
-    // Flush any remaining table at end
     if (inTable && tableRows.length > 0) {
-      elements.push(renderInformativeTable(tableRows, 'table-end'));
+      elements.push(<InformativeTableViewer key="table-end" tableRows={tableRows} onExpandChart={onExpandChart} />);
+    }
+
+    // Fallback: If there were charts collected but not rendered yet (e.g. at the very end)
+    if (allCharts.length > 0 && !unifiedChartRendered) {
+      if (allCharts.length > 1) {
+        elements.push(
+          <AleshaMultiChartBoard
+            key="chart-unified-end"
+            charts={allCharts}
+            summaryText={summaryText}
+            onExpand={onExpandChart}
+          />
+        );
+      } else {
+        elements.push(
+          <AleshaChartViewer
+            key="chart-single-end"
+            chartData={allCharts[0]}
+            onExpand={onExpandChart}
+          />
+        );
+      }
+    }
+
+    // Append Action Prompt Chips at the end if present
+    if (actions && actions.length > 0) {
+      elements.push(
+        <div key="actions-chips" className="mt-3 pt-2.5 border-t border-slate-200/80">
+          <p className="text-[11px] font-bold text-slate-500 mb-2 flex items-center gap-1.5">
+            <Sparkles className="w-3 h-3 text-amber-500" />
+            Langkah Selanjutnya & Saran Analisis:
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {actions.map((act, aIdx) => (
+              <button
+                key={aIdx}
+                onClick={() => onAction?.(act.prompt)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 hover:text-blue-900 border border-blue-200/80 text-xs font-semibold transition-all shadow-2xs hover:shadow-xs active:scale-95 cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                <span>{act.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      );
     }
 
     return elements;
-  }, [content]);
+  }, [content, onExpandChart, onAction]);
 
   return <div className="space-y-1">{renderedElements}</div>;
 }
 
-/**
- * Normalizes raw LLM response to ensure lists, punctuation and tables
- * break cleanly into dedicated rows instead of collapsing onto a single line.
- */
+function parseActionChips(rawText: string): {
+  cleanContent: string;
+  actions: Array<{ label: string; prompt: string }>;
+} {
+  const actions: Array<{ label: string; prompt: string }> = [];
+  if (!rawText) return { cleanContent: '', actions };
+
+  const regex = /\[action:([^\]]+)\]/g;
+  let match;
+  let cleanContent = rawText;
+
+  while ((match = regex.exec(rawText)) !== null) {
+    const tagContent = match[1];
+    const pipeIdx = tagContent.indexOf('|');
+    const label = (pipeIdx === -1 ? tagContent : tagContent.slice(0, pipeIdx)).trim();
+    const prompt = (pipeIdx === -1 ? label : tagContent.slice(pipeIdx + 1)).trim();
+
+    if (label) {
+      actions.push({ label, prompt });
+    }
+  }
+
+  // Remove action tags from visible content
+  cleanContent = cleanContent.replace(regex, '').trim();
+
+  return { cleanContent, actions };
+}
+
+// ==========================================
+// MARKDOWN NORMALIZATION & TABLE RENDERERS
+// ==========================================
+
 function normalizeMarkdown(raw: string): string {
   if (!raw) return '';
   let text = raw.replace(/\r\n/g, '\n');
 
-  // 1. Ensure table start on fresh line if glued to text: 'teks: | No |' -> 'teks:\n\n| No |'
+  // 1. Strip leaked tool-call thoughts in English (e.g. "I'll retrieve the ... data for this week.")
+  text = text.replace(
+    /^(?:I'll|I will|Let me|Allow me to)\s+(?:retrieve|check|fetch|get|look up|search|pull)[^\n.]*?\.\s*(?=[A-Z0-9\n]|\b(?:Belum|Data|Berikut|Hasil|Saat ini|Tidak|Mohon|Silakan)\b)/i,
+    ''
+  );
+
+  // 2. Fix isolated repeating '1\n*Title*' or '1\nText' to clean incrementing numbers '1. **Title**'
+  const rawLines = text.split('\n');
+  const mergedLines: string[] = [];
+  let i = 0;
+  let listCounter = 1;
+
+  while (i < rawLines.length) {
+    const curr = rawLines[i].trim();
+    if (/^\d+$/.test(curr) && i + 1 < rawLines.length && rawLines[i + 1].trim() && !/^\d+$/.test(rawLines[i + 1].trim())) {
+      const nextLine = rawLines[i + 1].trim();
+      mergedLines.push(`${listCounter}. ${nextLine}`);
+      listCounter++;
+      i += 2;
+      continue;
+    } else if (/^\d+\.\s+/.test(curr)) {
+      const content = curr.replace(/^\d+\.\s+/, '');
+      mergedLines.push(`${listCounter}. ${content}`);
+      listCounter++;
+      i++;
+      continue;
+    } else {
+      if (!curr) {
+        if (i + 1 < rawLines.length && !/^\d+(?:\.|$)/.test(rawLines[i + 1].trim())) {
+          listCounter = 1;
+        }
+      } else {
+        listCounter = 1;
+      }
+      mergedLines.push(rawLines[i]);
+      i++;
+    }
+  }
+  text = mergedLines.join('\n');
+
+  // 3. Convert single asterisks wrapping phrases or sentences to proper bold
+  text = text.replace(/(?<![*\n\r])\s*\*([^*\n]+?)\*(?!\*)/g, ' **$1**');
+  text = text.replace(/^([^\n*]+?)\*([^*\n]+?)\*(?!\*)/gm, '$1**$2**');
+
+  // Markdown Table boundary normalization
   text = text.replace(/([^\n])\s*(\|[^\n]+\|\n\s*\|[-:\s|]+\|)/g, '$1\n\n$2');
 
-  // 2. Separate trailing text after table row's last pipe:
-  // e.g. '| 1 | Tersedia | **Ringkasan:**' -> '| 1 | Tersedia |\n\n**Ringkasan:**'
-  const rawLines = text.split('\n');
+  const linesAfterTable = text.split('\n');
   const cleanedLines: string[] = [];
-  for (const l of rawLines) {
+  for (const l of linesAfterTable) {
     if (l.trim().startsWith('|')) {
       const lastPipe = l.lastIndexOf('|');
       if (lastPipe > 0) {
@@ -1071,106 +2042,306 @@ function normalizeMarkdown(raw: string): string {
   }
   text = cleanedLines.join('\n');
 
-  // 3. Separate numbered list starting right after punctuation or colon (e.g. "membahas: 1. Poin" -> "membahas:\n\n1. Poin")
-  text = text.replace(/([:;!?])\s*(\d+\.\s+)/g, '$1\n\n$2');
-
-  // 4. Separate consecutive numbered items even if glued to preceding sentence (e.g. "selesai. 2. **Judul**" -> "selesai.\n\n2. **Judul**")
-  text = text.replace(/([^\n|])\s+(\d+\.\s+(?:\*\*|[A-Z]))/g, '$1\n\n$2');
-
-  // 5. Separate bullet lists after punctuation or sentence (e.g. "poin: - satu" -> "poin:\n\n- satu")
-  text = text.replace(/([:;!?])\s*([\-*]\s+)/g, '$1\n\n$2');
-  text = text.replace(/([^\n|])\s+([\-*]\s+(?:\*\*|[A-Z]))/g, '$1\n\n$2');
-
-  // 6. Separate download links onto their own lines if glued to surrounding text
-  text = text.replace(/([^\n])\s*(\[[^\]]+\]\s*\((?:https?:\/\/[^\s)]+|\/static\/[^\s)]+|\.[a-z0-9]+[^\s)]*)\))/gi, '$1\n\n$2');
-  text = text.replace(/(\[[^\]]+\]\s*\((?:https?:\/\/[^\s)]+|\/static\/[^\s)]+|\.[a-z0-9]+[^\s)]*)\))\s*([^\n])/gi, '$1\n\n$2');
-
-  // 7. Convert all localhost / 127.0.0.1 backend URLs directly to alesha-be.djalu.co.id
   text = text.replace(/https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?/gi, 'https://alesha-be.djalu.co.id');
   text = text.replace(/https?:\/\/alesha\.djalu\.co\.id\/static\//gi, 'https://alesha-be.djalu.co.id/static/');
 
   return text;
 }
 
-/**
- * Resolves URLs from Alesha AI: converts localhost / 127.0.0.1 or relative /static/ paths
- * directly to backend domain https://alesha-be.djalu.co.id
- */
 function resolveAleshaLink(url: string): string {
   if (!url) return '';
   let resolved = url.trim();
-
-  // If starts with /static/, route directly to Alesha backend domain (https://alesha-be.djalu.co.id)
   if (resolved.startsWith('/static/')) {
     return `https://alesha-be.djalu.co.id${resolved}`;
   }
-
-  // Convert any localhost or 127.0.0.1 URL directly to https://alesha-be.djalu.co.id
   resolved = resolved.replace(/^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?/i, 'https://alesha-be.djalu.co.id');
-
-  // Fix any static paths pointing to alesha.djalu.co.id/static/ to alesha-be.djalu.co.id/static/
   resolved = resolved.replace(/^https?:\/\/alesha\.djalu\.co\.id\/static\//i, 'https://alesha-be.djalu.co.id/static/');
-
   return resolved;
 }
 
-function renderInformativeTable(tableRows: string[][], key: string | number) {
+function InformativeTableViewer({
+  tableRows,
+  onExpandChart,
+}: {
+  tableRows: string[][];
+  onExpandChart?: (c: any) => void;
+}) {
+  const [viewMode, setViewMode] = useState<'table' | 'bar' | 'pie'>('table');
+
   if (!tableRows || tableRows.length === 0) return null;
   const header = tableRows[0];
   const body = tableRows.slice(1);
 
+  // Helper: check if header indicates non-metric (e.g. row index, ID, code, phone, NIP, NRP)
+  const isNonMetricHeader = (headerName: string) => {
+    const h = (headerName || '').toLowerCase().trim();
+    return (
+      h === 'no' ||
+      h === 'nomor' ||
+      h === '#' ||
+      h === 'id' ||
+      h.includes('id') ||
+      h.includes('uuid') ||
+      h.includes('kode') ||
+      h.includes('code') ||
+      h.includes('nip') ||
+      h.includes('nrp') ||
+      h.includes('nik') ||
+      h.includes('phone') ||
+      h.includes('telepon') ||
+      h.includes('hp') ||
+      h.includes('tahun') ||
+      h.includes('year') ||
+      h.includes('tanggal') ||
+      h.includes('date')
+    );
+  };
+
+  // 1. Identify real numeric metric columns (count, total, score, views, etc.)
+  const numericColIndex = useMemo(() => {
+    if (body.length === 0) return -1;
+    // Look for explicitly named metric columns first
+    for (let c = header.length - 1; c >= 0; c--) {
+      if (isNonMetricHeader(header[c])) continue;
+      const h = header[c].toLowerCase();
+      if (
+        h.includes('total') ||
+        h.includes('jumlah') ||
+        h.includes('count') ||
+        h.includes('nilai') ||
+        h.includes('skor') ||
+        h.includes('score') ||
+        h.includes('views') ||
+        h.includes('download') ||
+        h.includes('peserta') ||
+        h.includes('persen') ||
+        h.includes('percent') ||
+        h.includes('capaian') ||
+        h.includes('rate')
+      ) {
+        const isNum = body.some(row => {
+          const val = (row[c] || '').replace(/[^0-9.]/g, '');
+          return val !== '' && !isNaN(Number(val));
+        });
+        if (isNum) return c;
+      }
+    }
+    // Fallback: any numeric column that is not a non-metric header
+    for (let c = header.length - 1; c >= 0; c--) {
+      if (isNonMetricHeader(header[c])) continue;
+      const isNum = body.some(row => {
+        const val = (row[c] || '').replace(/[^0-9.]/g, '');
+        return val !== '' && !isNaN(Number(val));
+      });
+      if (isNum) return c;
+    }
+    return -1;
+  }, [header, body]);
+
+  // 2. Identify the best human-readable NAME column (Strictly avoids IDs)
+  const labelColIndex = useMemo(() => {
+    let bestIdx = -1;
+    let highestScore = -999;
+
+    header.forEach((hRaw, idx) => {
+      if (idx === numericColIndex) return;
+      const h = (hRaw || '').toLowerCase().trim();
+      let score = 0;
+
+      // Penalize IDs and row numbers heavily
+      if (isNonMetricHeader(hRaw)) {
+        score -= 200;
+      }
+
+      // Prioritize name / title
+      if (h.includes('nama') || h.includes('name') || h.includes('judul') || h.includes('title')) {
+        score += 150;
+      } else if (h.includes('role') || h.includes('peran') || h.includes('kategori') || h.includes('category')) {
+        score += 90;
+      } else if (h.includes('polda') || h.includes('polres') || h.includes('wilayah') || h.includes('lokasi')) {
+        score += 80;
+      } else if (h.includes('jenjang') || h.includes('level') || h.includes('modul') || h.includes('topik')) {
+        score += 70;
+      } else if (h.includes('status')) {
+        score += 50;
+      } else {
+        score += 10;
+      }
+
+      // Check sample value: if it looks like a raw ID, penalize
+      const sampleVal = (body[0] && body[0][idx]) ? body[0][idx].trim() : '';
+      if (/^(user-|mat-|sess-|cert-|role-|trc_|[0-9a-f]{8}-|[0-9]+$)/i.test(sampleVal)) {
+        score -= 100;
+      }
+
+      if (score > highestScore) {
+        highestScore = score;
+        bestIdx = idx;
+      }
+    });
+
+    return bestIdx !== -1 ? bestIdx : (numericColIndex === 0 ? 1 : 0);
+  }, [header, body, numericColIndex]);
+
+  // 3. Find category column for grouping if table has NO numeric metric
+  const categoryColIndex = useMemo(() => {
+    for (let c = 0; c < header.length; c++) {
+      if (c === numericColIndex) continue;
+      const h = (header[c] || '').toLowerCase();
+      if (h.includes('role') || h.includes('peran')) return c;
+      if (h.includes('polda') || h.includes('wilayah')) return c;
+      if (h.includes('jenjang') || h.includes('level')) return c;
+      if (h.includes('kategori') || h.includes('category') || h.includes('tipe')) return c;
+      if (h.includes('status')) return c;
+      if (h.includes('polres')) return c;
+    }
+    return -1;
+  }, [header, numericColIndex]);
+
+  // Build chart dataset
+  const chartDataFromTable = useMemo(() => {
+    // Case A: Table has a real numeric metric column
+    if (numericColIndex !== -1) {
+      const items = body.map((row, rIdx) => {
+        let name = row[labelColIndex] ? row[labelColIndex].replace(/[*_`]/g, '').trim() : `Data ${rIdx + 1}`;
+        // If name looks like an ID, try other text columns
+        if (/^(user-|mat-|sess-|cert-|role-|trc_|[0-9a-f]{8}-|[0-9]+$)/i.test(name)) {
+          const altCol = row.find((val, idx) => idx !== numericColIndex && !isNonMetricHeader(header[idx]) && val.trim() !== '');
+          if (altCol) name = altCol.replace(/[*_`]/g, '').trim();
+        }
+        const rawVal = (row[numericColIndex] || '').replace(/[^0-9.]/g, '');
+        const value = Number(rawVal) || 0;
+        return { name, value };
+      }).filter(item => item.value > 0);
+
+      if (items.length === 0) return null;
+      return {
+        title: 'Visualisasi: ' + (header[numericColIndex] || 'Statistik SM-Learning'),
+        subtitle: `Berdasarkan ${body.length} baris data (${header[labelColIndex] || 'Entri'})`,
+        data: items,
+        type: viewMode === 'pie' ? 'pie' : 'bar'
+      };
+    }
+
+    // Case B: Table is categorical (e.g. user list, session list) - calculate category distribution
+    const catIdx = categoryColIndex !== -1 ? categoryColIndex : labelColIndex;
+    if (catIdx !== -1 && body.length > 0) {
+      const counts: Record<string, number> = {};
+      body.forEach(row => {
+        let cat = (row[catIdx] || '').replace(/[*_`]/g, '').trim();
+        if (!cat || cat === '-') cat = 'Lainnya';
+        counts[cat] = (counts[cat] || 0) + 1;
+      });
+
+      const items = Object.entries(counts).map(([name, value]) => ({ name, value }));
+      if (items.length === 0) return null;
+      return {
+        title: 'Distribusi ' + (header[catIdx] || 'Data'),
+        subtitle: `Sebaran total ${body.length} entri berdasarkan ${header[catIdx] || 'kategori'}`,
+        data: items,
+        type: viewMode === 'pie' ? 'pie' : 'bar'
+      };
+    }
+
+    return null;
+  }, [body, header, numericColIndex, labelColIndex, categoryColIndex, viewMode]);
+
+  const canShowChart = Boolean(chartDataFromTable);
+
   return (
-    <div key={key} className="my-3.5 rounded-2xl border border-slate-200/90 overflow-hidden shadow-2xs bg-white">
-      {/* Table Header Bar */}
-      <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-900 text-white px-3.5 py-2 flex items-center justify-between">
+    <div className="my-3 rounded-2xl border border-slate-200/90 overflow-hidden shadow-2xs bg-white max-w-2xl w-full">
+      {/* Header bar with Table / Bar / Pie toggles */}
+      <div className="bg-gradient-to-r from-slate-900 via-[#0a1d37] to-[#132c4f] text-white px-3.5 py-2 flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
-          <svg className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-3.5 h-3.5 text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
           </svg>
           <span className="text-xs font-semibold tracking-wide text-slate-100">Ringkasan Data & Informasi</span>
         </div>
-        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/10 text-blue-200 border border-white/10">
-          {body.length} baris
-        </span>
+
+        <div className="flex items-center gap-1.5">
+          {canShowChart && (
+            <div className="flex items-center bg-white/10 rounded-lg p-0.5 border border-white/10 text-[10px]">
+              <button
+                onClick={() => setViewMode('table')}
+                className={`px-2 py-0.5 rounded-md transition-colors cursor-pointer ${viewMode === 'table' ? 'bg-white text-slate-900 font-bold shadow-2xs' : 'text-slate-300 hover:text-white'
+                  }`}
+              >
+                Tabel
+              </button>
+              <button
+                onClick={() => setViewMode('bar')}
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-md transition-colors cursor-pointer ${viewMode === 'bar' ? 'bg-white text-slate-900 font-bold shadow-2xs' : 'text-slate-300 hover:text-white'
+                  }`}
+              >
+                <BarChart2 className="w-2.5 h-2.5 text-blue-600" />
+                <span>Batang</span>
+              </button>
+              <button
+                onClick={() => setViewMode('pie')}
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-md transition-colors cursor-pointer ${viewMode === 'pie' ? 'bg-white text-slate-900 font-bold shadow-2xs' : 'text-slate-300 hover:text-white'
+                  }`}
+              >
+                <PieIcon className="w-2.5 h-2.5 text-amber-500" />
+                <span>Pie</span>
+              </button>
+            </div>
+          )}
+          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/10 text-blue-200 border border-white/10">
+            {body.length} baris
+          </span>
+        </div>
       </div>
 
-      {/* Table Body Container */}
-      <div className="overflow-x-auto max-w-full">
-        <table className="w-full text-left border-collapse text-xs">
-          <thead className="bg-slate-100/95 text-slate-900 font-bold border-b border-slate-200 text-[11px] uppercase tracking-wider">
-            <tr>
-              {header.map((h, hIdx) => (
-                <th key={hIdx} className="py-2.5 px-3 border-r last:border-r-0 border-slate-200/80 whitespace-nowrap">
-                  {parseInlineFormatting(h)}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {body.map((row, rIdx) => (
-              <tr key={rIdx} className="hover:bg-blue-50/40 transition-colors odd:bg-white even:bg-slate-50/50">
-                {row.map((cell, cIdx) => (
-                  <td key={cIdx} className="py-2.5 px-3 border-r last:border-r-0 border-slate-200/60 text-slate-700">
-                    {renderTableCell(cell)}
-                  </td>
+      {viewMode === 'table' || !chartDataFromTable ? (
+        <div className="relative overflow-x-auto max-w-full border-t border-slate-200/70" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <table
+            style={{ minWidth: header.length > 4 ? `${Math.max(680, header.length * 125)}px` : '100%' }}
+            className="w-full text-left border-collapse text-xs"
+          >
+            <thead className="bg-slate-100/95 text-slate-900 font-bold border-b border-slate-200 text-[11px] uppercase tracking-wider sticky top-0 z-10">
+              <tr>
+                {header.map((h, hIdx) => (
+                  <th
+                    key={hIdx}
+                    className={`py-2.5 px-3 border-r last:border-r-0 border-slate-200/80 whitespace-nowrap bg-slate-100/95 ${hIdx === 0 && (h.toLowerCase() === 'no' || h === '#') ? 'w-12 text-center' : ''
+                      }`}
+                  >
+                    {parseInlineFormatting(h)}
+                  </th>
                 ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {body.map((row, rIdx) => (
+                <tr key={rIdx} className="hover:bg-blue-50/50 transition-colors odd:bg-white even:bg-slate-50/50">
+                  {row.map((cell, cIdx) => (
+                    <td
+                      key={cIdx}
+                      className={`py-2.5 px-3 border-r last:border-r-0 border-slate-200/60 text-slate-700 whitespace-nowrap text-xs ${cIdx === 0 && (header[0]?.toLowerCase() === 'no' || header[0] === '#') ? 'w-12 text-center font-medium' : ''
+                        }`}
+                    >
+                      {renderTableCell(cell)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="p-3">
+          <AleshaChartViewer chartData={chartDataFromTable} onExpand={onExpandChart} />
+        </div>
+      )}
     </div>
   );
 }
 
-/**
- * Intelligent cell formatter that renders badges for status / metrics
- */
 function renderTableCell(cell: string): React.ReactNode {
   const trimmed = cell.trim();
   const lower = trimmed.toLowerCase();
 
-  // Status Success / Completed
   if (['aktif', 'selesai', 'lulus', 'sukses', 'lengkap', 'terverifikasi'].includes(lower)) {
     return (
       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
@@ -1179,7 +2350,6 @@ function renderTableCell(cell: string): React.ReactNode {
     );
   }
 
-  // Status Pending / Warning
   if (['pending', 'proses', 'berjalan', 'menunggu', 'draft'].includes(lower)) {
     return (
       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
@@ -1188,7 +2358,6 @@ function renderTableCell(cell: string): React.ReactNode {
     );
   }
 
-  // Status Danger / Inactive
   if (['nonaktif', 'gagal', 'belum', 'tidak aktif', 'batal'].includes(lower)) {
     return (
       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-100 text-rose-800 border border-rose-200">
@@ -1197,7 +2366,6 @@ function renderTableCell(cell: string): React.ReactNode {
     );
   }
 
-  // Percentage Values (e.g. 100%, 85%)
   if (/^\d+(\.\d+)?%$/.test(trimmed)) {
     return (
       <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-100 text-blue-800">
@@ -1209,20 +2377,18 @@ function renderTableCell(cell: string): React.ReactNode {
   return parseInlineFormatting(trimmed);
 }
 
-/**
- * Parser format inline: **bold**, *italic*, `code`, [link](url)
- */
 function parseInlineFormatting(text: string): React.ReactNode {
   if (!text) return '';
 
-  // Match bold (**...**), inline code (`...`), italic (*...*), or standard markdown links [text](url)
-  const parts = text.split(/(\*\*[^*]+?\*\*|`[^`]+?`|\*[^*]+?\*|\[[^\]]+\]\s*\([^)\s]+\))/g);
+  // Split by bold (**...**), inline code (`...`), markdown links [text](url), or italic (*...*)
+  const parts = text.split(/(\b\*\*[^*]+?\*\*|\*\*[^*]+?\*\*|`[^`]+?`|\*[^*\n]+?\*|\[[^\]]+\]\s*\([^)\s]+\))/g);
 
   return parts.map((part, index) => {
     if (part.startsWith('**') && part.endsWith('**') && part.length >= 4) {
+      const inner = part.slice(2, -2);
       return (
         <strong key={index} className="font-bold text-slate-900">
-          {part.slice(2, -2)}
+          {inner}
         </strong>
       );
     }
@@ -1234,10 +2400,11 @@ function parseInlineFormatting(text: string): React.ReactNode {
       );
     }
     if (part.startsWith('*') && part.endsWith('*') && part.length >= 2) {
+      const inner = part.slice(1, -1);
       return (
-        <em key={index} className="italic text-slate-800">
-          {part.slice(1, -1)}
-        </em>
+        <strong key={index} className="font-semibold text-slate-900 bg-blue-50/60 px-1 py-0.5 rounded border border-blue-100/50">
+          {inner}
+        </strong>
       );
     }
 
@@ -1262,12 +2429,7 @@ function parseInlineFormatting(text: string): React.ReactNode {
   });
 }
 
-/**
- * Detects Document download links (Word, Excel, CSV, PDF, PowerPoint, etc.)
- * and renders high-visibility, attractive, dedicated Card UIs tailored to each file type.
- */
 function parseDocumentDownloadCard(line: string, key: string | number): React.ReactNode | null {
-  // Matches markdown link with optional whitespace between ] and (: [Title] (url) or [Title](url)
   const match = line.match(/\[([^\]]+)\]\s*\(([^)\s]+)\)/i);
   if (!match) return null;
 
@@ -1276,7 +2438,6 @@ function parseDocumentDownloadCard(line: string, key: string | number): React.Re
   const lowerLabel = rawLabel.toLowerCase();
   const lowerUrl = fileUrl.toLowerCase();
 
-  // Check if this link is a file or document download link
   const isDocLink =
     lowerUrl.includes('/static/exports/') ||
     /\.(pdf|docx?|xlsx?|csv|pptx?|zip|rar|tar|gz|txt)(?:\?|#|$)/i.test(lowerUrl) ||
@@ -1284,7 +2445,6 @@ function parseDocumentDownloadCard(line: string, key: string | number): React.Re
 
   if (!isDocLink) return null;
 
-  // Determine file type category
   type FileCategory = 'word' | 'excel' | 'csv' | 'pdf' | 'pptx' | 'file';
   let category: FileCategory = 'file';
 
@@ -1300,7 +2460,6 @@ function parseDocumentDownloadCard(line: string, key: string | number): React.Re
     category = 'pptx';
   }
 
-  // Clean document title for display
   let docTitle = rawLabel
     .replace(/^(?:unduh|download)\s+(?:dokumen|file|berkas)?\s*(?:word|docx?|excel|xlsx?|spreadsheet|csv|pdf|pptx?|powerpoint)?\s*[:\-–—]?\s*/i, '')
     .replace(/^(?:dokumen|file|berkas)\s+(?:word|docx?|excel|xlsx?|spreadsheet|csv|pdf|pptx?|powerpoint)?\s*[:\-–—]?\s*/i, '')
@@ -1310,7 +2469,6 @@ function parseDocumentDownloadCard(line: string, key: string | number): React.Re
     docTitle = rawLabel;
   }
 
-  // Styling and configuration per file format
   const configs: Record<FileCategory, {
     badgeText: string;
     badgeBg: string;
@@ -1377,25 +2535,23 @@ function parseDocumentDownloadCard(line: string, key: string | number): React.Re
   };
 
   const config = configs[category];
-
-  // Check if line has text before or after the markdown link
   const beforeText = line.slice(0, match.index).trim();
   const afterText = line.slice((match.index || 0) + match[0].length).trim();
 
   return (
     <div key={key} className="my-2 space-y-1.5">
       {beforeText && (
-        <p className="text-slate-800 leading-relaxed text-[12.5px]">
+        <p className="text-slate-800 leading-relaxed text-xs">
           {parseInlineFormatting(beforeText)}
         </p>
       )}
 
       <div
-        className={`my-3 p-4 rounded-2xl ${config.cardBg} border ${config.cardBorder} shadow-2xs hover:shadow-xs transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 group`}
+        className={`my-2.5 p-3.5 rounded-2xl ${config.cardBg} border ${config.cardBorder} shadow-2xs hover:shadow-xs transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 group`}
       >
         <div className="flex items-center gap-3">
           <div
-            className={`w-10 h-10 rounded-xl ${config.badgeBg} text-white flex items-center justify-center font-bold text-xs shadow-xs flex-shrink-0 group-hover:scale-105 transition-transform tracking-wider`}
+            className={`w-9 h-9 rounded-xl ${config.badgeBg} text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0 group-hover:scale-105 transition-transform tracking-wider`}
           >
             {config.badgeText}
           </div>
@@ -1414,7 +2570,7 @@ function parseDocumentDownloadCard(line: string, key: string | number): React.Re
           target="_blank"
           rel="noopener noreferrer"
           download
-          className={`px-4 py-2 rounded-xl ${config.btnBg} text-white text-xs font-semibold shadow-xs flex items-center gap-2 transition-all cursor-pointer flex-shrink-0`}
+          className={`px-3.5 py-2 rounded-xl ${config.btnBg} text-white text-xs font-semibold shadow-xs flex items-center gap-2 transition-all cursor-pointer shrink-0`}
         >
           <Download className="w-3.5 h-3.5" />
           {config.btnText}
@@ -1422,7 +2578,7 @@ function parseDocumentDownloadCard(line: string, key: string | number): React.Re
       </div>
 
       {afterText && (
-        <p className="text-slate-800 leading-relaxed text-[12.5px]">
+        <p className="text-slate-800 leading-relaxed text-xs">
           {parseInlineFormatting(afterText)}
         </p>
       )}

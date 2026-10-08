@@ -48,6 +48,7 @@ import {
   createAiChatSession,
   updateAiChatSessionTitle,
   deleteAiChatSession,
+  deleteAllAiChatSessions,
   getAiChatMessages,
   saveAiChatMessage,
 } from './src/db';
@@ -3322,7 +3323,7 @@ ${CERTIFICATE_SHARED_CSS}
     const queryText = lastUserMsg?.content || '';
 
     // Primary: Call Alesha AI Engine
-    const aleshaBaseUrl = process.env.ALESHA_API_URL || 'https://alesha-be.djalu.co.id';
+    const aleshaBaseUrl = process.env.ALESHA_API_URL || 'http://127.0.0.1:8000';
     try {
       const aleshaRes = await fetch(`${aleshaBaseUrl}/api/chat/learning`, {
         method: 'POST',
@@ -3531,7 +3532,22 @@ ${CERTIFICATE_SHARED_CSS}
     }
   });
 
-  // 4. Delete an AI Chat Session
+  // 4. Delete All AI Chat Sessions
+  app.delete('/api/ai-chat/sessions', async (req, res) => {
+    const caller = resolveCaller(req);
+    if (!caller) {
+      return res.status(401).json({ success: false, message: 'Harap login terlebih dahulu.' });
+    }
+    try {
+      await deleteAllAiChatSessions(caller.id);
+      res.json({ success: true, message: 'Seluruh riwayat percakapan berhasil dibersihkan.' });
+    } catch (err: any) {
+      console.error('[AI Chat] Error clearing sessions:', err);
+      res.status(500).json({ success: false, message: 'Gagal membersihkan seluruh riwayat percakapan.' });
+    }
+  });
+
+  // 4b. Delete an AI Chat Session
   app.delete('/api/ai-chat/sessions/:id', async (req, res) => {
     const caller = resolveCaller(req);
     if (!caller) {
@@ -3611,7 +3627,7 @@ ${CERTIFICATE_SHARED_CSS}
 
       // 5. Panggil Engine Alesha AI (Primary) dengan Fallback ke Google Gemini
       let replyText = '';
-      const aleshaBaseUrl = process.env.ALESHA_API_URL || 'https://alesha-be.djalu.co.id';
+      const aleshaBaseUrl = process.env.ALESHA_API_URL || 'http://127.0.0.1:8000';
       let aleshaSuccess = false;
 
       try {
