@@ -231,11 +231,10 @@ export const AleshaKioskModal: React.FC<AleshaKioskModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-150">
       <div
-        className={`bg-slate-950 border border-indigo-500/30 rounded-3xl flex flex-col shadow-2xl overflow-hidden text-white transition-all duration-300 my-auto ${
-          isFullscreen
-            ? 'w-[98vw] h-[96vh]'
-            : 'w-full max-w-6xl h-[90vh]'
-        }`}
+        className={`bg-slate-950 border border-indigo-500/30 rounded-3xl flex flex-col shadow-2xl overflow-hidden text-white transition-all duration-300 my-auto ${isFullscreen
+          ? 'w-[98vw] h-[96vh]'
+          : 'w-full max-w-6xl h-[90vh]'
+          }`}
       >
         {/* Clean Minimalist Header */}
         <div className="px-5 py-3 bg-slate-950/90 border-b border-slate-800/80 flex items-center justify-between gap-4 shrink-0">

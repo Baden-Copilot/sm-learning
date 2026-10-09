@@ -2,6 +2,10 @@ import { toPng } from 'html-to-image';
 import html2canvas from 'html2canvas';
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
+  Activity,
+  ArrowUpRight,
+  ArrowDownRight,
+  GitCompare,
   Bot,
   Sparkles,
   Send,
@@ -168,6 +172,23 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
       return up.includes('KORLANTAS') || up.includes('MABES') || up.includes('PUSAT') || up.includes('NASIONAL');
     };
 
+    // Akun level mabes/pusat/nasional atau yang tidak memiliki polda/polres dianggap akun mabes/pusat/nasional
+    const execLvl = String(activeUser?.executive_level || activeUser?.executiveLevel || '').toLowerCase().trim();
+    const roleId = String(activeUser?.roleId || activeUser?.role_id || '').toLowerCase().trim();
+    const isPusatOrNational = execLvl === 'nasional' || execLvl === 'mabes' || execLvl === 'pusat' ||
+      roleId === 'role-executive-3' || roleId === 'role-admin' ||
+      isPusat(rawPolda) || isPusat(rawPolres) || (!hasPolda && !hasPolres);
+
+    if (isPusatOrNational) {
+      return {
+        level: 'nasional',
+        levelLabel: 'Nasional',
+        displayName: 'Nasional',
+        rawPolres,
+        rawPolda,
+      };
+    }
+
     // 1. Level Terakhir POLRES: Ambil murni nama polresnya saja (tanpa kata 'Polres')
     if (hasPolres) {
       return {
@@ -190,7 +211,7 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
       };
     }
 
-    // 3. Level PUSAT / KOSONG: Set murni 'Nasional'
+    // 3. Fallback: Set murni 'Nasional'
     return {
       level: 'nasional',
       levelLabel: 'Nasional',
@@ -1028,7 +1049,7 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
       {/* MODAL EXPANDED CHART PREVIEW */}
       {expandedChart && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border border-slate-200">
+          <div className={`bg-white rounded-2xl ${expandedChart.isMulti ? "max-w-6xl" : "max-w-4xl"} w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border border-slate-200`}>
             <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
               <div className="flex items-center gap-2.5">
                 {expandedChart.isMulti ? (
@@ -1190,13 +1211,54 @@ function AleshaChartViewer({ chartData, onExpand, isModal = false, hideDownload 
       : [];
 
   const rawType = (chartData.type || chartData.chart_type || 'bar').toLowerCase();
-  const type = ['pie', 'donut'].includes(rawType)
-    ? 'pie'
-    : ['line', 'area', 'tren'].includes(rawType)
-      ? 'line'
-      : 'bar';
+  type ChartViewMode = 'bar' | 'line' | 'combo' | 'dual-line' | 'pie';
 
-  // Smart mapping: strictly extract human-readable name, NEVER an ID
+  const detectedType: ChartViewMode = ['pie', 'donut'].includes(rawType)
+    ? 'pie'
+    : ['combo', 'bar_line', 'line_bar', 'batang_line'].includes(rawType)
+      ? 'combo'
+      : ['dual_line', 'double_line', 'line_line', 'compare', 'comparison'].includes(rawType)
+        ? 'dual-line'
+        : ['line', 'area', 'tren', 'garis'].includes(rawType)
+          ? 'line'
+          : 'bar';
+
+  // Interactive toggle between: Bar, Line, Combo (Bar+Line), Dual Line (Line+Line), Pie
+  const [viewMode, setViewMode] = useState<ChartViewMode>(detectedType);
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+
+  // Labels for comparisons with intelligent detection for 5 standardized time-range patterns:
+  // 1. Hari Ini vs Kemarin
+  // 2. Tanggal H-0 vs Tanggal H-1
+  // 3. Minggu Ini vs Minggu Lalu
+  // 4. Bulan Ini vs Bulan Lalu
+  // 5. Tahun Ini vs Tahun Lalu
+  const titleAndSubtitle = `${chartData.title || ''} ${chartData.subtitle || ''}`.toLowerCase();
+
+  let autoPrimaryLabel = 'Aktual / Data Sekarang';
+  let autoSecondaryLabel = 'Pembanding / Data Sebelumnya';
+
+  if (/\bh[-_]?0\b.*\bh[-_]?1\b|\bh[-_]?1\b.*\bh[-_]?0\b/i.test(titleAndSubtitle)) {
+    autoPrimaryLabel = 'Tanggal H-0';
+    autoSecondaryLabel = 'Tanggal H-1';
+  } else if (/hari\s*ini.*kemarin|kemarin.*hari\s*ini|today.*yesterday/i.test(titleAndSubtitle)) {
+    autoPrimaryLabel = 'Hari Ini';
+    autoSecondaryLabel = 'Kemarin';
+  } else if (/minggu\s*ini.*minggu\s*lalu|minggu\s*lalu.*minggu\s*ini|pekan\s*ini.*pekan\s*lalu|this\s*week.*last\s*week/i.test(titleAndSubtitle)) {
+    autoPrimaryLabel = 'Minggu Ini';
+    autoSecondaryLabel = 'Minggu Lalu';
+  } else if (/bulan\s*ini.*bulan\s*lalu|bulan\s*lalu.*bulan\s*ini|this\s*month.*last\s*month/i.test(titleAndSubtitle)) {
+    autoPrimaryLabel = 'Bulan Ini';
+    autoSecondaryLabel = 'Bulan Lalu';
+  } else if (/tahun\s*ini.*tahun\s*lalu|tahun\s*lalu.*tahun\s*ini|this\s*year.*last\s*year|yoy|year[- ]on[- ]year/i.test(titleAndSubtitle)) {
+    autoPrimaryLabel = 'Tahun Ini';
+    autoSecondaryLabel = 'Tahun Lalu';
+  }
+
+  const primaryLabel = chartData.primary_label || chartData.series_label || chartData.series1_label || autoPrimaryLabel;
+  const secondaryLabel = chartData.secondary_label || chartData.target_label || chartData.series2_label || autoSecondaryLabel;
+
+  // Smart mapping: strictly extract human-readable name, primary value & secondary comparison value
   const data = useMemo(() => {
     return rawList.map((item: any, idx: number) => {
       let rawName = (
@@ -1212,6 +1274,9 @@ function AleshaChartViewer({ chartData, onExpand, isModal = false, hideDownload 
         item.category ||
         item.polres ||
         item.polda ||
+        item.periode ||
+        item.bulan ||
+        item.waktu ||
         item.jenis ||
         item.level ||
         item.status ||
@@ -1239,17 +1304,89 @@ function AleshaChartViewer({ chartData, onExpand, isModal = false, hideDownload 
       else if (cleanName === 'role-executive-1') cleanName = 'Eksekutif 1 (Polres)';
       else if (cleanName === 'role-trainer') cleanName = 'Trainer / Instruktur';
 
-      const value = Number(item.value || item.count || item.total || item.jumlah || item.views || item.downloads || 0);
+      const value = Number(
+        item.value ?? item.count ?? item.total ?? item.jumlah ?? item.views ?? item.downloads ?? item.current ?? item.aktual ?? 0
+      );
+
+      // Determine secondary comparison value (target, previous period, benchmark, or moving sequential baseline)
+      let secondaryValue = item.secondary_value !== undefined
+        ? Number(item.secondary_value)
+        : item.target !== undefined
+          ? Number(item.target)
+          : item.previous !== undefined
+            ? Number(item.previous)
+            : item.prev_value !== undefined
+              ? Number(item.prev_value)
+              : item.lalu !== undefined
+                ? Number(item.lalu)
+                : item.benchmark !== undefined
+                  ? Number(item.benchmark)
+                  : item.line !== undefined
+                    ? Number(item.line)
+                    : item.line2 !== undefined
+                      ? Number(item.line2)
+                      : item.rencana !== undefined
+                        ? Number(item.rencana)
+                        : undefined;
+
+      // If no explicit secondary series provided, sequential comparison uses previous index value
+      if (secondaryValue === undefined) {
+        if (idx > 0) {
+          const prevItem = rawList[idx - 1];
+          secondaryValue = Number(prevItem?.value ?? prevItem?.count ?? prevItem?.total ?? prevItem?.jumlah ?? 0);
+        } else {
+          secondaryValue = value; // 0% delta baseline on first point
+        }
+      }
+
       const color = item.color || CHART_PALETTE[idx % CHART_PALETTE.length];
-      return { ...item, name: cleanName, value, color };
+      const secondaryColor = item.secondary_color || '#0d9488'; // Teal 600 for comparison line
+
+      return {
+        ...item,
+        name: cleanName,
+        value,
+        secondaryValue,
+        color,
+        secondaryColor,
+      };
     });
   }, [rawList]);
 
   const totalValue = useMemo(() => data.reduce((sum, d) => sum + d.value, 0), [data]);
+  const totalSecondary = useMemo(() => data.reduce((sum, d) => sum + d.secondaryValue, 0), [data]);
   const maxValue = useMemo(() => Math.max(...data.map(d => d.value), 1), [data]);
+  const globalMax = useMemo(
+    () => Math.max(...data.map(d => Math.max(d.value, d.secondaryValue || 0)), 1),
+    [data]
+  );
 
   const title = chartData.title || 'Statistik SM-Learning Korlantas POLRI';
   const subtitle = chartData.subtitle || 'Visualisasi Data Edukasi & Dikmas Lantas';
+
+  // Delta calculation helper: computes percentage increase / decrease vs baseline
+  const calculateDelta = useCallback((current: number, baseline: number) => {
+    if (baseline === 0) {
+      if (current === 0) {
+        return { diff: 0, pct: 0, text: '0.0%', direction: 'flat' as const, badgeClass: 'bg-slate-100 text-slate-700 border-slate-300' };
+      }
+      return { diff: current, pct: 100, text: '+100%', direction: 'up' as const, badgeClass: 'bg-emerald-500 text-white border-emerald-600' };
+    }
+    const diff = current - baseline;
+    const pct = Math.round((diff / Math.abs(baseline)) * 1000) / 10;
+    if (diff > 0) {
+      return { diff, pct, text: `+${pct.toFixed(1)}%`, direction: 'up' as const, badgeClass: 'bg-emerald-500 text-white border-emerald-600' };
+    }
+    if (diff < 0) {
+      return { diff, pct, text: `${pct.toFixed(1)}%`, direction: 'down' as const, badgeClass: 'bg-rose-500 text-white border-rose-600' };
+    }
+    return { diff: 0, pct: 0, text: '0.0%', direction: 'flat' as const, badgeClass: 'bg-slate-100 text-slate-700 border-slate-300' };
+  }, []);
+
+  // Overall growth / comparison summary
+  const overallDelta = useMemo(() => {
+    return calculateDelta(totalValue, totalSecondary);
+  }, [totalValue, totalSecondary, calculateDelta]);
 
   // Export PNG Function with oklab/oklch support
   const handleDownloadPng = async () => {
@@ -1265,6 +1402,76 @@ function AleshaChartViewer({ chartData, onExpand, isModal = false, hideDownload 
     }
   };
 
+  // SVG Coordinate Mathematics for Line, Combo, and Dual-Line charts
+  const svgMetrics = useMemo(() => {
+    const width = 640;
+    const height = 260;
+    const padLeft = 52;
+    const padRight = 40;
+    const padTop = 56;
+    const padBottom = 40;
+    const innerW = width - padLeft - padRight;
+    const innerH = height - padTop - padBottom;
+    const n = data.length;
+
+    const pointsPrimary = data.map((d, i) => {
+      const x = n > 1 ? padLeft + (i / (n - 1)) * innerW : width / 2;
+      const y = padTop + innerH - (d.value / globalMax) * innerH;
+      return { x, y, value: d.value, name: d.name, color: d.color };
+    });
+
+    const pointsSecondary = data.map((d, i) => {
+      const x = n > 1 ? padLeft + (i / (n - 1)) * innerW : width / 2;
+      const y = padTop + innerH - (d.secondaryValue / globalMax) * innerH;
+      return { x, y, value: d.secondaryValue, name: d.name, color: d.secondaryColor };
+    });
+
+    // Spline curve generator
+    const makeSmoothPath = (pts: Array<{ x: number; y: number }>) => {
+      if (pts.length === 0) return '';
+      if (pts.length === 1) return `M ${pts[0].x} ${pts[0].y}`;
+      if (pts.length === 2) return `M ${pts[0].x} ${pts[0].y} L ${pts[1].x} ${pts[1].y}`;
+      let d = `M ${pts[0].x} ${pts[0].y}`;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p0 = pts[Math.max(0, i - 1)];
+        const p1 = pts[i];
+        const p2 = pts[i + 1];
+        const p3 = pts[Math.min(pts.length - 1, i + 2)];
+        const cp1x = p1.x + (p2.x - p0.x) / 6;
+        const cp1y = p1.y + (p2.y - p0.y) / 6;
+        const cp2x = p2.x - (p3.x - p1.x) / 6;
+        const cp2y = p2.y - (p3.y - p1.y) / 6;
+        d += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+      }
+      return d;
+    };
+
+    const makeAreaPath = (pts: Array<{ x: number; y: number }>) => {
+      if (pts.length < 2) return '';
+      const basePath = makeSmoothPath(pts);
+      const bottom = padTop + innerH;
+      return `${basePath} L ${pts[pts.length - 1].x} ${bottom} L ${pts[0].x} ${bottom} Z`;
+    };
+
+    return {
+      width,
+      height,
+      padLeft,
+      padRight,
+      padTop,
+      padBottom,
+      innerW,
+      innerH,
+      pointsPrimary,
+      pointsSecondary,
+      pathPrimary: makeSmoothPath(pointsPrimary),
+      areaPrimary: makeAreaPath(pointsPrimary),
+      pathSecondary: makeSmoothPath(pointsSecondary),
+      areaSecondary: makeAreaPath(pointsSecondary),
+      baselineY: padTop + innerH,
+    };
+  }, [data, globalMax]);
+
   return (
     <div
       ref={containerRef}
@@ -1272,26 +1479,95 @@ function AleshaChartViewer({ chartData, onExpand, isModal = false, hideDownload 
         }`}
     >
       {/* Chart Header Bar */}
-      <div className="bg-gradient-to-r from-slate-900 via-[#0a1d37] to-[#132c4f] text-white px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-blue-500/20 border border-blue-400/30 flex items-center justify-center">
-            {type === 'pie' ? (
+      <div className="bg-gradient-to-r from-slate-900 via-[#0a1d37] to-[#132c4f] text-white px-4 py-3 flex items-center justify-between flex-wrap gap-2.5">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-lg bg-blue-500/20 border border-blue-400/30 flex items-center justify-center shrink-0">
+            {viewMode === 'pie' ? (
               <PieIcon className="w-4 h-4 text-blue-300" />
-            ) : type === 'line' ? (
+            ) : viewMode === 'line' ? (
               <TrendingUp className="w-4 h-4 text-blue-300" />
+            ) : viewMode === 'combo' ? (
+              <Layers className="w-4 h-4 text-blue-300" />
+            ) : viewMode === 'dual-line' ? (
+              <Activity className="w-4 h-4 text-blue-300" />
             ) : (
               <BarChart2 className="w-4 h-4 text-blue-300" />
             )}
           </div>
-          <div>
-            <h4 className="font-bold text-xs text-white leading-snug">{title}</h4>
-            <p className="text-[10px] text-slate-300">{subtitle}</p>
+          <div className="min-w-0">
+            <h4 className="font-bold text-xs text-white leading-snug truncate">{title}</h4>
+            <p className="text-[10px] text-slate-300 truncate">{subtitle}</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Segmented View Mode Toggle: Batang, Garis, Combo, Dual-Line, Pie */}
+          <div className="flex items-center bg-slate-800/90 p-0.5 rounded-lg border border-slate-700/80 shadow-inner flex-wrap gap-0.5">
+            <button
+              type="button"
+              onClick={() => setViewMode('bar')}
+              className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${viewMode === 'bar'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10'
+                }`}
+              title="Grafik Batang (Kolom Vertikal)"
+            >
+              <BarChart2 className="w-3 h-3" />
+              <span>Batang</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('line')}
+              className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${viewMode === 'line'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10'
+                }`}
+              title="Grafik Garis Tren & Delta Data Sebelumnya"
+            >
+              <TrendingUp className="w-3 h-3" />
+              <span>Garis</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('combo')}
+              className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${viewMode === 'combo'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10'
+                }`}
+              title="Multi-Grafik: Batang + Garis (Perbandingan Data)"
+            >
+              <Layers className="w-3 h-3" />
+              <span>Batang+Line</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('dual-line')}
+              className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${viewMode === 'dual-line'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10'
+                }`}
+              title="Multi-Grafik: Garis + Garis (Line + Line Perbandingan)"
+            >
+              <Activity className="w-3 h-3" />
+              <span>Line+Line</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('pie')}
+              className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${viewMode === 'pie'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-300 hover:text-white hover:bg-white/10'
+                }`}
+              title="Grafik Pie / Donut"
+            >
+              <PieIcon className="w-3 h-3" />
+              <span>Pie</span>
+            </button>
+          </div>
+
           {!hideDownload && (
             <button
+              type="button"
               onClick={handleDownloadPng}
               disabled={isExporting}
               className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[11px] font-semibold transition-colors cursor-pointer border border-white/10"
@@ -1303,7 +1579,8 @@ function AleshaChartViewer({ chartData, onExpand, isModal = false, hideDownload 
           )}
           {!isModal && onExpand && (
             <button
-              onClick={() => onExpand({ ...chartData, title, subtitle, data, type })}
+              type="button"
+              onClick={() => onExpand({ ...chartData, title, subtitle, data, type: viewMode })}
               className="p-1 rounded-lg hover:bg-white/10 text-slate-300 hover:text-white transition-colors cursor-pointer"
               title="Perbesar Grafik"
             >
@@ -1317,112 +1594,897 @@ function AleshaChartViewer({ chartData, onExpand, isModal = false, hideDownload 
       <div className="p-4 bg-slate-50/50">
         {data.length === 0 ? (
           <div className="py-8 text-center text-xs text-slate-400">Tidak ada data untuk ditampilkan.</div>
-        ) : type === 'bar' ? (
-          <div className="space-y-2.5">
-            {data.map((item, idx) => {
-              const pct = Math.round((item.value / maxValue) * 100);
-              return (
-                <div key={idx} className="group">
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="font-medium text-slate-700 truncate max-w-[260px]">{item.name}</span>
-                    <span className="font-bold text-slate-900 ml-2">
-                      {Number(item.value).toLocaleString('id-ID')}
-                    </span>
-                  </div>
-                  <div className="w-full h-3 bg-slate-200/80 rounded-full overflow-hidden flex">
-                    <div
-                      className="h-full rounded-full transition-all duration-500 group-hover:brightness-110"
-                      style={{
-                        width: `${Math.max(4, pct)}%`,
-                        backgroundColor: item.color,
-                      }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : type === 'pie' ? (
-          <div className="flex flex-col sm:flex-row items-center justify-around gap-4 py-2">
-            {/* SVG Donut */}
-            <div className="relative w-40 h-40 shrink-0">
-              <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                {(() => {
-                  let accumulatedPercent = 0;
-                  return data.map((d, i) => {
-                    const percent = (d.value / (totalValue || 1)) * 100;
-                    const strokeDasharray = `${percent} ${100 - percent}`;
-                    const strokeDashoffset = -accumulatedPercent;
-                    accumulatedPercent += percent;
+        ) : viewMode === 'bar' ? (
+          /* ========================================================
+             1. GRAFIK BATANG (COLUMN) WITH CLEAR VALUES & PERCENTS
+             ======================================================== */
+          <div className="space-y-4">
+            <div className="flex items-center justify-between text-xs px-1 border-b border-slate-200/70 pb-2">
+              <div className="flex items-center gap-2 text-slate-600 font-medium">
+                <span className="w-2 h-2 rounded-full bg-blue-600" />
+                <span>Total Data: <strong className="text-slate-900 font-bold">{Number(totalValue).toLocaleString('id-ID')}</strong></span>
+              </div>
+              <span className="text-[11px] font-medium text-slate-500">
+                {data.length} Kategori Analisis
+              </span>
+            </div>
 
-                    return (
-                      <circle
-                        key={i}
-                        cx="50"
-                        cy="50"
-                        r="40"
-                        fill="transparent"
-                        stroke={d.color}
-                        strokeWidth="18"
-                        strokeDasharray={strokeDasharray}
-                        strokeDashoffset={strokeDashoffset}
-                        className="transition-all duration-500 hover:opacity-80"
-                      />
-                    );
-                  });
-                })()}
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-[10px] text-slate-400 font-medium">Total</span>
-                <span className="text-sm font-black text-slate-800">{Number(totalValue).toLocaleString('id-ID')}</span>
+            {/* Vertical Column Canvas */}
+            <div className="relative pt-6 pb-2 px-3 sm:px-6 bg-gradient-to-b from-slate-50/80 via-white to-slate-50/50 rounded-xl border border-slate-200/70 shadow-2xs">
+              <div className="absolute inset-x-4 top-8 bottom-12 flex flex-col justify-between pointer-events-none opacity-30">
+                <div className="border-b border-dashed border-slate-400 w-full" />
+                <div className="border-b border-dashed border-slate-400 w-full" />
+                <div className="border-b border-dashed border-slate-400 w-full" />
+                <div className="border-b border-dashed border-slate-400 w-full" />
+                <div className="border-b border-solid border-slate-300 w-full" />
+              </div>
+
+              <div className="h-52 flex items-end justify-around gap-2 sm:gap-4 relative z-10 px-1">
+                {data.map((item, idx) => {
+                  const pct = maxValue > 0 ? (item.value / maxValue) * 100 : 0;
+                  const sharePct = totalValue > 0 ? Math.round((item.value / totalValue) * 100) : 0;
+                  const isHovered = hoveredIdx === idx;
+                  const heightPercent = Math.max(item.value > 0 ? 10 : 3, Math.round(pct));
+                  const prevVal = idx > 0 ? data[idx - 1].value : item.value;
+                  const seqDelta = calculateDelta(item.value, prevVal);
+
+                  return (
+                    <div
+                      key={idx}
+                      onMouseEnter={() => setHoveredIdx(idx)}
+                      onMouseLeave={() => setHoveredIdx(null)}
+                      className="flex-1 flex flex-col items-center justify-end h-full group relative cursor-pointer"
+                      style={{ maxWidth: data.length <= 4 ? '96px' : data.length <= 6 ? '76px' : '56px' }}
+                    >
+                      {/* Floating Clear Value & Delta Pills */}
+                      <div
+                        className={`mb-1.5 flex flex-col items-center transition-all duration-300 ${isHovered ? '-translate-y-1 scale-110' : ''
+                          }`}
+                      >
+                        {idx > 0 && (
+                          <span className={`text-[9px] font-black px-1.5 py-0.2 rounded-full mb-0.5 border shadow-2xs whitespace-nowrap ${seqDelta.badgeClass}`}>
+                            {seqDelta.direction === 'up' ? '▲' : seqDelta.direction === 'down' ? '▼' : '▬'} {seqDelta.text}
+                          </span>
+                        )}
+                        <span className="font-black text-[11px] text-slate-900 bg-white px-2 py-0.5 rounded-md border border-slate-300 shadow-xs whitespace-nowrap">
+                          {Number(item.value).toLocaleString('id-ID')}
+                        </span>
+                        <span className="text-[10px] font-bold text-slate-500 mt-0.5">
+                          {sharePct}%
+                        </span>
+                      </div>
+
+                      {/* Bar Column */}
+                      <div className="w-full flex justify-center items-end" style={{ height: '70%' }}>
+                        <div
+                          className="w-full max-w-[48px] rounded-t-xl transition-all duration-500 ease-out relative overflow-hidden"
+                          style={{
+                            height: `${heightPercent}%`,
+                            background: `linear-gradient(180deg, ${item.color} 0%, ${item.color}d9 100%)`,
+                            boxShadow: isHovered
+                              ? `0 8px 20px ${item.color}55`
+                              : `0 4px 12px ${item.color}30`,
+                            transform: isHovered ? 'scaleY(1.02)' : 'scaleY(1)',
+                            transformOrigin: 'bottom',
+                          }}
+                        >
+                          <div className="absolute top-0 inset-x-0 h-1.5 bg-white/40 rounded-t-xl" />
+                        </div>
+                      </div>
+
+                      {/* X-axis Label */}
+                      <div className="mt-2 text-center w-full">
+                        <div className="flex items-center justify-center gap-1 mb-0.5">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                        </div>
+                        <p
+                          className={`text-[11px] font-semibold leading-tight line-clamp-2 transition-colors ${isHovered ? 'text-blue-600 font-bold' : 'text-slate-700'
+                            }`}
+                          title={item.name}
+                        >
+                          {item.name}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Legend */}
-            <div className="flex-1 max-w-[260px] space-y-1.5">
-              {data.map((item, idx) => {
-                const pct = totalValue > 0 ? Math.round((item.value / totalValue) * 100) : 0;
-                return (
-                  <div key={idx} className="flex items-center justify-between text-xs py-0.5 border-b border-slate-100 last:border-0">
-                    <div className="flex items-center gap-2 truncate">
-                      <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                      <span className="text-slate-600 truncate">{item.name}</span>
+            {/* Breakdown List */}
+            <div className="pt-1">
+              <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-2 flex items-center justify-between">
+                <span>Rincian Komposisi & Proporsi Data</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {data.map((item, idx) => {
+                  const sharePct = totalValue > 0 ? Math.round((item.value / totalValue) * 100) : 0;
+                  const isHovered = hoveredIdx === idx;
+                  const prevVal = idx > 0 ? data[idx - 1].value : item.value;
+                  const seqDelta = calculateDelta(item.value, prevVal);
+
+                  return (
+                    <div
+                      key={idx}
+                      onMouseEnter={() => setHoveredIdx(idx)}
+                      onMouseLeave={() => setHoveredIdx(null)}
+                      className={`p-2.5 rounded-xl border transition-all cursor-pointer ${isHovered
+                          ? 'bg-blue-50/70 border-blue-300 shadow-xs'
+                          : 'bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs'
+                        }`}
+                    >
+                      <div className="flex items-center justify-between text-xs mb-1.5">
+                        <div className="flex items-center gap-2 truncate mr-2">
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0 shadow-2xs" style={{ backgroundColor: item.color }} />
+                          <span className="font-semibold text-slate-800 truncate text-[11px]">{item.name}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {idx > 0 && (
+                            <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded border shadow-2xs ${seqDelta.badgeClass}`}>
+                              {seqDelta.direction === 'up' ? '▲' : seqDelta.direction === 'down' ? '▼' : '▬'} {seqDelta.text}
+                            </span>
+                          )}
+                          <span className="font-black text-slate-900 bg-slate-50 px-2 py-0.5 rounded border border-slate-200 text-[11px]">
+                            {Number(item.value).toLocaleString('id-ID')}
+                          </span>
+                          <span className="text-[10px] font-bold text-slate-500 w-8 text-right">{sharePct}%</span>
+                        </div>
+                      </div>
+                      <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${sharePct}%`, backgroundColor: item.color }} />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                      <span className="font-bold text-slate-900">{Number(item.value).toLocaleString('id-ID')}</span>
-                      <span className="text-[10px] text-slate-400 w-8 text-right">({pct}%)</span>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        ) : viewMode === 'line' ? (
+          /* ========================================================
+             2. GRAFIK GARIS TREN (LINE + DELTA DARI DATA SEBELUMNYA)
+             ======================================================== */
+          <div className="space-y-4">
+            <div className="flex items-center justify-between text-xs px-1 border-b border-slate-200/70 pb-2 flex-wrap gap-2">
+              <div className="flex items-center gap-2 text-slate-600 font-medium">
+                <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+                <span>Tren Data: <strong className="text-slate-900 font-bold">{Number(totalValue).toLocaleString('id-ID')} Total</strong></span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  ▲ Kenaikan
+                </span>
+                <span className="text-[11px] font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                  ▼ Penurunan
+                </span>
+              </div>
+            </div>
+
+            {/* SVG Line Canvas */}
+            <div className="relative pt-2 pb-2 bg-gradient-to-b from-blue-50/40 via-white to-slate-50/50 rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+              <svg viewBox={`0 0 ${svgMetrics.width} ${svgMetrics.height}`} className="w-full h-auto">
+                <defs>
+                  <linearGradient id="lineAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#2563eb" stopOpacity="0.28" />
+                    <stop offset="100%" stopColor="#2563eb" stopOpacity="0.02" />
+                  </linearGradient>
+                </defs>
+
+                {/* Gridlines */}
+                {[0, 0.25, 0.5, 0.75, 1].map((ratio, gIdx) => {
+                  const y = svgMetrics.padTop + svgMetrics.innerH - ratio * svgMetrics.innerH;
+                  const valTick = Math.round(ratio * globalMax);
+                  return (
+                    <g key={gIdx}>
+                      <line
+                        x1={svgMetrics.padLeft - 10}
+                        y1={y}
+                        x2={svgMetrics.width - svgMetrics.padRight + 10}
+                        y2={y}
+                        stroke="#cbd5e1"
+                        strokeDasharray={ratio === 0 ? 'none' : '4 4'}
+                        strokeWidth="1"
+                        opacity={ratio === 0 ? 0.7 : 0.45}
+                      />
+                      <text x={svgMetrics.padLeft - 14} y={y + 3} textAnchor="end" fontSize="9" fill="#94a3b8" fontWeight="600">
+                        {valTick}
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {/* Area Gradient Fill */}
+                {svgMetrics.areaPrimary && (
+                  <path d={svgMetrics.areaPrimary} fill="url(#lineAreaGrad)" />
+                )}
+
+                {/* Main Spline Curve */}
+                {svgMetrics.pathPrimary && (
+                  <path
+                    d={svgMetrics.pathPrimary}
+                    fill="none"
+                    stroke="#2563eb"
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                )}
+
+                {/* Points, Value Pills & Delta Badges */}
+                {svgMetrics.pointsPrimary.map((pt, idx) => {
+                  const prevVal = idx > 0 ? data[idx - 1].value : pt.value;
+                  const delta = calculateDelta(pt.value, prevVal);
+                  const isHovered = hoveredIdx === idx;
+                  const valStr = Number(pt.value).toLocaleString('id-ID');
+                  const badgeW = Math.max(50, valStr.length * 8 + 18);
+                  const deltaW = Math.max(54, delta.text.length * 7 + 22);
+
+                  return (
+                    <g
+                      key={idx}
+                      onMouseEnter={() => setHoveredIdx(idx)}
+                      onMouseLeave={() => setHoveredIdx(null)}
+                      className="cursor-pointer"
+                    >
+                      {/* Vertical Indicator Guide */}
+                      <line
+                        x1={pt.x}
+                        y1={pt.y}
+                        x2={pt.x}
+                        y2={svgMetrics.baselineY}
+                        stroke="#2563eb"
+                        strokeWidth={isHovered ? '2' : '1'}
+                        strokeDasharray="3 3"
+                        opacity={isHovered ? 0.8 : 0.3}
+                      />
+
+                      {/* Delta Badge (Comparing to previous point) */}
+                      {idx > 0 ? (
+                        <g transform={`translate(${pt.x - deltaW / 2}, ${pt.y - 48})`}>
+                          <rect
+                            width={deltaW}
+                            height="18"
+                            rx="5"
+                            fill={delta.direction === 'up' ? '#10b981' : delta.direction === 'down' ? '#f43f5e' : '#64748b'}
+                            stroke="#ffffff"
+                            strokeWidth="1.5"
+                          />
+                          <text
+                            x={deltaW / 2}
+                            y="12"
+                            textAnchor="middle"
+                            fontSize="9.5"
+                            fontWeight="900"
+                            fill="#ffffff"
+                          >
+                            {delta.direction === 'up' ? '▲' : delta.direction === 'down' ? '▼' : '▬'} {delta.text}
+                          </text>
+                        </g>
+                      ) : (
+                        <g transform={`translate(${pt.x - 26}, ${pt.y - 48})`}>
+                          <rect width="52" height="18" rx="5" fill="#f1f5f9" stroke="#cbd5e1" strokeWidth="1" />
+                          <text x="26" y="12" textAnchor="middle" fontSize="9" fontWeight="800" fill="#475569">
+                            Baseline
+                          </text>
+                        </g>
+                      )}
+
+                      {/* Value Pill (Angka Sangat Jelas) */}
+                      <g transform={`translate(${pt.x - badgeW / 2}, ${pt.y - 26})`}>
+                        <rect
+                          width={badgeW}
+                          height="20"
+                          rx="6"
+                          fill="#ffffff"
+                          stroke={isHovered ? '#2563eb' : '#cbd5e1'}
+                          strokeWidth={isHovered ? '2' : '1.5'}
+                        />
+                        <text
+                          x={badgeW / 2}
+                          y="14"
+                          textAnchor="middle"
+                          fontSize="11"
+                          fontWeight="900"
+                          fill="#0f172a"
+                        >
+                          {valStr}
+                        </text>
+                      </g>
+
+                      {/* Outer Ring & Center Node Dot */}
+                      <circle
+                        cx={pt.x}
+                        cy={pt.y}
+                        r={isHovered ? '7' : '5'}
+                        fill="#ffffff"
+                        stroke="#2563eb"
+                        strokeWidth="3"
+                      />
+
+                      {/* X-axis Label */}
+                      <text
+                        x={pt.x}
+                        y={svgMetrics.baselineY + 18}
+                        textAnchor="middle"
+                        fontSize="10"
+                        fontWeight="600"
+                        fill={isHovered ? '#1d4ed8' : '#475569'}
+                      >
+                        {pt.name}
+                      </text>
+                    </g>
+                  );
+                })}
+              </svg>
+            </div>
+
+            {/* Sequential Delta Breakdown Table */}
+            <div className="pt-1">
+              <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-2 flex items-center justify-between">
+                <span>Analisis Perubahan Antar Data Sebelumnya</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {data.map((item, idx) => {
+                  const prevVal = idx > 0 ? data[idx - 1].value : item.value;
+                  const delta = calculateDelta(item.value, prevVal);
+                  const isHovered = hoveredIdx === idx;
+
+                  return (
+                    <div
+                      key={idx}
+                      onMouseEnter={() => setHoveredIdx(idx)}
+                      onMouseLeave={() => setHoveredIdx(null)}
+                      className={`p-2.5 rounded-xl border transition-all cursor-pointer ${isHovered ? 'bg-blue-50/70 border-blue-300 shadow-xs' : 'bg-white border-slate-200/80 shadow-2xs'
+                        }`}
+                    >
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <div className="flex items-center gap-2 truncate mr-2">
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0 shadow-2xs" style={{ backgroundColor: item.color }} />
+                          <span className="font-semibold text-slate-800 truncate text-[11px]">{item.name}</span>
+                        </div>
+                        <span className="font-black text-slate-900 bg-slate-50 px-2 py-0.5 rounded border border-slate-200 text-[11px]">
+                          {Number(item.value).toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] mt-1 pt-1 border-t border-slate-100">
+                        <span className="text-[10px] text-slate-500 font-medium">
+                          {idx === 0 ? 'Titik Awal (Baseline)' : `vs ${data[idx - 1].name} (${Number(prevVal).toLocaleString('id-ID')})`}
+                        </span>
+                        {idx > 0 ? (
+                          <span className={`text-[10px] font-black px-2 py-0.5 rounded border shadow-2xs ${delta.badgeClass}`}>
+                            {delta.direction === 'up' ? '▲ Peningkatan' : delta.direction === 'down' ? '▼ Penurunan' : '▬ Tetap'} ({delta.text})
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">0.0%</span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        ) : viewMode === 'combo' ? (
+          /* ========================================================
+             3. MULTIPLE GRAFIK: LINE + BATANG (COMBO PERBANDINGAN)
+             ======================================================== */
+          <div className="space-y-4">
+            <div className="flex items-center justify-between text-xs px-1 border-b border-slate-200/70 pb-2 flex-wrap gap-2">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5 font-bold text-slate-800 text-xs">
+                  <span className="w-3 h-3 rounded bg-blue-600 inline-block" />
+                  <span>{primaryLabel} (Batang)</span>
+                </div>
+                <div className="flex items-center gap-1.5 font-bold text-teal-800 text-xs">
+                  <span className="w-3 h-1.5 rounded-full bg-teal-600 inline-block" />
+                  <span>{secondaryLabel} (Line)</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className={`text-[11px] font-black px-2.5 py-0.5 rounded-md border shadow-2xs ${overallDelta.badgeClass}`}>
+                  Perbandingan Total: {overallDelta.direction === 'up' ? '▲' : overallDelta.direction === 'down' ? '▼' : '▬'} {overallDelta.text}
+                </span>
+              </div>
+            </div>
+
+            {/* SVG Combo Canvas */}
+            <div className="relative pt-2 pb-2 bg-gradient-to-b from-slate-50/80 via-white to-slate-50/50 rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+              <svg viewBox={`0 0 ${svgMetrics.width} ${svgMetrics.height}`} className="w-full h-auto">
+                <defs>
+                  <linearGradient id="comboBarGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#2563eb" stopOpacity="0.95" />
+                    <stop offset="100%" stopColor="#1d4ed8" stopOpacity="0.75" />
+                  </linearGradient>
+                </defs>
+
+                {/* Gridlines */}
+                {[0, 0.25, 0.5, 0.75, 1].map((ratio, gIdx) => {
+                  const y = svgMetrics.padTop + svgMetrics.innerH - ratio * svgMetrics.innerH;
+                  const valTick = Math.round(ratio * globalMax);
+                  return (
+                    <g key={gIdx}>
+                      <line
+                        x1={svgMetrics.padLeft - 10}
+                        y1={y}
+                        x2={svgMetrics.width - svgMetrics.padRight + 10}
+                        y2={y}
+                        stroke="#cbd5e1"
+                        strokeDasharray={ratio === 0 ? 'none' : '4 4'}
+                        strokeWidth="1"
+                        opacity={ratio === 0 ? 0.7 : 0.45}
+                      />
+                      <text x={svgMetrics.padLeft - 14} y={y + 3} textAnchor="end" fontSize="9" fill="#94a3b8" fontWeight="600">
+                        {valTick}
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {/* Render Bars (Columns for Primary Series) */}
+                {svgMetrics.pointsPrimary.map((pt, idx) => {
+                  const isHovered = hoveredIdx === idx;
+                  const colW = Math.min(42, Math.max(22, svgMetrics.innerW / (data.length * 2.2)));
+                  const barH = Math.max(4, svgMetrics.baselineY - pt.y);
+
+                  return (
+                    <g
+                      key={`bar-${idx}`}
+                      onMouseEnter={() => setHoveredIdx(idx)}
+                      onMouseLeave={() => setHoveredIdx(null)}
+                      className="cursor-pointer"
+                    >
+                      <rect
+                        x={pt.x - colW / 2}
+                        y={pt.y}
+                        width={colW}
+                        height={barH}
+                        rx="6"
+                        fill="url(#comboBarGrad)"
+                        opacity={isHovered ? 1 : 0.9}
+                        filter={isHovered ? 'drop-shadow(0 6px 12px rgba(37,99,235,0.4))' : undefined}
+                      />
+                    </g>
+                  );
+                })}
+
+                {/* Render Spline Line (Line for Secondary Series / Benchmark) */}
+                {svgMetrics.pathSecondary && (
+                  <path
+                    d={svgMetrics.pathSecondary}
+                    fill="none"
+                    stroke="#0d9488"
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeDasharray="5 4"
+                  />
+                )}
+
+                {/* Overlaid Badges, Delta Indicators & Line Nodes */}
+                {svgMetrics.pointsPrimary.map((pt, idx) => {
+                  const ptSec = svgMetrics.pointsSecondary[idx];
+                  const delta = calculateDelta(pt.value, ptSec.value);
+                  const isHovered = hoveredIdx === idx;
+                  const deltaW = Math.max(54, delta.text.length * 7 + 22);
+
+                  return (
+                    <g
+                      key={`combo-node-${idx}`}
+                      onMouseEnter={() => setHoveredIdx(idx)}
+                      onMouseLeave={() => setHoveredIdx(null)}
+                      className="cursor-pointer"
+                    >
+                      {/* Secondary Line Node Dot */}
+                      <circle
+                        cx={ptSec.x}
+                        cy={ptSec.y}
+                        r={isHovered ? '6' : '4.5'}
+                        fill="#ffffff"
+                        stroke="#0d9488"
+                        strokeWidth="2.5"
+                      />
+
+                      {/* Delta Comparison Pill (Aktual vs Target / Pembanding) */}
+                      <g transform={`translate(${pt.x - deltaW / 2}, ${Math.min(pt.y, ptSec.y) - 48})`}>
+                        <rect
+                          width={deltaW}
+                          height="18"
+                          rx="5"
+                          fill={delta.direction === 'up' ? '#10b981' : delta.direction === 'down' ? '#f43f5e' : '#64748b'}
+                          stroke="#ffffff"
+                          strokeWidth="1.5"
+                        />
+                        <text x={deltaW / 2} y="12" textAnchor="middle" fontSize="9.5" fontWeight="900" fill="#ffffff">
+                          {delta.direction === 'up' ? '▲' : delta.direction === 'down' ? '▼' : '▬'} {delta.text}
+                        </text>
+                      </g>
+
+                      {/* Primary Bar Value Badge */}
+                      <g transform={`translate(${pt.x - 22}, ${pt.y - 25})`}>
+                        <rect width="44" height="18" rx="5" fill="#ffffff" stroke="#2563eb" strokeWidth="1.5" />
+                        <text x="22" y="13" textAnchor="middle" fontSize="10.5" fontWeight="900" fill="#1e3a8a">
+                          {Number(pt.value).toLocaleString('id-ID')}
+                        </text>
+                      </g>
+
+                      {/* Secondary Line Value Badge */}
+                      <g transform={`translate(${ptSec.x - 20}, ${ptSec.y + 8})`}>
+                        <rect width="40" height="16" rx="4" fill="#f0fdfa" stroke="#0d9488" strokeWidth="1" />
+                        <text x="20" y="12" textAnchor="middle" fontSize="9.5" fontWeight="800" fill="#0f766e">
+                          {Number(ptSec.value).toLocaleString('id-ID')}
+                        </text>
+                      </g>
+
+                      {/* X-axis Label */}
+                      <text
+                        x={pt.x}
+                        y={svgMetrics.baselineY + 18}
+                        textAnchor="middle"
+                        fontSize="10"
+                        fontWeight="600"
+                        fill={isHovered ? '#1d4ed8' : '#475569'}
+                      >
+                        {pt.name}
+                      </text>
+                    </g>
+                  );
+                })}
+              </svg>
+            </div>
+
+            {/* Comparison Cards */}
+            <div className="pt-1">
+              <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-2 flex items-center justify-between">
+                <span>Rincian Komparasi: {primaryLabel} vs {secondaryLabel}</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {data.map((item, idx) => {
+                  const delta = calculateDelta(item.value, item.secondaryValue);
+                  const isHovered = hoveredIdx === idx;
+
+                  return (
+                    <div
+                      key={idx}
+                      onMouseEnter={() => setHoveredIdx(idx)}
+                      onMouseLeave={() => setHoveredIdx(null)}
+                      className={`p-2.5 rounded-xl border transition-all cursor-pointer ${isHovered ? 'bg-blue-50/70 border-blue-300 shadow-xs' : 'bg-white border-slate-200/80 shadow-2xs'
+                        }`}
+                    >
+                      <div className="flex items-center justify-between text-xs mb-1.5">
+                        <span className="font-bold text-slate-800 truncate text-[11px]">{item.name}</span>
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded border shadow-2xs ${delta.badgeClass}`}>
+                          {delta.direction === 'up' ? '▲' : delta.direction === 'down' ? '▼' : '▬'} {delta.text}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 bg-slate-50 p-2 rounded-lg border border-slate-200/60 text-xs">
+                        <div>
+                          <div className="text-[9px] text-slate-500 font-semibold uppercase">{primaryLabel}</div>
+                          <div className="font-black text-blue-700 text-[12px]">{Number(item.value).toLocaleString('id-ID')}</div>
+                        </div>
+                        <div>
+                          <div className="text-[9px] text-slate-500 font-semibold uppercase">{secondaryLabel}</div>
+                          <div className="font-bold text-teal-700 text-[12px]">{Number(item.secondaryValue).toLocaleString('id-ID')}</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        ) : viewMode === 'dual-line' ? (
+          /* ========================================================
+             4. MULTIPLE GRAFIK: LINE + LINE (DUAL LINE COMPARISON)
+             ======================================================== */
+          <div className="space-y-4">
+            <div className="flex items-center justify-between text-xs px-1 border-b border-slate-200/70 pb-2 flex-wrap gap-2">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5 font-bold text-blue-800 text-xs">
+                  <span className="w-3 h-1.5 rounded-full bg-blue-600 inline-block" />
+                  <span>{primaryLabel} (Seri 1)</span>
+                </div>
+                <div className="flex items-center gap-1.5 font-bold text-teal-800 text-xs">
+                  <span className="w-3 h-1.5 rounded-full bg-teal-600 inline-block border border-teal-700 border-dashed" />
+                  <span>{secondaryLabel} (Seri 2)</span>
+                </div>
+              </div>
+              <span className={`text-[11px] font-black px-2.5 py-0.5 rounded-md border shadow-2xs ${overallDelta.badgeClass}`}>
+                Pertumbuhan Rata-rata: {overallDelta.direction === 'up' ? '▲' : overallDelta.direction === 'down' ? '▼' : '▬'} {overallDelta.text}
+              </span>
+            </div>
+
+            {/* SVG Dual-Line Canvas */}
+            <div className="relative pt-2 pb-2 bg-gradient-to-b from-indigo-50/30 via-white to-slate-50/50 rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
+              <svg viewBox={`0 0 ${svgMetrics.width} ${svgMetrics.height}`} className="w-full h-auto">
+                <defs>
+                  <linearGradient id="dualLineGrad1" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#2563eb" stopOpacity="0.22" />
+                    <stop offset="100%" stopColor="#2563eb" stopOpacity="0.01" />
+                  </linearGradient>
+                </defs>
+
+                {/* Gridlines */}
+                {[0, 0.25, 0.5, 0.75, 1].map((ratio, gIdx) => {
+                  const y = svgMetrics.padTop + svgMetrics.innerH - ratio * svgMetrics.innerH;
+                  const valTick = Math.round(ratio * globalMax);
+                  return (
+                    <g key={gIdx}>
+                      <line
+                        x1={svgMetrics.padLeft - 10}
+                        y1={y}
+                        x2={svgMetrics.width - svgMetrics.padRight + 10}
+                        y2={y}
+                        stroke="#cbd5e1"
+                        strokeDasharray={ratio === 0 ? 'none' : '4 4'}
+                        strokeWidth="1"
+                        opacity={ratio === 0 ? 0.7 : 0.45}
+                      />
+                      <text x={svgMetrics.padLeft - 14} y={y + 3} textAnchor="end" fontSize="9" fill="#94a3b8" fontWeight="600">
+                        {valTick}
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {/* Area Gradient Fill Series 1 */}
+                {svgMetrics.areaPrimary && (
+                  <path d={svgMetrics.areaPrimary} fill="url(#dualLineGrad1)" />
+                )}
+
+                {/* Series 2 Path (Dashed Teal Line) */}
+                {svgMetrics.pathSecondary && (
+                  <path
+                    d={svgMetrics.pathSecondary}
+                    fill="none"
+                    stroke="#0d9488"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeDasharray="5 4"
+                  />
+                )}
+
+                {/* Series 1 Path (Solid Blue Line) */}
+                {svgMetrics.pathPrimary && (
+                  <path
+                    d={svgMetrics.pathPrimary}
+                    fill="none"
+                    stroke="#2563eb"
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                )}
+
+                {/* Point Markers & Dual Labels */}
+                {svgMetrics.pointsPrimary.map((pt, idx) => {
+                  const ptSec = svgMetrics.pointsSecondary[idx];
+                  const delta = calculateDelta(pt.value, ptSec.value);
+                  const isHovered = hoveredIdx === idx;
+                  const deltaW = Math.max(54, delta.text.length * 7 + 22);
+
+                  return (
+                    <g
+                      key={`dual-${idx}`}
+                      onMouseEnter={() => setHoveredIdx(idx)}
+                      onMouseLeave={() => setHoveredIdx(null)}
+                      className="cursor-pointer"
+                    >
+                      {/* Secondary Node */}
+                      <circle cx={ptSec.x} cy={ptSec.y} r="5" fill="#ffffff" stroke="#0d9488" strokeWidth="2.5" />
+
+                      {/* Primary Node */}
+                      <circle cx={pt.x} cy={pt.y} r={isHovered ? '7' : '5'} fill="#ffffff" stroke="#2563eb" strokeWidth="3" />
+
+                      {/* Delta Comparison Pill */}
+                      <g transform={`translate(${pt.x - deltaW / 2}, ${Math.min(pt.y, ptSec.y) - 48})`}>
+                        <rect
+                          width={deltaW}
+                          height="18"
+                          rx="5"
+                          fill={delta.direction === 'up' ? '#10b981' : delta.direction === 'down' ? '#f43f5e' : '#64748b'}
+                          stroke="#ffffff"
+                          strokeWidth="1.5"
+                        />
+                        <text x={deltaW / 2} y="12" textAnchor="middle" fontSize="9.5" fontWeight="900" fill="#ffffff">
+                          {delta.direction === 'up' ? '▲' : delta.direction === 'down' ? '▼' : '▬'} {delta.text}
+                        </text>
+                      </g>
+
+                      {/* Series 1 Value Badge */}
+                      <g transform={`translate(${pt.x - 22}, ${pt.y - 25})`}>
+                        <rect width="44" height="18" rx="5" fill="#ffffff" stroke="#2563eb" strokeWidth="1.5" />
+                        <text x="22" y="13" textAnchor="middle" fontSize="10.5" fontWeight="900" fill="#1e3a8a">
+                          {Number(pt.value).toLocaleString('id-ID')}
+                        </text>
+                      </g>
+
+                      {/* Series 2 Value Badge */}
+                      <g transform={`translate(${ptSec.x - 20}, ${ptSec.y + 8})`}>
+                        <rect width="40" height="16" rx="4" fill="#f0fdfa" stroke="#0d9488" strokeWidth="1" />
+                        <text x="20" y="12" textAnchor="middle" fontSize="9.5" fontWeight="800" fill="#0f766e">
+                          {Number(ptSec.value).toLocaleString('id-ID')}
+                        </text>
+                      </g>
+
+                      {/* X-axis Label */}
+                      <text
+                        x={pt.x}
+                        y={svgMetrics.baselineY + 18}
+                        textAnchor="middle"
+                        fontSize="10"
+                        fontWeight="600"
+                        fill={isHovered ? '#1d4ed8' : '#475569'}
+                      >
+                        {pt.name}
+                      </text>
+                    </g>
+                  );
+                })}
+              </svg>
+            </div>
+
+            {/* Comparison Cards */}
+            <div className="pt-1">
+              <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-2 flex items-center justify-between">
+                <span>Perbandingan Garis Antar Seri: {primaryLabel} vs {secondaryLabel}</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {data.map((item, idx) => {
+                  const delta = calculateDelta(item.value, item.secondaryValue);
+                  const isHovered = hoveredIdx === idx;
+
+                  return (
+                    <div
+                      key={idx}
+                      onMouseEnter={() => setHoveredIdx(idx)}
+                      onMouseLeave={() => setHoveredIdx(null)}
+                      className={`p-2.5 rounded-xl border transition-all cursor-pointer ${isHovered ? 'bg-blue-50/70 border-blue-300 shadow-xs' : 'bg-white border-slate-200/80 shadow-2xs'
+                        }`}
+                    >
+                      <div className="flex items-center justify-between text-xs mb-1.5">
+                        <span className="font-bold text-slate-800 truncate text-[11px]">{item.name}</span>
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded border shadow-2xs ${delta.badgeClass}`}>
+                          {delta.direction === 'up' ? '▲' : delta.direction === 'down' ? '▼' : '▬'} {delta.text}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 bg-slate-50 p-2 rounded-lg border border-slate-200/60 text-xs">
+                        <div>
+                          <div className="text-[9px] text-slate-500 font-semibold uppercase">{primaryLabel}</div>
+                          <div className="font-black text-blue-700 text-[12px]">{Number(item.value).toLocaleString('id-ID')}</div>
+                        </div>
+                        <div>
+                          <div className="text-[9px] text-slate-500 font-semibold uppercase">{secondaryLabel}</div>
+                          <div className="font-bold text-teal-700 text-[12px]">{Number(item.secondaryValue).toLocaleString('id-ID')}</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         ) : (
-          /* Line / Area View */
-          <div className="space-y-2">
-            <div className="h-32 flex items-end gap-2 pt-4 px-2 border-b border-slate-200">
-              {data.map((item, idx) => {
-                const heightPct = Math.max(8, Math.round((item.value / maxValue) * 100));
-                return (
-                  <div key={idx} className="flex-1 flex flex-col items-center gap-1 group h-full justify-end">
-                    <span className="text-[10px] font-bold text-slate-700 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {item.value}
-                    </span>
-                    <div
-                      className="w-full rounded-t-md transition-all group-hover:brightness-110"
-                      style={{
-                        height: `${heightPct}%`,
-                        backgroundColor: item.color,
-                      }}
-                    />
-                  </div>
-                );
-              })}
+          /* ========================================================
+             5. GRAFIK PIE / DONUT (DISTRIBUSI PROPORSI)
+             ======================================================== */
+          <div className="space-y-4">
+            <div className="flex items-center justify-between text-xs px-1 border-b border-slate-200/70 pb-2">
+              <div className="flex items-center gap-2 text-slate-600 font-medium">
+                <span className="w-2 h-2 rounded-full bg-blue-600" />
+                <span>Distribusi Proporsi Data: <strong className="text-slate-900 font-bold">{Number(totalValue).toLocaleString('id-ID')} Total</strong></span>
+              </div>
+              <span className="text-[11px] font-medium text-slate-500">
+                {data.length} Bagian
+              </span>
             </div>
-            <div className="flex justify-between text-[10px] text-slate-500 px-1">
-              {data.map((item, idx) => (
-                <span key={idx} className="truncate max-w-[60px] text-center">{item.name}</span>
-              ))}
+
+            <div className="flex flex-col md:flex-row items-center justify-around gap-6 py-2">
+              <div className="relative w-52 h-52 shrink-0">
+                <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
+                  <circle
+                    cx="60"
+                    cy="60"
+                    r="46"
+                    fill="transparent"
+                    stroke="#f1f5f9"
+                    strokeWidth="18"
+                  />
+                  {(() => {
+                    const radius = 46;
+                    const circumference = 2 * Math.PI * radius;
+                    let accumulatedOffset = 0;
+                    const gap = data.length > 1 ? 2.5 : 0;
+
+                    return data.map((d, i) => {
+                      const sliceRatio = totalValue > 0 ? (d.value / totalValue) : 0;
+                      if (sliceRatio <= 0) return null;
+                      const rawDash = sliceRatio * circumference;
+                      const strokeDash = Math.max(0.5, rawDash - gap);
+                      const strokeSpace = circumference - strokeDash;
+                      const strokeDasharray = `${strokeDash} ${strokeSpace}`;
+                      const strokeDashoffset = -accumulatedOffset;
+                      accumulatedOffset += rawDash;
+                      const isHovered = hoveredIdx === i;
+
+                      return (
+                        <circle
+                          key={i}
+                          cx="60"
+                          cy="60"
+                          r={radius}
+                          fill="transparent"
+                          stroke={d.color}
+                          strokeWidth={isHovered ? 21 : 18}
+                          strokeDasharray={strokeDasharray}
+                          strokeDashoffset={strokeDashoffset}
+                          strokeLinecap="round"
+                          onMouseEnter={() => setHoveredIdx(i)}
+                          onMouseLeave={() => setHoveredIdx(null)}
+                          className="transition-all duration-300 cursor-pointer"
+                          style={{
+                            filter: isHovered ? `drop-shadow(0 0 6px ${d.color}88)` : undefined,
+                            opacity: hoveredIdx !== null && !isHovered ? 0.6 : 1,
+                          }}
+                        />
+                      );
+                    });
+                  })()}
+                </svg>
+
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest">TOTAL</span>
+                  <span className="text-2xl font-black text-slate-900 leading-none mt-1">
+                    {Number(totalValue).toLocaleString('id-ID')}
+                  </span>
+                  <span className="text-[10px] font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full mt-1.5 border border-blue-200/60">
+                    100% Kontribusi
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex-1 max-w-sm w-full space-y-2">
+                {data.map((item, idx) => {
+                  const pct = totalValue > 0 ? Math.round((item.value / totalValue) * 100) : 0;
+                  const isHovered = hoveredIdx === idx;
+
+                  return (
+                    <div
+                      key={idx}
+                      onMouseEnter={() => setHoveredIdx(idx)}
+                      onMouseLeave={() => setHoveredIdx(null)}
+                      className={`p-2.5 rounded-xl border transition-all cursor-pointer ${isHovered
+                          ? 'bg-blue-50/70 border-blue-300 shadow-xs scale-[1.01]'
+                          : 'bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs'
+                        }`}
+                    >
+                      <div className="flex items-center justify-between text-xs mb-1.5">
+                        <div className="flex items-center gap-2 truncate mr-2">
+                          <div className="w-3 h-3 rounded-md shrink-0 shadow-2xs" style={{ backgroundColor: item.color }} />
+                          <span className={`font-semibold truncate text-[11px] ${isHovered ? 'text-blue-700 font-bold' : 'text-slate-800'}`}>
+                            {item.name}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="font-extrabold text-slate-900 bg-slate-50 px-2 py-0.5 rounded border border-slate-200 text-[11px] shadow-2xs">
+                            {Number(item.value).toLocaleString('id-ID')}
+                          </span>
+                          <span className="text-[10px] font-bold text-slate-500 w-8 text-right">
+                            {pct}%
+                          </span>
+                        </div>
+                      </div>
+                      <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${pct}%`,
+                            backgroundColor: item.color,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
@@ -1430,7 +2492,6 @@ function AleshaChartViewer({ chartData, onExpand, isModal = false, hideDownload 
     </div>
   );
 }
-
 // Unified Multi Chart Board: Consolidates all fragmented charts into 1 unified graphic & 1 file download
 interface AleshaMultiChartBoardProps {
   charts: any[];
@@ -1469,7 +2530,7 @@ function AleshaMultiChartBoard({
   return (
     <div
       ref={boardRef}
-      className={`my-4 rounded-2xl border border-slate-200/90 overflow-hidden shadow-xs bg-white ${isModal ? 'w-full max-w-full' : 'max-w-2xl w-full'
+      className={`my-4 rounded-2xl border border-slate-200/90 overflow-hidden shadow-xs bg-white ${isModal ? 'w-full max-w-full' : 'max-w-5xl w-full'
         }`}
     >
       {/* Unified Top Header Bar */}
@@ -1523,13 +2584,15 @@ function AleshaMultiChartBoard({
         </div>
       )}
 
-      {/* Unified Body: All charts rendered together seamlessly */}
-      <div className="p-4 bg-slate-50/50 space-y-4 divide-y divide-slate-200/70">
-        {charts.map((c, i) => (
-          <div key={i} className={i > 0 ? 'pt-4' : ''}>
-            <AleshaChartViewer chartData={c} onExpand={onExpand} hideDownload={true} />
-          </div>
-        ))}
+      {/* Unified Body: Render charts in a modern 2-Column grid */}
+      <div className="p-4 bg-slate-50/50">
+        <div className={`grid gap-4 items-start ${charts.length > 1 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
+          {charts.map((c, i) => (
+            <div key={i} className={`w-full ${i === charts.length - 1 && charts.length % 2 === 1 ? 'md:col-span-2 max-w-2xl mx-auto' : ''}`}>
+              <AleshaChartViewer chartData={c} onExpand={onExpand} hideDownload={true} isModal={true} />
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Official Footer Branding on Downloaded Image */}
@@ -1591,33 +2654,97 @@ function MarkdownViewer({ content, onExpandChart, onAction }: MarkdownViewerProp
     const normalized = normalizeMarkdown(cleanContent);
     const lines = normalized.split('\n');
 
-    // Pre-scan C: Extract conclusion / summary text for the visual infographic
+    // Pre-scan C: Robust Conclusion / Summary Extraction for the Visual Infographic
     let summaryText = '';
-    const cleanTextLines = lines.map(l => l.trim()).filter(l => {
-      if (!l) return false;
-      if (l.startsWith('```') || l.startsWith('|') || l.startsWith('{') || l.startsWith('}')) return false;
-      if (l.startsWith('#')) return false;
-      if (l.includes('[action:') || l.includes('/static/exports/')) return false;
-      return true;
-    });
 
-    const conclusionLines = cleanTextLines.filter(l => {
-      const lower = l.toLowerCase();
-      return (
-        lower.startsWith('kesimpulan') ||
-        lower.startsWith('ringkasan') ||
-        lower.startsWith('catatan') ||
-        lower.startsWith('rekap') ||
-        lower.startsWith('berdasarkan') ||
-        lower.startsWith('total')
-      );
-    });
+    // Step 1: Search for explicit conclusion / analysis / note section header
+    const conclusionHeaderRegex = /^(?:#{1,4}\s+|\*\*(?:[\d.]+\s*)?)(kesimpulan|catatan|ringkasan|analisis|rekomendasi|saran|evaluasi|insight|temuan)/i;
+    let conclusionStartIdx = -1;
 
-    if (conclusionLines.length > 0) {
-      summaryText = conclusionLines.join('\n');
-    } else if (cleanTextLines.length > 0) {
-      summaryText = cleanTextLines.slice(0, 3).join('\n');
+    for (let idx = 0; idx < lines.length; idx++) {
+      const l = lines[idx].trim();
+      if (conclusionHeaderRegex.test(l)) {
+        conclusionStartIdx = idx;
+        break;
+      }
     }
+
+    if (conclusionStartIdx !== -1) {
+      const collected: string[] = [];
+      for (let idx = conclusionStartIdx + 1; idx < lines.length; idx++) {
+        const rawL = lines[idx].trim();
+        // Stop if next major section header starts
+        if (/^#{1,3}\s+/.test(rawL)) break;
+        // Stop if interactive prompt actions or download links
+        if (rawL.includes('[action:') || rawL.includes('/static/exports/')) break;
+        // Skip code fences or table markup
+        if (rawL.startsWith('```') || rawL.startsWith('|') || rawL.startsWith('{') || rawL.startsWith('}')) continue;
+        if (!rawL) continue;
+
+        // Clean markdown bullets but keep readable bullet list structure
+        const cleanL = rawL.replace(/^[-*•]\s+/, '• ').trim();
+        collected.push(cleanL);
+      }
+      if (collected.length > 0) {
+        summaryText = collected.join('\n');
+      }
+    }
+
+    // Step 2: If no explicit heading found, extract analytical text appearing AFTER the charts / tables
+    if (!summaryText) {
+      let lastChartOrTableLineIdx = -1;
+      let inCode = false;
+      for (let idx = 0; idx < lines.length; idx++) {
+        const l = lines[idx].trim();
+        if (l.startsWith('```')) {
+          inCode = !inCode;
+          lastChartOrTableLineIdx = idx;
+        } else if (inCode || l.startsWith('|') || (l.startsWith('{') && l.includes('"data"'))) {
+          lastChartOrTableLineIdx = idx;
+        }
+      }
+
+      if (lastChartOrTableLineIdx !== -1 && lastChartOrTableLineIdx < lines.length - 1) {
+        const postChartLines = lines
+          .slice(lastChartOrTableLineIdx + 1)
+          .map(l => l.trim())
+          .filter(l => {
+            if (!l) return false;
+            if (l.startsWith('```') || l.startsWith('|') || l.startsWith('{') || l.startsWith('}')) return false;
+            if (l.endsWith(':')) return false; // Skip lone section titles
+            if (l.includes('[action:') || l.includes('/static/exports/')) return false;
+            return true;
+          });
+
+        if (postChartLines.length > 0) {
+          summaryText = postChartLines.join('\n');
+        }
+      }
+    }
+
+    // Step 3: Fallback - find any analytical paragraphs containing evaluation keywords
+    if (!summaryText) {
+      const candidateLines = lines.map(l => l.trim()).filter(l => {
+        if (!l) return false;
+        if (l.startsWith('```') || l.startsWith('|') || l.startsWith('{') || l.startsWith('}')) return false;
+        if (l.endsWith(':')) return false; // Avoid section titles like "Sebaran Materi:"
+        if (l.includes('[action:') || l.includes('/static/exports/')) return false;
+        const lower = l.toLowerCase();
+        return (
+          lower.includes('kesimpulan') ||
+          lower.includes('berdasarkan data') ||
+          lower.includes('secara keseluruhan') ||
+          lower.includes('didominasi') ||
+          lower.includes('tercatat') ||
+          lower.includes('rekomendasi')
+        );
+      });
+      if (candidateLines.length > 0) {
+        summaryText = candidateLines.join('\n');
+      }
+    }
+
+    // Clean formatting characters (*, _, #, `)
     summaryText = summaryText.replace(/[*_#`]/g, '').trim();
     const elements: React.ReactNode[] = [];
     let inTable = false;
@@ -2061,196 +3188,17 @@ function resolveAleshaLink(url: string): string {
 
 function InformativeTableViewer({
   tableRows,
-  onExpandChart,
 }: {
   tableRows: string[][];
   onExpandChart?: (c: any) => void;
 }) {
-  const [viewMode, setViewMode] = useState<'table' | 'bar' | 'pie'>('table');
-
   if (!tableRows || tableRows.length === 0) return null;
   const header = tableRows[0];
   const body = tableRows.slice(1);
 
-  // Helper: check if header indicates non-metric (e.g. row index, ID, code, phone, NIP, NRP)
-  const isNonMetricHeader = (headerName: string) => {
-    const h = (headerName || '').toLowerCase().trim();
-    return (
-      h === 'no' ||
-      h === 'nomor' ||
-      h === '#' ||
-      h === 'id' ||
-      h.includes('id') ||
-      h.includes('uuid') ||
-      h.includes('kode') ||
-      h.includes('code') ||
-      h.includes('nip') ||
-      h.includes('nrp') ||
-      h.includes('nik') ||
-      h.includes('phone') ||
-      h.includes('telepon') ||
-      h.includes('hp') ||
-      h.includes('tahun') ||
-      h.includes('year') ||
-      h.includes('tanggal') ||
-      h.includes('date')
-    );
-  };
-
-  // 1. Identify real numeric metric columns (count, total, score, views, etc.)
-  const numericColIndex = useMemo(() => {
-    if (body.length === 0) return -1;
-    // Look for explicitly named metric columns first
-    for (let c = header.length - 1; c >= 0; c--) {
-      if (isNonMetricHeader(header[c])) continue;
-      const h = header[c].toLowerCase();
-      if (
-        h.includes('total') ||
-        h.includes('jumlah') ||
-        h.includes('count') ||
-        h.includes('nilai') ||
-        h.includes('skor') ||
-        h.includes('score') ||
-        h.includes('views') ||
-        h.includes('download') ||
-        h.includes('peserta') ||
-        h.includes('persen') ||
-        h.includes('percent') ||
-        h.includes('capaian') ||
-        h.includes('rate')
-      ) {
-        const isNum = body.some(row => {
-          const val = (row[c] || '').replace(/[^0-9.]/g, '');
-          return val !== '' && !isNaN(Number(val));
-        });
-        if (isNum) return c;
-      }
-    }
-    // Fallback: any numeric column that is not a non-metric header
-    for (let c = header.length - 1; c >= 0; c--) {
-      if (isNonMetricHeader(header[c])) continue;
-      const isNum = body.some(row => {
-        const val = (row[c] || '').replace(/[^0-9.]/g, '');
-        return val !== '' && !isNaN(Number(val));
-      });
-      if (isNum) return c;
-    }
-    return -1;
-  }, [header, body]);
-
-  // 2. Identify the best human-readable NAME column (Strictly avoids IDs)
-  const labelColIndex = useMemo(() => {
-    let bestIdx = -1;
-    let highestScore = -999;
-
-    header.forEach((hRaw, idx) => {
-      if (idx === numericColIndex) return;
-      const h = (hRaw || '').toLowerCase().trim();
-      let score = 0;
-
-      // Penalize IDs and row numbers heavily
-      if (isNonMetricHeader(hRaw)) {
-        score -= 200;
-      }
-
-      // Prioritize name / title
-      if (h.includes('nama') || h.includes('name') || h.includes('judul') || h.includes('title')) {
-        score += 150;
-      } else if (h.includes('role') || h.includes('peran') || h.includes('kategori') || h.includes('category')) {
-        score += 90;
-      } else if (h.includes('polda') || h.includes('polres') || h.includes('wilayah') || h.includes('lokasi')) {
-        score += 80;
-      } else if (h.includes('jenjang') || h.includes('level') || h.includes('modul') || h.includes('topik')) {
-        score += 70;
-      } else if (h.includes('status')) {
-        score += 50;
-      } else {
-        score += 10;
-      }
-
-      // Check sample value: if it looks like a raw ID, penalize
-      const sampleVal = (body[0] && body[0][idx]) ? body[0][idx].trim() : '';
-      if (/^(user-|mat-|sess-|cert-|role-|trc_|[0-9a-f]{8}-|[0-9]+$)/i.test(sampleVal)) {
-        score -= 100;
-      }
-
-      if (score > highestScore) {
-        highestScore = score;
-        bestIdx = idx;
-      }
-    });
-
-    return bestIdx !== -1 ? bestIdx : (numericColIndex === 0 ? 1 : 0);
-  }, [header, body, numericColIndex]);
-
-  // 3. Find category column for grouping if table has NO numeric metric
-  const categoryColIndex = useMemo(() => {
-    for (let c = 0; c < header.length; c++) {
-      if (c === numericColIndex) continue;
-      const h = (header[c] || '').toLowerCase();
-      if (h.includes('role') || h.includes('peran')) return c;
-      if (h.includes('polda') || h.includes('wilayah')) return c;
-      if (h.includes('jenjang') || h.includes('level')) return c;
-      if (h.includes('kategori') || h.includes('category') || h.includes('tipe')) return c;
-      if (h.includes('status')) return c;
-      if (h.includes('polres')) return c;
-    }
-    return -1;
-  }, [header, numericColIndex]);
-
-  // Build chart dataset
-  const chartDataFromTable = useMemo(() => {
-    // Case A: Table has a real numeric metric column
-    if (numericColIndex !== -1) {
-      const items = body.map((row, rIdx) => {
-        let name = row[labelColIndex] ? row[labelColIndex].replace(/[*_`]/g, '').trim() : `Data ${rIdx + 1}`;
-        // If name looks like an ID, try other text columns
-        if (/^(user-|mat-|sess-|cert-|role-|trc_|[0-9a-f]{8}-|[0-9]+$)/i.test(name)) {
-          const altCol = row.find((val, idx) => idx !== numericColIndex && !isNonMetricHeader(header[idx]) && val.trim() !== '');
-          if (altCol) name = altCol.replace(/[*_`]/g, '').trim();
-        }
-        const rawVal = (row[numericColIndex] || '').replace(/[^0-9.]/g, '');
-        const value = Number(rawVal) || 0;
-        return { name, value };
-      }).filter(item => item.value > 0);
-
-      if (items.length === 0) return null;
-      return {
-        title: 'Visualisasi: ' + (header[numericColIndex] || 'Statistik SM-Learning'),
-        subtitle: `Berdasarkan ${body.length} baris data (${header[labelColIndex] || 'Entri'})`,
-        data: items,
-        type: viewMode === 'pie' ? 'pie' : 'bar'
-      };
-    }
-
-    // Case B: Table is categorical (e.g. user list, session list) - calculate category distribution
-    const catIdx = categoryColIndex !== -1 ? categoryColIndex : labelColIndex;
-    if (catIdx !== -1 && body.length > 0) {
-      const counts: Record<string, number> = {};
-      body.forEach(row => {
-        let cat = (row[catIdx] || '').replace(/[*_`]/g, '').trim();
-        if (!cat || cat === '-') cat = 'Lainnya';
-        counts[cat] = (counts[cat] || 0) + 1;
-      });
-
-      const items = Object.entries(counts).map(([name, value]) => ({ name, value }));
-      if (items.length === 0) return null;
-      return {
-        title: 'Distribusi ' + (header[catIdx] || 'Data'),
-        subtitle: `Sebaran total ${body.length} entri berdasarkan ${header[catIdx] || 'kategori'}`,
-        data: items,
-        type: viewMode === 'pie' ? 'pie' : 'bar'
-      };
-    }
-
-    return null;
-  }, [body, header, numericColIndex, labelColIndex, categoryColIndex, viewMode]);
-
-  const canShowChart = Boolean(chartDataFromTable);
-
   return (
     <div className="my-3 rounded-2xl border border-slate-200/90 overflow-hidden shadow-2xs bg-white max-w-2xl w-full">
-      {/* Header bar with Table / Bar / Pie toggles */}
+      {/* Header bar: Title & Row Count Badge */}
       <div className="bg-gradient-to-r from-slate-900 via-[#0a1d37] to-[#132c4f] text-white px-3.5 py-2 flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <svg className="w-3.5 h-3.5 text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -2260,80 +3208,48 @@ function InformativeTableViewer({
         </div>
 
         <div className="flex items-center gap-1.5">
-          {canShowChart && (
-            <div className="flex items-center bg-white/10 rounded-lg p-0.5 border border-white/10 text-[10px]">
-              <button
-                onClick={() => setViewMode('table')}
-                className={`px-2 py-0.5 rounded-md transition-colors cursor-pointer ${viewMode === 'table' ? 'bg-white text-slate-900 font-bold shadow-2xs' : 'text-slate-300 hover:text-white'
-                  }`}
-              >
-                Tabel
-              </button>
-              <button
-                onClick={() => setViewMode('bar')}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded-md transition-colors cursor-pointer ${viewMode === 'bar' ? 'bg-white text-slate-900 font-bold shadow-2xs' : 'text-slate-300 hover:text-white'
-                  }`}
-              >
-                <BarChart2 className="w-2.5 h-2.5 text-blue-600" />
-                <span>Batang</span>
-              </button>
-              <button
-                onClick={() => setViewMode('pie')}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded-md transition-colors cursor-pointer ${viewMode === 'pie' ? 'bg-white text-slate-900 font-bold shadow-2xs' : 'text-slate-300 hover:text-white'
-                  }`}
-              >
-                <PieIcon className="w-2.5 h-2.5 text-amber-500" />
-                <span>Pie</span>
-              </button>
-            </div>
-          )}
           <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/10 text-blue-200 border border-white/10">
             {body.length} baris
           </span>
         </div>
       </div>
 
-      {viewMode === 'table' || !chartDataFromTable ? (
-        <div className="relative overflow-x-auto max-w-full border-t border-slate-200/70" style={{ WebkitOverflowScrolling: 'touch' }}>
-          <table
-            style={{ minWidth: header.length > 4 ? `${Math.max(680, header.length * 125)}px` : '100%' }}
-            className="w-full text-left border-collapse text-xs"
-          >
-            <thead className="bg-slate-100/95 text-slate-900 font-bold border-b border-slate-200 text-[11px] uppercase tracking-wider sticky top-0 z-10">
-              <tr>
-                {header.map((h, hIdx) => (
-                  <th
-                    key={hIdx}
-                    className={`py-2.5 px-3 border-r last:border-r-0 border-slate-200/80 whitespace-nowrap bg-slate-100/95 ${hIdx === 0 && (h.toLowerCase() === 'no' || h === '#') ? 'w-12 text-center' : ''
+      {/* Pure Table Content */}
+      <div className="relative overflow-x-auto max-w-full border-t border-slate-200/70" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <table
+          style={{ minWidth: header.length > 4 ? `${Math.max(680, header.length * 125)}px` : '100%' }}
+          className="w-full text-left border-collapse text-xs"
+        >
+          <thead className="bg-slate-100/95 text-slate-900 font-bold border-b border-slate-200 text-[11px] uppercase tracking-wider sticky top-0 z-10">
+            <tr>
+              {header.map((h, hIdx) => (
+                <th
+                  key={hIdx}
+                  className={`py-2.5 px-3 border-r last:border-r-0 border-slate-200/80 whitespace-nowrap bg-slate-100/95 ${hIdx === 0 && (h.toLowerCase() === 'no' || h === '#') ? 'w-12 text-center' : ''
+                    }`}
+                >
+                  {parseInlineFormatting(h)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {body.map((row, rIdx) => (
+              <tr key={rIdx} className="hover:bg-blue-50/50 transition-colors odd:bg-white even:bg-slate-50/50">
+                {row.map((cell, cIdx) => (
+                  <td
+                    key={cIdx}
+                    className={`py-2.5 px-3 border-r last:border-r-0 border-slate-200/60 text-slate-700 whitespace-nowrap text-xs ${cIdx === 0 && (header[0]?.toLowerCase() === 'no' || header[0] === '#') ? 'w-12 text-center font-medium' : ''
                       }`}
                   >
-                    {parseInlineFormatting(h)}
-                  </th>
+                    {renderTableCell(cell)}
+                  </td>
                 ))}
               </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {body.map((row, rIdx) => (
-                <tr key={rIdx} className="hover:bg-blue-50/50 transition-colors odd:bg-white even:bg-slate-50/50">
-                  {row.map((cell, cIdx) => (
-                    <td
-                      key={cIdx}
-                      className={`py-2.5 px-3 border-r last:border-r-0 border-slate-200/60 text-slate-700 whitespace-nowrap text-xs ${cIdx === 0 && (header[0]?.toLowerCase() === 'no' || header[0] === '#') ? 'w-12 text-center font-medium' : ''
-                        }`}
-                    >
-                      {renderTableCell(cell)}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div className="p-3">
-          <AleshaChartViewer chartData={chartDataFromTable} onExpand={onExpandChart} />
-        </div>
-      )}
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
