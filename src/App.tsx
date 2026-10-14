@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { TopHeader } from './components/TopHeader';
 import { Toast, ToastMessage } from './components/Toast';
@@ -181,7 +181,7 @@ export default function App() {
   // Helper to build authenticated headers. No signed-in user means no identity
   // headers at all — falling back to a hardcoded id would hand an anonymous
   // visitor whatever permissions that account happens to hold.
-  const getAuthHeaders = (): Record<string, string> => {
+  const authHeaders = useMemo((): Record<string, string> => {
     const userId = currentUser?.user?.id || currentUser?.id;
     if (!userId) {
       return { 'Content-Type': 'application/json' };
@@ -191,7 +191,11 @@ export default function App() {
       'x-user-id': userId,
       'x-role-id': currentUser?.user?.roleId || currentUser?.role?.id || activeRole.id,
     };
-  };
+  }, [currentUser?.user?.id, currentUser?.id, currentUser?.user?.roleId, currentUser?.role?.id, activeRole.id]);
+
+  const getAuthHeaders = useCallback((): Record<string, string> => {
+    return authHeaders;
+  }, [authHeaders]);
 
   // Fetch materials & user access data from express backend (once on login, not on every role recalc)
   useEffect(() => {
@@ -1138,7 +1142,7 @@ export default function App() {
             <AiChatPage
               currentUser={currentUser}
               currentRole={activeRole}
-              authHeaders={getAuthHeaders()}
+              authHeaders={authHeaders}
             />
           ) : (
             <LearningPage

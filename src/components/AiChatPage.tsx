@@ -91,6 +91,10 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
   currentRole,
   authHeaders,
 }) => {
+  const authHeadersRef = useRef(authHeaders);
+  useEffect(() => {
+    authHeadersRef.current = authHeaders;
+  }, [authHeaders]);
   const [sessions, setSessions] = useState<AiChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<AiChatMessage[]>([]);
@@ -246,45 +250,50 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
     return sessions.filter(s => s.title.toLowerCase().includes(q));
   }, [sessions, sessionSearch]);
 
-  // Load daftar sesi
+  // Load daftar sesi (Stable - runs only on initial mount or manual trigger)
   const loadSessions = useCallback(async () => {
     setIsSessionsLoading(true);
     try {
-      const res = await fetch('/api/ai-chat/sessions', { headers: authHeaders });
+      const res = await fetch('/api/ai-chat/sessions', { headers: authHeadersRef.current });
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) {
         setSessions(data.data);
-        if (data.data.length > 0 && !activeSessionId) {
-          const savedSessionId = typeof window !== 'undefined' ? localStorage.getItem('sm_learning_alesha_session_id') : null;
-          const matched = savedSessionId ? data.data.find((s: any) => s.id === savedSessionId) : null;
-          setActiveSessionId(matched ? matched.id : data.data[0].id);
-        }
+        setActiveSessionId(currentId => {
+          if (currentId) return currentId;
+          if (data.data.length > 0) {
+            const savedSessionId = typeof window !== 'undefined' ? localStorage.getItem('sm_learning_alesha_session_id') : null;
+            const matched = savedSessionId ? data.data.find((s: any) => s.id === savedSessionId) : null;
+            return matched ? matched.id : data.data[0].id;
+          }
+          return null;
+        });
       }
     } catch (e) {
       console.error('Failed to load chat sessions:', e);
     } finally {
       setIsSessionsLoading(false);
     }
-  }, [authHeaders, activeSessionId]);
+  }, []);
 
   useEffect(() => {
     loadSessions();
   }, [loadSessions]);
 
-  // Load pesan dalam sesi aktif
+  // Load pesan dalam sesi aktif (runs only when activeSessionId actually changes)
   useEffect(() => {
     if (!activeSessionId) {
       setMessages([]);
       return;
     }
 
+    let isMounted = true;
     const loadMessages = async () => {
       try {
         const res = await fetch(`/api/ai-chat/sessions/${encodeURIComponent(activeSessionId)}/messages`, {
-          headers: authHeaders,
+          headers: authHeadersRef.current,
         });
         const data = await res.json();
-        if (data.success && Array.isArray(data.data)) {
+        if (isMounted && data.success && Array.isArray(data.data)) {
           setMessages(data.data);
         }
       } catch (e) {
@@ -293,7 +302,10 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
     };
 
     loadMessages();
-  }, [activeSessionId, authHeaders]);
+    return () => {
+      isMounted = false;
+    };
+  }, [activeSessionId]);
 
   // Sinkronisasi session_id aktif ke localStorage
   useEffect(() => {
@@ -598,6 +610,14 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
     }
   };
 
+  const handleExpandChart = useCallback((chart: any) => {
+    setExpandedChart(chart);
+  }, []);
+
+  const handleActionPrompt = useCallback((prompt: string) => {
+    handleSendMessage(prompt);
+  }, []);
+
   const handleCopyText = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
@@ -856,10 +876,10 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
                       {isUser ? (
                         <div className="whitespace-pre-wrap font-medium">{m.content}</div>
                       ) : (
-                        <MarkdownViewer
+                        <MemoizedMarkdownViewer
                           content={m.content}
-                          onExpandChart={(chart) => setExpandedChart(chart)}
-                          onAction={(actionPrompt) => handleSendMessage(actionPrompt)}
+                          onExpandChart={handleExpandChart}
+                          onAction={handleActionPrompt}
                         />
                       )}
 
@@ -2611,7 +2631,7 @@ interface MarkdownViewerProps {
   onAction?: (prompt: string) => void;
 }
 
-function MarkdownViewer({ content, onExpandChart, onAction }: MarkdownViewerProps) {
+function MarkdownViewerComponent({ content, onExpandChart, onAction }: MarkdownViewerProps) {
   const renderedElements = useMemo(() => {
     if (!content) return null;
 
@@ -2635,18 +2655,60 @@ function MarkdownViewer({ content, onExpandChart, onAction }: MarkdownViewerProp
       }
     }
 
-    // Pre-scan B: Standalone JSON objects not in code blocks
-    const rawJsonRegex = /\{(?:[^{}]|"(?:\\.|[^"\\])*")*"(?:data|items)"\s*:\s*\[[\s\S]*?\][\s\S]*?\}/g;
-    let rj;
-    while ((rj = rawJsonRegex.exec(cleanContent)) !== null) {
-      const parsed = safeParseChartJson(rj[0]);
-      if (parsed && (parsed.data || parsed.items)) {
-        const isDuplicate = allCharts.some(
-          c => (c.title && parsed.title && c.title.trim().toLowerCase() === parsed.title.trim().toLowerCase()) ||
-            (JSON.stringify(c.data) === JSON.stringify(parsed.data))
-        );
-        if (!isDuplicate) {
-          allCharts.push(parsed);
+        // Pre-scan B: Standalone JSON objects not in code blocks (Linear O(N) bracket scanner, zero backtracking)
+    if (cleanContent.includes('"data"') || cleanContent.includes('"items"') || cleanContent.includes('"charts"')) {
+      let startIdx = 0;
+      while ((startIdx = cleanContent.indexOf('{', startIdx)) !== -1) {
+        let depth = 0;
+        let inString = false;
+        let escape = false;
+        let endIdx = -1;
+        for (let k = startIdx; k < cleanContent.length; k++) {
+          const char = cleanContent[k];
+          if (escape) {
+            escape = false;
+            continue;
+          }
+          if (char === '\\') {
+            escape = true;
+            continue;
+          }
+          if (char === '"') {
+            inString = !inString;
+            continue;
+          }
+          if (!inString) {
+            if (char === '{') depth++;
+            else if (char === '}') {
+              depth--;
+              if (depth === 0) {
+                endIdx = k;
+                break;
+              }
+            }
+          }
+        }
+        if (endIdx !== -1) {
+          const candidate = cleanContent.slice(startIdx, endIdx + 1);
+          if (candidate.includes('"data"') || candidate.includes('"items"') || candidate.includes('"charts"')) {
+            const parsed = safeParseChartJson(candidate);
+            if (parsed && (parsed.data || parsed.items || parsed.charts)) {
+              if (parsed.charts && Array.isArray(parsed.charts)) {
+                allCharts.push(...parsed.charts);
+              } else {
+                const isDuplicate = allCharts.some(
+                  c => (c.title && parsed.title && c.title.trim().toLowerCase() === parsed.title.trim().toLowerCase()) ||
+                    (JSON.stringify(c.data) === JSON.stringify(parsed.data))
+                );
+                if (!isDuplicate) {
+                  allCharts.push(parsed);
+                }
+              }
+            }
+          }
+          startIdx = endIdx + 1;
+        } else {
+          break;
         }
       }
     }
@@ -3185,6 +3247,9 @@ function resolveAleshaLink(url: string): string {
   resolved = resolved.replace(/^https?:\/\/alesha\.djalu\.co\.id\/static\//i, 'https://alesha-be.djalu.co.id/static/');
   return resolved;
 }
+
+const MemoizedMarkdownViewer = React.memo(MarkdownViewerComponent);
+const MarkdownViewer = MemoizedMarkdownViewer;
 
 function InformativeTableViewer({
   tableRows,
