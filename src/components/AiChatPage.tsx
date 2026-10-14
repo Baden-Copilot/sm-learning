@@ -1126,11 +1126,26 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
 
 // Safe PNG export supporting modern oklab / oklch Tailwind colors
 async function exportElementToPng(element: HTMLElement, filename: string): Promise<void> {
+  const isExcluded = (node: Node) => {
+    if (node instanceof HTMLElement) {
+      if (
+        node.hasAttribute('data-export-hide') ||
+        node.getAttribute('data-export-hide') === 'true' ||
+        node.classList.contains('no-export') ||
+        node.classList.contains('export-hide')
+      ) {
+        return true;
+      }
+    }
+    return false;
+  };
+
   try {
     const dataUrl = await toPng(element, {
       cacheBust: true,
       pixelRatio: 2, // 2x Retina resolution for razor-sharp text & graphics
       backgroundColor: '#ffffff',
+      filter: (node) => !isExcluded(node),
     });
     const link = document.createElement('a');
     link.download = filename;
@@ -1144,6 +1159,7 @@ async function exportElementToPng(element: HTMLElement, filename: string): Promi
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
+        ignoreElements: (node) => isExcluded(node),
       });
       const dataUrl = canvas.toDataURL('image/png');
       const link = document.createElement('a');
@@ -1218,9 +1234,10 @@ interface AleshaChartViewerProps {
   onExpand?: (chart: any) => void;
   isModal?: boolean;
   hideDownload?: boolean;
+  hideSwitcher?: boolean;
 }
 
-function AleshaChartViewer({ chartData, onExpand, isModal = false, hideDownload = false }: AleshaChartViewerProps) {
+function AleshaChartViewer({ chartData, onExpand, isModal = false, hideDownload = false, hideSwitcher = false }: AleshaChartViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
 
@@ -1520,9 +1537,10 @@ function AleshaChartViewer({ chartData, onExpand, isModal = false, hideDownload 
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div data-export-hide="true" className={`flex items-center gap-2 shrink-0 ${isExporting ? 'hidden' : ''}`}>
           {/* Segmented View Mode Toggle: Batang, Garis, Combo, Dual-Line, Pie */}
-          <div className="flex items-center bg-slate-800/90 p-0.5 rounded-lg border border-slate-700/80 shadow-inner flex-wrap gap-0.5">
+          {!hideSwitcher && (
+            <div data-export-hide="true" className="flex items-center bg-slate-800/90 p-0.5 rounded-lg border border-slate-700/80 shadow-inner flex-wrap gap-0.5">
             <button
               type="button"
               onClick={() => setViewMode('bar')}
@@ -1584,6 +1602,7 @@ function AleshaChartViewer({ chartData, onExpand, isModal = false, hideDownload 
               <span>Pie</span>
             </button>
           </div>
+          )}
 
           {!hideDownload && (
             <button
@@ -2412,14 +2431,16 @@ function AleshaChartViewer({ chartData, onExpand, isModal = false, hideDownload 
                     const radius = 46;
                     const circumference = 2 * Math.PI * radius;
                     let accumulatedOffset = 0;
-                    const gap = data.length > 1 ? 2.5 : 0;
+                    const hasMultiple = data.filter(d => d.value > 0).length > 1;
+                    const gap = hasMultiple ? 1.5 : 0;
 
                     return data.map((d, i) => {
                       const sliceRatio = totalValue > 0 ? (d.value / totalValue) : 0;
                       if (sliceRatio <= 0) return null;
                       const rawDash = sliceRatio * circumference;
-                      const strokeDash = Math.max(0.5, rawDash - gap);
-                      const strokeSpace = circumference - strokeDash;
+                      // Flat, crisp butt stroke to prevent unsightly round bubbles/blobs
+                      const strokeDash = Math.max(0.8, rawDash - gap);
+                      const strokeSpace = Math.max(0, circumference - strokeDash);
                       const strokeDasharray = `${strokeDash} ${strokeSpace}`;
                       const strokeDashoffset = -accumulatedOffset;
                       accumulatedOffset += rawDash;
@@ -2433,15 +2454,15 @@ function AleshaChartViewer({ chartData, onExpand, isModal = false, hideDownload 
                           r={radius}
                           fill="transparent"
                           stroke={d.color}
-                          strokeWidth={isHovered ? 21 : 18}
+                          strokeWidth={isHovered ? 20 : 18}
                           strokeDasharray={strokeDasharray}
                           strokeDashoffset={strokeDashoffset}
-                          strokeLinecap="round"
+                          strokeLinecap="butt"
                           onMouseEnter={() => setHoveredIdx(i)}
                           onMouseLeave={() => setHoveredIdx(null)}
-                          className="transition-all duration-300 cursor-pointer"
+                          className="transition-all duration-200 cursor-pointer"
                           style={{
-                            filter: isHovered ? `drop-shadow(0 0 6px ${d.color}88)` : undefined,
+                            filter: isHovered ? `drop-shadow(0 0 5px ${d.color}88)` : undefined,
                             opacity: hoveredIdx !== null && !isHovered ? 0.6 : 1,
                           }}
                         />
@@ -2539,6 +2560,7 @@ function AleshaMultiChartBoard({
     if (!boardRef.current || isExporting) return;
     try {
       setIsExporting(true);
+      await new Promise(resolve => setTimeout(resolve, 80));
       await exportElementToPng(boardRef.current, `rekap_grafik_terpadu_${Date.now()}.png`);
     } catch (err) {
       console.error('Failed to export unified chart board:', err);
@@ -2565,7 +2587,7 @@ function AleshaMultiChartBoard({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div data-export-hide="true" className={`flex items-center gap-2 ${isExporting ? 'hidden' : ''}`}>
           {/* Modal Preview Button (if not already inside modal) */}
           {!isModal && onExpand && (
             <button
@@ -2609,7 +2631,7 @@ function AleshaMultiChartBoard({
         <div className={`grid gap-4 items-start ${charts.length > 1 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
           {charts.map((c, i) => (
             <div key={i} className={`w-full ${i === charts.length - 1 && charts.length % 2 === 1 ? 'md:col-span-2 max-w-2xl mx-auto' : ''}`}>
-              <AleshaChartViewer chartData={c} onExpand={onExpand} hideDownload={true} isModal={true} />
+              <AleshaChartViewer chartData={c} onExpand={onExpand} hideDownload={true} hideSwitcher={true} isModal={true} />
             </div>
           ))}
         </div>
