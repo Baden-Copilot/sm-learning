@@ -1430,6 +1430,7 @@ function AleshaChartViewer({ chartData, onExpand, isModal = false, hideDownload 
     if (!containerRef.current || isExporting) return;
     try {
       setIsExporting(true);
+      await new Promise(resolve => setTimeout(resolve, 120));
       const safeTitle = title.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 30);
       await exportElementToPng(containerRef.current, `${safeTitle}_${Date.now()}.png`);
     } catch (err) {
@@ -2560,7 +2561,7 @@ function AleshaMultiChartBoard({
     if (!boardRef.current || isExporting) return;
     try {
       setIsExporting(true);
-      await new Promise(resolve => setTimeout(resolve, 80));
+      await new Promise(resolve => setTimeout(resolve, 120));
       await exportElementToPng(boardRef.current, `rekap_grafik_terpadu_${Date.now()}.png`);
     } catch (err) {
       console.error('Failed to export unified chart board:', err);
@@ -2631,7 +2632,7 @@ function AleshaMultiChartBoard({
         <div className={`grid gap-4 items-start ${charts.length > 1 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
           {charts.map((c, i) => (
             <div key={i} className={`w-full ${i === charts.length - 1 && charts.length % 2 === 1 ? 'md:col-span-2 max-w-2xl mx-auto' : ''}`}>
-              <AleshaChartViewer chartData={c} onExpand={onExpand} hideDownload={true} hideSwitcher={true} isModal={true} />
+              <AleshaChartViewer chartData={c} onExpand={onExpand} hideDownload={true} hideSwitcher={isExporting} isModal={true} />
             </div>
           ))}
         </div>
