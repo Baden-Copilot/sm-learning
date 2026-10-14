@@ -176,7 +176,7 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
     const execLvl = String(activeUser?.executive_level || activeUser?.executiveLevel || '').toLowerCase().trim();
     const roleId = String(activeUser?.roleId || activeUser?.role_id || '').toLowerCase().trim();
     const isPusatOrNational = execLvl === 'nasional' || execLvl === 'mabes' || execLvl === 'pusat' ||
-      roleId === 'role-executive-3' || roleId === 'role-admin' ||
+      roleId === 'role-executive-1' || (roleId === 'role-executive-3' && execLvl === 'nasional') || roleId === 'role-admin' ||
       isPusat(rawPolda) || isPusat(rawPolres) || (!hasPolda && !hasPolres);
 
     if (isPusatOrNational) {
@@ -1299,9 +1299,9 @@ function AleshaChartViewer({ chartData, onExpand, isModal = false, hideDownload 
       }
 
       if (cleanName === 'role-admin') cleanName = 'Admin / Superuser';
-      else if (cleanName === 'role-executive-3') cleanName = 'Eksekutif 3 (Nasional)';
+      else if (cleanName === 'role-executive-1') cleanName = 'Eksekutif 1 (Nasional)';
       else if (cleanName === 'role-executive-2') cleanName = 'Eksekutif 2 (Polda)';
-      else if (cleanName === 'role-executive-1') cleanName = 'Eksekutif 1 (Polres)';
+      else if (cleanName === 'role-executive-3') cleanName = 'Eksekutif 3 (Polres)';
       else if (cleanName === 'role-trainer') cleanName = 'Trainer / Instruktur';
 
       const value = Number(

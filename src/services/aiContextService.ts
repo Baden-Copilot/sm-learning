@@ -102,22 +102,21 @@ ${materialDetails.join('\n')}
   * Tugas Utama: Melakukan penyuluhan tatap muka, memandu kuis interaktif, membuka room presentasi publik, dan mengunggah bukti laporan giat.
     `.trim();
   } else if (roleId === 'role-executive-1') {
-    // Kota / Kabupaten Level
-    const targetPolres = user.polres || user.polresId;
-    const polresReports = outreachReports.filter(r => r.polres === targetPolres || r.polresId === user.polresId);
-    const totalParticipants = polresReports.reduce((acc, r) => acc + (r.totalParticipants || 0), 0);
-    const avgScore = polresReports.length > 0
-      ? (polresReports.reduce((acc, r) => acc + (r.averageScore || 0), 0) / polresReports.length).toFixed(1)
+    // Nasional Level
+    const totalReports = outreachReports.length;
+    const totalParticipants = outreachReports.reduce((acc, r) => acc + (r.totalParticipants || 0), 0);
+    const avgScore = totalReports > 0
+      ? (outreachReports.reduce((acc, r) => acc + (r.averageScore || 0), 0) / totalReports).toFixed(1)
       : '0';
 
     specificSummary = `
-- Wewenang: Eksekutif Tingkat 1 (Pimpinan Kota / Kabupaten).
-- Wilayah Yurisdiksi: ${user.polres || 'Kota/Kabupaten'} (Provinsi: ${user.polda || '-'}).
-- Data Capaian Wilayah Anda:
-  * Laporan Sosialisasi di Wilayah: ${polresReports.length} kegiatan.
-  * Total Masyarakat Terjangkau: ${totalParticipants} orang.
-  * Rata-rata Pemahaman Materi (Skor Kuis): ${avgScore}%.
-  * Fokus Pengawasan: Memantau keaktifan penyuluhan di sekolah/komunitas wilayah hukum setempat.
+- Wewenang: Eksekutif Tingkat 1 (Tingkat Nasional / Kapolri).
+- Cakupan Yurisdiksi: Seluruh 34 Provinsi & Seluruh Kota/Kabupaten di Indonesia.
+- Ringkasan Nasional:
+  * Total Sosialisasi Dikmas Nasional: ${totalReports} laporan kegiatan.
+  * Total Jangkauan Edukasi Publik: ${totalParticipants.toLocaleString('id-ID')} peserta.
+  * Rata-rata Skor Nasional: ${avgScore}%.
+  * Fokus Pengawasan: Evaluasi strategis pencapaian target edukasi keselamatan berlalu lintas nasional dan perbandingan indeks keaktifan antar-Provinsi.
     `.trim();
   } else if (roleId === 'role-executive-2') {
     // Provinsi Level
@@ -139,21 +138,22 @@ ${materialDetails.join('\n')}
   * Fokus Pengawasan: Menilai efektivitas dan sebaran program Dikmas Lantas di seluruh Kota/Kabupaten jajaran Provinsi.
     `.trim();
   } else if (roleId === 'role-executive-3') {
-    // Nasional Level
-    const totalReports = outreachReports.length;
-    const totalParticipants = outreachReports.reduce((acc, r) => acc + (r.totalParticipants || 0), 0);
-    const avgScore = totalReports > 0
-      ? (outreachReports.reduce((acc, r) => acc + (r.averageScore || 0), 0) / totalReports).toFixed(1)
+    // Kota / Kabupaten Level (Polres)
+    const targetPolres = user.polres || user.polresId;
+    const polresReports = outreachReports.filter(r => r.polres === targetPolres || r.polresId === user.polresId);
+    const totalParticipants = polresReports.reduce((acc, r) => acc + (r.totalParticipants || 0), 0);
+    const avgScore = polresReports.length > 0
+      ? (polresReports.reduce((acc, r) => acc + (r.averageScore || 0), 0) / polresReports.length).toFixed(1)
       : '0';
 
     specificSummary = `
-- Wewenang: Eksekutif Tingkat 3 (Tingkat Nasional).
-- Cakupan Yurisdiksi: Seluruh 34 Provinsi & Seluruh Kota/Kabupaten di Indonesia.
-- Ringkasan Nasional:
-  * Total Sosialisasi Dikmas Nasional: ${totalReports} laporan kegiatan.
-  * Total Jangkauan Edukasi Publik: ${totalParticipants.toLocaleString('id-ID')} peserta.
-  * Rata-rata Skor Nasional: ${avgScore}%.
-  * Fokus Pengawasan: Evaluasi strategis pencapaian target edukasi keselamatan berlalu lintas nasional dan perbandingan indeks keaktifan antar-Provinsi.
+- Wewenang: Eksekutif Tingkat 3 (Pimpinan Kota / Kabupaten / Polres).
+- Wilayah Yurisdiksi: ${user.polres || 'Kota/Kabupaten'} (Provinsi: ${user.polda || '-'}).
+- Data Capaian Wilayah Anda:
+  * Laporan Sosialisasi di Wilayah: ${polresReports.length} kegiatan.
+  * Total Masyarakat Terjangkau: ${totalParticipants} orang.
+  * Rata-rata Pemahaman Materi (Skor Kuis): ${avgScore}%.
+  * Fokus Pengawasan: Memantau keaktifan penyuluhan di sekolah/komunitas wilayah hukum setempat.
     `.trim();
   } else {
     // Learner / Siswa / Anggota
@@ -233,11 +233,11 @@ function getRoleDisplayName(roleId: string): string {
     case 'role-trainer':
       return 'Trainer / Instruktur';
     case 'role-executive-1':
-      return 'Eksekutif 1 (Level Polres / Kapolres)';
+      return 'Eksekutif 1 (Level Nasional / Kapolri)';
     case 'role-executive-2':
       return 'Eksekutif 2 (Level Polda / Kapolda)';
     case 'role-executive-3':
-      return 'Eksekutif 3 (Level Nasional / Kapolri)';
+      return 'Eksekutif 3 (Level Polres / Kapolres)';
     default:
       return 'Peserta Belajar';
   }

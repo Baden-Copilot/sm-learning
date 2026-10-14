@@ -207,8 +207,8 @@ export const DEFAULT_ROLES: Role[] = [
   },
   {
     id: 'role-executive-1',
-    name: 'Eksekutif 1 (Level Polres / Kapolres)',
-    description: 'Pimpinan tingkat Polres — akses pemantauan performa & laporan kegiatan khusus di wilayah Polres terdaftar',
+    name: 'Eksekutif 1 (Level Nasional / Kapolri)',
+    description: 'Pimpinan tingkat Mabes Polri / Korlantas — akses penuh pemantauan seluruh 34 Polda se-Indonesia',
     permissions: [
       { menuId: 'beranda', menuLabel: 'Beranda', actions: ['view'] },
       { menuId: 'executive', menuLabel: 'Eksekutif Dashboard', actions: ['view'] },
@@ -249,8 +249,8 @@ export const DEFAULT_ROLES: Role[] = [
   },
   {
     id: 'role-executive-3',
-    name: 'Eksekutif 3 (Level Nasional / Kapolri)',
-    description: 'Pimpinan tingkat Mabes Polri / Korlantas — akses penuh pemantauan seluruh 34 Polda se-Indonesia',
+    name: 'Eksekutif 3 (Level Polres / Kapolres)',
+    description: 'Pimpinan tingkat Polres — akses pemantauan performa & laporan kegiatan khusus di wilayah Polres terdaftar',
     permissions: [
       { menuId: 'beranda', menuLabel: 'Beranda', actions: ['view'] },
       { menuId: 'executive', menuLabel: 'Eksekutif Dashboard', actions: ['view'] },
@@ -288,7 +288,7 @@ export const DEFAULT_USERS: UserAccount[] = [
     id: 'user-kapolri',
     username: 'kapolri',
     fullName: 'Jenderal Polisi Drs. Listyo Sigit Prabowo, M.Si. (Kapolri)',
-    roleId: 'role-executive-3',
+    roleId: 'role-executive-1',
     isActive: true,
     executiveLevel: 'nasional',
     createdAt: '2026-01-01',

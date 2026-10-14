@@ -3,9 +3,9 @@
  * ==============================================================================
  * Mengimplementasikan aturan scope keamanan data multi-tingkat berbasis peran:
  * 1. Super User / Admin: Akses penuh tanpa filter wilayah (level: "all").
- * 2. Eksekutif 3 (Nasional): Semua wilayah (data training, list trainer, akun Eksekutif 1 & 2).
- * 3. Eksekutif 2 (Polda): Seluruh polres di polda-nya (data training, list trainer, akun Eksekutif 1 & Trainer di polda tsb).
- * 4. Eksekutif 1 (Polres): Hanya polres-nya (data training, list trainer, trainer di polres tsb).
+ * 2. Eksekutif 1 (Nasional): Semua wilayah (data training, list trainer, akun Eksekutif 2 & 3).
+ * 3. Eksekutif 2 (Polda): Seluruh polres di polda-nya (data training, list trainer, akun Eksekutif 3 & Trainer di polda tsb).
+ * 4. Eksekutif 3 (Polres): Hanya polres-nya (data training, list trainer, trainer di polres tsb).
  * 5. Trainer: Hanya wilayah & kegiatannya sendiri.
  */
 
@@ -145,13 +145,18 @@ export function getScope(user: any): UserScope {
     };
   }
 
-  // 2. Eksekutif 3 (Nasional / Kapolri)
-  if (roleId === 'role-executive-3' || (roleId === 'role-executive' && execLevel === 'nasional')) {
+  // 2. Eksekutif 1 (Nasional / Kapolri)
+  // Mendukung role-executive-1 (resmi baru) dan fallback legacy session:
+  if (
+    roleId === 'role-executive-1' ||
+    (roleId === 'role-executive-3' && execLevel === 'nasional') ||
+    (roleId === 'role-executive' && execLevel === 'nasional')
+  ) {
     return {
       level: 'nasional',
       isAll: false,
       userId: user.id,
-      roleId,
+      roleId: 'role-executive-1',
       polda: null,
       poldaId: null,
       polres: null,
@@ -173,13 +178,18 @@ export function getScope(user: any): UserScope {
     };
   }
 
-  // 4. Eksekutif 1 (Polres / Kapolres)
-  if (roleId === 'role-executive-1' || (roleId === 'role-executive' && execLevel === 'polres')) {
+  // 4. Eksekutif 3 (Polres / Kapolres)
+  // Mendukung role-executive-3 (resmi baru) dan fallback legacy session:
+  if (
+    roleId === 'role-executive-3' ||
+    (roleId === 'role-executive-1' && execLevel === 'polres') ||
+    (roleId === 'role-executive' && execLevel === 'polres')
+  ) {
     return {
       level: 'polres',
       isAll: false,
       userId: user.id,
-      roleId,
+      roleId: 'role-executive-3',
       polda: user.polda || null,
       poldaId: resolvedPoldaId,
       polres: user.polres || null,
@@ -347,9 +357,9 @@ export function applyScopeToSessions<T extends { polda?: any; polres?: any; pold
 /**
  * Filter daftar akun pengguna (Users) berdasarkan aturan matriks hierarki scope:
  * - Super User / Admin: Semua akun
- * - Eksekutif 3: Semua akun Eksekutif 1 & 2 (dan Trainer), plus akun dirinya
- * - Eksekutif 2: Akun Eksekutif 1 di polda tsb, akun Trainer di polda tsb, plus akun dirinya
- * - Eksekutif 1: Akun Trainer di polres tsb, plus akun dirinya
+ * - Eksekutif 1 (Nasional): Semua akun Eksekutif 2 & 3 (dan Trainer), plus akun dirinya
+ * - Eksekutif 2 (Polda): Akun Eksekutif 3 di polda tsb, akun Trainer di polda tsb, plus akun dirinya
+ * - Eksekutif 3 (Polres): Akun Trainer di polres tsb, plus akun dirinya
  * - Trainer: Hanya akun dirinya sendiri
  */
 export function filterUsersByScope(users: any[], scope: UserScope): any[] {
@@ -362,23 +372,23 @@ export function filterUsersByScope(users: any[], scope: UserScope): any[] {
     if (u.id === scope.userId) return true;
 
     if (scope.level === 'nasional') {
-      // Eksekutif 3: melihat semua akun Eksekutif 1, 2, dan Trainer
+      // Eksekutif 1 (Nasional): melihat semua akun Eksekutif 2, 3, dan Trainer
       return (
-        u.roleId === 'role-executive-1' ||
         u.roleId === 'role-executive-2' ||
+        u.roleId === 'role-executive-3' ||
         u.roleId === 'role-trainer'
       );
     }
 
     if (scope.level === 'polda') {
-      // Eksekutif 2: melihat akun Eksekutif 1 dan Trainer di Polda-nya
+      // Eksekutif 2 (Polda): melihat akun Eksekutif 3 dan Trainer di Polda-nya
       const matchPolda = isPoldaMatch(u.polda, scope.polda, u.poldaId, scope.poldaId);
       if (!matchPolda) return false;
-      return u.roleId === 'role-executive-1' || u.roleId === 'role-trainer';
+      return u.roleId === 'role-executive-3' || u.roleId === 'role-trainer';
     }
 
     if (scope.level === 'polres') {
-      // Eksekutif 1: melihat akun Trainer di Polres-nya saja
+      // Eksekutif 3 (Polres): melihat akun Trainer di Polres-nya saja
       const matchPolda = isPoldaMatch(u.polda, scope.polda, u.poldaId, scope.poldaId);
       const matchPolres = isPolresMatch(u.polres, scope.polres, u.polresId, scope.polresId);
       if (!matchPolda || !matchPolres) return false;
@@ -414,18 +424,18 @@ export function canManageUserAccount(
 
   const targetRoleId = String(targetUserData.roleId || existingUser?.roleId || '').trim();
 
-  // Eksekutif 3
+  // Eksekutif 1 (Nasional)
   if (creatorScope.level === 'nasional') {
-    if (targetRoleId === 'role-admin' || targetRoleId === 'role-executive-3') {
-      return { allowed: false, reason: 'Eksekutif 3 tidak dapat membuat atau mengubah akun Admin atau Eksekutif 3.' };
+    if (targetRoleId === 'role-admin' || targetRoleId === 'role-executive-1') {
+      return { allowed: false, reason: 'Eksekutif 1 tidak dapat membuat atau mengubah akun Admin atau Eksekutif 1.' };
     }
     return { allowed: true };
   }
 
   // Eksekutif 2 (Polda)
   if (creatorScope.level === 'polda') {
-    if (targetRoleId !== 'role-executive-1' && targetRoleId !== 'role-trainer') {
-      return { allowed: false, reason: 'Eksekutif 2 hanya dapat mengelola akun Eksekutif 1 atau Trainer.' };
+    if (targetRoleId !== 'role-executive-3' && targetRoleId !== 'role-trainer') {
+      return { allowed: false, reason: 'Eksekutif 2 hanya dapat mengelola akun Eksekutif 3 atau Trainer.' };
     }
     const targetPolda = targetUserData.polda || existingUser?.polda;
     if (!isPoldaMatch(targetPolda, creatorScope.polda, undefined, creatorScope.poldaId)) {
@@ -434,10 +444,10 @@ export function canManageUserAccount(
     return { allowed: true };
   }
 
-  // Eksekutif 1 (Polres)
+  // Eksekutif 3 (Polres)
   if (creatorScope.level === 'polres') {
     if (targetRoleId !== 'role-trainer') {
-      return { allowed: false, reason: 'Eksekutif 1 hanya dapat mengelola akun Trainer di wilayahnya.' };
+      return { allowed: false, reason: 'Eksekutif 3 hanya dapat mengelola akun Trainer di wilayahnya.' };
     }
     const targetPolda = targetUserData.polda || existingUser?.polda;
     const targetPolres = targetUserData.polres || existingUser?.polres;
@@ -445,7 +455,7 @@ export function canManageUserAccount(
       !isPoldaMatch(targetPolda, creatorScope.polda, undefined, creatorScope.poldaId) ||
       !isPolresMatch(targetPolres, creatorScope.polres, undefined, creatorScope.polresId)
     ) {
-      return { allowed: false, reason: `Eksekutif 1 hanya dapat mengelola akun di wilayah Polres ${creatorScope.polres}.` };
+      return { allowed: false, reason: `Eksekutif 3 hanya dapat mengelola akun di wilayah Polres ${creatorScope.polres}.` };
     }
     return { allowed: true };
   }

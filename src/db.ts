@@ -487,8 +487,8 @@ async function autoBootstrapIfEmpty(conn: mysql.PoolConnection): Promise<void> {
     },
     {
       id: 'role-executive-1',
-      name: 'Eksekutif 1 (Level Polres / Kapolres)',
-      description: 'Pimpinan tingkat Polres — akses pemantauan performa & laporan kegiatan khusus di wilayah Polres terdaftar',
+      name: 'Eksekutif 1 (Level Nasional / Kapolri)',
+      description: 'Pimpinan tingkat Mabes Polri / Korlantas — akses penuh pemantauan seluruh 34 Polda se-Indonesia',
       permissions: [
         { menuId: 'beranda', menuLabel: 'Beranda', actions: ['view'] },
         { menuId: 'public-portal', menuLabel: 'Portal Edukasi Publik (/umum)', actions: ['view'] },
@@ -531,8 +531,8 @@ async function autoBootstrapIfEmpty(conn: mysql.PoolConnection): Promise<void> {
     },
     {
       id: 'role-executive-3',
-      name: 'Eksekutif 3 (Level Nasional / Kapolri)',
-      description: 'Pimpinan tingkat Mabes Polri / Korlantas — akses penuh pemantauan seluruh 34 Polda se-Indonesia',
+      name: 'Eksekutif 3 (Level Polres / Kapolres)',
+      description: 'Pimpinan tingkat Polres — akses pemantauan performa & laporan kegiatan khusus di wilayah Polres terdaftar',
       permissions: [
         { menuId: 'beranda', menuLabel: 'Beranda', actions: ['view'] },
         { menuId: 'public-portal', menuLabel: 'Portal Edukasi Publik (/umum)', actions: ['view'] },
@@ -718,7 +718,7 @@ async function autoBootstrapIfEmpty(conn: mysql.PoolConnection): Promise<void> {
     username: uKapolri,
     password: '123456',
     fullName: 'Jenderal Polisi Drs. Listyo Sigit Prabowo, M.Si. (Kapolri)',
-    roleId: 'role-executive-3',
+    roleId: 'role-executive-1',
     isActive: 1,
     executiveLevel: 'nasional',
     poldaId: null,
@@ -752,7 +752,7 @@ async function autoBootstrapIfEmpty(conn: mysql.PoolConnection): Promise<void> {
     });
   }
 
-  // 4. Seluruh Kapolres per Polda (Eksekutif 1 / Tingkat Polres)
+  // 4. Seluruh Kapolres per Polda (Eksekutif 3 / Tingkat Polres)
   for (let i = 1; i < polresRows.length; i++) {
     const row = polresRows[i];
     if (row.length < 4) continue;
@@ -772,7 +772,7 @@ async function autoBootstrapIfEmpty(conn: mysql.PoolConnection): Promise<void> {
       username: username,
       password: '123456',
       fullName: `Kapolres ${namaPolres.replace(/^POLRES(TA|TABES)?\s+/i, '').replace(/^METRO\s+/i, '')}`,
-      roleId: 'role-executive-1',
+      roleId: 'role-executive-3',
       isActive: 1,
       executiveLevel: 'polres',
       poldaId: poldaId,

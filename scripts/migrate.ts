@@ -227,8 +227,8 @@ async function runMigration() {
     },
     {
       id: 'role-executive-1',
-      name: 'Eksekutif 1 (Level Polres / Kapolres)',
-      description: 'Pimpinan tingkat Polres — akses pemantauan performa & laporan kegiatan khusus di wilayah Polres terdaftar',
+      name: 'Eksekutif 1 (Level Nasional / Kapolri)',
+      description: 'Pimpinan tingkat Mabes Polri / Korlantas — akses penuh pemantauan seluruh 34 Polda se-Indonesia',
       permissions: [
         { menuId: 'beranda', menuLabel: 'Beranda', actions: ['view'] },
         { menuId: 'public-portal', menuLabel: 'Portal Edukasi Publik (/umum)', actions: ['view'] },
@@ -271,8 +271,8 @@ async function runMigration() {
     },
     {
       id: 'role-executive-3',
-      name: 'Eksekutif 3 (Level Nasional / Kapolri)',
-      description: 'Pimpinan tingkat Mabes Polri / Korlantas — akses penuh pemantauan seluruh 34 Polda se-Indonesia',
+      name: 'Eksekutif 3 (Level Polres / Kapolres)',
+      description: 'Pimpinan tingkat Polres — akses pemantauan performa & laporan kegiatan khusus di wilayah Polres terdaftar',
       permissions: [
         { menuId: 'beranda', menuLabel: 'Beranda', actions: ['view'] },
         { menuId: 'public-portal', menuLabel: 'Portal Edukasi Publik (/umum)', actions: ['view'] },
@@ -622,7 +622,7 @@ async function runMigration() {
     username: uKapolri,
     password: '123456',
     fullName: 'Jenderal Polisi Drs. Listyo Sigit Prabowo, M.Si. (Kapolri)',
-    roleId: 'role-executive-3',
+    roleId: 'role-executive-1',
     isActive: 1,
     executiveLevel: 'nasional',
     poldaId: null,
@@ -632,7 +632,7 @@ async function runMigration() {
     polda: 'MABES POLRI (NASIONAL)',
     polres: null,
     createdAt: '2026-01-01',
-    keterangan: 'Eksekutif 3 (Nasional) — melihat rekapitulasi seluruh Indonesia (34 Polda)',
+    keterangan: 'Eksekutif 1 (Nasional) — melihat rekapitulasi seluruh Indonesia (34 Polda)',
   });
 
   // 3. 34 Kapolda (Eksekutif 2 / Tingkat Polda)
@@ -658,7 +658,7 @@ async function runMigration() {
     });
   }
 
-  // 4. Seluruh Kapolres per Polda (Eksekutif 1 / Tingkat Polres)
+  // 4. Seluruh Kapolres per Polda (Eksekutif 3 / Tingkat Polres)
   for (let i = 1; i < polresRows.length; i++) {
     const row = polresRows[i];
     if (row.length < 4) continue;
@@ -678,7 +678,7 @@ async function runMigration() {
       username: username,
       password: '123456',
       fullName: `Kapolres ${namaPolres.replace(/^POLRES(TA|TABES)?\s+/i, '').replace(/^METRO\s+/i, '')}`,
-      roleId: 'role-executive-1',
+      roleId: 'role-executive-3',
       isActive: 1,
       executiveLevel: 'polres',
       poldaId: poldaId,
@@ -806,18 +806,18 @@ function buildUserAccountDoc(accounts: any[], poldas: Array<{ id: string; nama: 
   out += `CATATAN KEAMANAN & LINGKUP AKSES:\n`;
   out += `1. Password bawaan seluruh akun adalah: 123456\n`;
   out += `2. Lingkup Akses Eksekutif (Dashboard):\n`;
-  out += `   - Eksekutif 3 (Nasional / Kapolri) : Melihat rekapitulasi seluruh 34 Polda se-Indonesia.\n`;
+  out += `   - Eksekutif 1 (Nasional / Kapolri) : Melihat rekapitulasi seluruh 34 Polda se-Indonesia.\n`;
   out += `   - Eksekutif 2 (Polda / Kapolda)    : Terkunci hanya dapat melihat data Polda masing-masing.\n`;
-  out += `   - Eksekutif 1 (Polres / Kapolres)  : Terkunci hanya dapat melihat data Polres masing-masing.\n`;
+  out += `   - Eksekutif 3 (Polres / Kapolres)  : Terkunci hanya dapat melihat data Polres masing-masing.\n`;
   out += `3. Trainer : Terikat ke wilayah Polda penugasannya untuk membuka sesi & lapor kegiatan.\n\n`;
 
   out += `${line}\n`;
-  out += `1. AKUN ADMINISTRATOR & EKSEKUTIF TINGKAT NASIONAL (EKSEKUTIF 3)\n`;
+  out += `1. AKUN ADMINISTRATOR & EKSEKUTIF TINGKAT NASIONAL (EKSEKUTIF 1)\n`;
   out += `${line}\n`;
   out += `No | Username   | Password | Role              | Level    | Nama / Satuan Kerja\n`;
   out += `${subline}\n`;
   out += ` 1 | superuser  | 123456   | role-admin        | -        | AKBP Hendra Wijaya (Superuser / Admin)\n`;
-  out += ` 2 | kapolri    | 123456   | role-executive-3  | nasional | Jenderal Polisi Drs. Listyo Sigit Prabowo (Kapolri)\n`;
+  out += ` 2 | kapolri    | 123456   | role-executive-1  | nasional | Jenderal Polisi Drs. Listyo Sigit Prabowo (Kapolri)\n`;
   out += ` 3 | trainer1   | 123456   | role-trainer      | -        | Kompol Budi Santoso (Trainer Polda Metro Jaya)\n`;
   out += ` 4 | executive  | 123456   | role-executive-2  | polda    | Irjen Pol. Drs. Ahmad Fauzi (Kapolda Metro Jaya)\n\n`;
 
@@ -839,18 +839,18 @@ function buildUserAccountDoc(accounts: any[], poldas: Array<{ id: string; nama: 
   out += `\n`;
 
   out += `${line}\n`;
-  out += `3. DAFTAR AKUN KAPOLRES (EKSEKUTIF 1 / LEVEL POLRES)\n`;
+  out += `3. DAFTAR AKUN KAPOLRES (EKSEKUTIF 3 / LEVEL POLRES)\n`;
   out += `   Format Login: username = kapolres_<nama_polres> (mis. kapolres_aceh_barat)\n`;
   out += `${line}\n`;
   out += `No  | Username                      | Password | Role             | Wilayah Polres (Polda)\n`;
   out += `${subline}\n`;
 
-  const kapolresAccounts = accounts.filter(a => a.roleId === 'role-executive-1');
+  const kapolresAccounts = accounts.filter(a => a.roleId === 'role-executive-3');
   idx = 1;
   for (const a of kapolresAccounts) {
     const num = String(idx).padStart(3, ' ');
     const uname = String(a.username).padEnd(29, ' ');
-    out += `${num} | ${uname} | 123456   | role-executive-1 | ${a.polres} (${a.polda})\n`;
+    out += `${num} | ${uname} | 123456   | role-executive-3 | ${a.polres} (${a.polda})\n`;
     idx++;
   }
   out += `\n`;

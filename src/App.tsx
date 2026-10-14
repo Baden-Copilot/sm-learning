@@ -129,7 +129,14 @@ export default function App() {
   // admin, since that is index 0.
   const EMPTY_ROLE: Role = { id: 'role-none', name: 'Tanpa Akses', description: 'Role tidak dikenali', permissions: [] };
   const activeRole = useMemo(() => {
-    const roleId = currentUser?.user?.roleId || currentUser?.roleId;
+    let roleId = currentUser?.user?.roleId || currentUser?.roleId;
+    // Kompatibilitas sesi aktif yang masih menyimpan cache role sebelum penukaran
+    const execLvl = String(currentUser?.user?.executiveLevel || currentUser?.user?.executive_level || currentUser?.executiveLevel || '').toLowerCase();
+    if (roleId === 'role-executive-3' && execLvl === 'nasional') {
+      roleId = 'role-executive-1';
+    } else if (roleId === 'role-executive-1' && execLvl === 'polres') {
+      roleId = 'role-executive-3';
+    }
     if (!roleId) return EMPTY_ROLE;
     return userRoles.find(r => r.id === roleId) || DEFAULT_ROLES.find(r => r.id === roleId) || EMPTY_ROLE;
   }, [currentUser, userRoles]);

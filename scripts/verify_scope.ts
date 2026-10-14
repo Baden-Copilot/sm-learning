@@ -53,11 +53,11 @@ async function runVerification() {
   // Test Users
   const users = {
     admin: { id: 'user-1', roleId: 'role-admin', name: 'Super User / Admin' },
-    eksekutif3: { id: 'user-kapolri', roleId: 'role-executive-3', name: 'Eksekutif 3 (Nasional)' },
+    eksekutif1: { id: 'user-kapolri', roleId: 'role-executive-1', name: 'Eksekutif 1 (Nasional)' },
     eksekutif2Metro: { id: 'user-3', roleId: 'role-executive-2', name: 'Eksekutif 2 (Metro Jaya)' },
     eksekutif2Aceh: { id: 'user-kapolda-01', roleId: 'role-executive-2', name: 'Eksekutif 2 (Aceh)' },
-    eksekutif1Ditlantas: { id: 'user-kapolres-01-01', roleId: 'role-executive-1', name: 'Eksekutif 1 (Aceh Ditlantas)' },
-    eksekutif1Lhokseumawe: { id: 'user-kapolres-01-02', roleId: 'role-executive-1', name: 'Eksekutif 1 (Aceh Lhokseumawe)' },
+    eksekutif3Ditlantas: { id: 'user-kapolres-01-01', roleId: 'role-executive-3', name: 'Eksekutif 3 (Aceh Ditlantas)' },
+    eksekutif3Lhokseumawe: { id: 'user-kapolres-01-02', roleId: 'role-executive-3', name: 'Eksekutif 3 (Aceh Lhokseumawe)' },
     trainerAceh: { id: 'user-trainer-01', roleId: 'role-trainer', name: 'Trainer (Aceh Ditlantas)' }
   };
 
@@ -187,39 +187,39 @@ async function runVerification() {
   }
 
   // =========================================================================
-  // 2. EKSEKUTIF 3 (NASIONAL)
+  // 2. EKSEKUTIF 1 (NASIONAL)
   // =========================================================================
-  console.log('\n--- UJI COBA 2: EKSEKUTIF 3 (NASIONAL) ---');
+  console.log('\n--- UJI COBA 2: EKSEKUTIF 1 (NASIONAL) ---');
   {
-    const u = users.eksekutif3;
+    const u = users.eksekutif1;
     // a. Wilayah Dropdown
     const poldaRes = await api('/api/wilayah/polda', u.id, u.roleId);
-    assert(poldaRes.data.data.length >= 34, u.roleId, u.name, 'Eksekutif 3 melihat semua Polda');
+    assert(poldaRes.data.data.length >= 34, u.roleId, u.name, 'Eksekutif 1 melihat semua Polda');
 
-    // b. Akun Pengguna: Boleh melihat Eksekutif 1, Eksekutif 2, dan Trainer nasional
-    // Tidak boleh melihat Super User / Admin atau sesama Eksekutif 3 lain
+    // b. Akun Pengguna: Boleh melihat Eksekutif 2, Eksekutif 3, dan Trainer nasional
+    // Tidak boleh melihat Super User / Admin atau sesama Eksekutif 1 lain
     const userRes = await api('/api/user-access/data', u.id, u.roleId);
     const visibleUsers = userRes.data.data.users;
     const hasAdmin = visibleUsers.some((x: any) => x.roleId === 'role-admin');
-    const hasEx3Other = visibleUsers.some((x: any) => x.roleId === 'role-executive-3' && x.id !== u.id);
+    const hasEx1Other = visibleUsers.some((x: any) => x.roleId === 'role-executive-1' && x.id !== u.id);
     const hasEx2 = visibleUsers.some((x: any) => x.roleId === 'role-executive-2');
-    const hasEx1 = visibleUsers.some((x: any) => x.roleId === 'role-executive-1');
-    assert(!hasAdmin && !hasEx3Other, u.roleId, u.name, 'Eksekutif 3 TIDAK dapat melihat akun Super User / Admin atau Eksekutif 3 lain');
-    assert(hasEx2 && hasEx1, u.roleId, u.name, 'Eksekutif 3 melihat akun Eksekutif 1 & Eksekutif 2 nasional');
+    const hasEx3 = visibleUsers.some((x: any) => x.roleId === 'role-executive-3');
+    assert(!hasAdmin && !hasEx1Other, u.roleId, u.name, 'Eksekutif 1 TIDAK dapat melihat akun Super User / Admin atau Eksekutif 1 lain');
+    assert(hasEx2 && hasEx3, u.roleId, u.name, 'Eksekutif 1 melihat akun Eksekutif 2 & Eksekutif 3 nasional');
 
     // c. Training Sessions: Semua sesi nasional
     const sessRes = await api('/api/outreach/sessions', u.id, u.roleId);
-    assert(sessRes.data.data.length >= 5, u.roleId, u.name, `Eksekutif 3 melihat seluruh data training nasional (${sessRes.data.data.length} sesi)`);
+    assert(sessRes.data.data.length >= 5, u.roleId, u.name, `Eksekutif 1 melihat seluruh data training nasional (${sessRes.data.data.length} sesi)`);
 
     // d. Stats & Analytics
     const statsRes = await api('/api/stats', u.id, u.roleId);
-    assert(statsRes.data.data.totalSessions === sessRes.data.data.length, u.roleId, u.name, 'Eksekutif 3 totalSessions di /api/stats sinkron dengan list');
+    assert(statsRes.data.data.totalSessions === sessRes.data.data.length, u.roleId, u.name, 'Eksekutif 1 totalSessions di /api/stats sinkron dengan list');
     const anaRes = await api('/api/executive/analytics', u.id, u.roleId);
-    assert(anaRes.data.data.totalSessions === sessRes.data.data.length, u.roleId, u.name, 'Eksekutif 3 totalSessions di analytics sinkron dengan list');
+    assert(anaRes.data.data.totalSessions === sessRes.data.data.length, u.roleId, u.name, 'Eksekutif 1 totalSessions di analytics sinkron dengan list');
 
     // e. Access session by ID
     const sAceh = await api('/api/outreach/sessions/TEST-SES-ACEH-01', u.id, u.roleId);
-    assert(sAceh.status === 200, u.roleId, u.name, 'Eksekutif 3 dapat mengakses detail sesi Aceh');
+    assert(sAceh.status === 200, u.roleId, u.name, 'Eksekutif 1 dapat mengakses detail sesi Aceh');
   }
 
   // =========================================================================
@@ -236,14 +236,14 @@ async function runVerification() {
     const nonMetroPolres = polresRes.data.data.filter((x: any) => x.poldaId !== '12'); // Polda Metro Jaya id: 12
     assert(nonMetroPolres.length === 0, u.roleId, u.name, 'Eksekutif 2 Metro hanya menerima polres di wilayah Metro Jaya');
 
-    // b. Akun Pengguna: Hanya Eksekutif 1 & Trainer di Metro Jaya, plus diri sendiri
+    // b. Akun Pengguna: Hanya Eksekutif 3 & Trainer di Metro Jaya, plus diri sendiri
     const userRes = await api('/api/user-access/data', u.id, u.roleId);
     const visibleUsers = userRes.data.data.users;
     const hasAdmin = visibleUsers.some((x: any) => x.roleId === 'role-admin');
-    const hasEx3 = visibleUsers.some((x: any) => x.roleId === 'role-executive-3');
+    const hasEx1 = visibleUsers.some((x: any) => x.roleId === 'role-executive-1');
     const hasEx2Other = visibleUsers.some((x: any) => x.roleId === 'role-executive-2' && x.id !== u.id);
     const hasAcehUser = visibleUsers.some((x: any) => x.polda === 'ACEH');
-    assert(!hasAdmin && !hasEx3 && !hasEx2Other, u.roleId, u.name, 'Eksekutif 2 Metro TIDAK melihat Admin, Ex3, atau Ex2 lain');
+    assert(!hasAdmin && !hasEx1 && !hasEx2Other, u.roleId, u.name, 'Eksekutif 2 Metro TIDAK melihat Admin, Ex1, atau Ex2 lain');
     assert(!hasAcehUser, u.roleId, u.name, 'Eksekutif 2 Metro TIDAK melihat user dari Polda Aceh');
 
     // c. Sessions: Hanya sesi di METRO JAYA (2 sesi)
@@ -303,34 +303,34 @@ async function runVerification() {
   }
 
   // =========================================================================
-  // 5. EKSEKUTIF 1 - ACEH DITLANTAS
+  // 5. EKSEKUTIF 3 - ACEH DITLANTAS
   // =========================================================================
-  console.log('\n--- UJI COBA 5: EKSEKUTIF 1 (ACEH DITLANTAS) ---');
+  console.log('\n--- UJI COBA 5: EKSEKUTIF 3 (ACEH DITLANTAS) ---');
   {
-    const u = users.eksekutif1Ditlantas;
+    const u = users.eksekutif3Ditlantas;
     // a. Wilayah Dropdown
     const polresRes = await api('/api/wilayah/polres', u.id, u.roleId);
-    assert(polresRes.data.data.length === 1 && polresRes.data.data[0].nama === 'DITLANTAS' && polresRes.data.data[0].poldaId === '01', u.roleId, u.name, 'Eksekutif 1 Ditlantas hanya melihat Polres DITLANTAS di Polda Aceh');
+    assert(polresRes.data.data.length === 1 && polresRes.data.data[0].nama === 'DITLANTAS' && polresRes.data.data[0].poldaId === '01', u.roleId, u.name, 'Eksekutif 3 Ditlantas hanya melihat Polres DITLANTAS di Polda Aceh');
 
     // b. Akun Pengguna: Hanya akun Trainer di wilayahnya dan dirinya sendiri, TIDAK BISA melihat Eksekutif lain
     const userRes = await api('/api/user-access/data', u.id, u.roleId);
     const visibleUsers = userRes.data.data.users;
     const hasOtherExec = visibleUsers.some((x: any) => x.roleId.startsWith('role-executive') && x.id !== u.id);
     const allInScope = visibleUsers.every((x: any) => x.polda === 'ACEH' && (!x.polres || x.polres === 'DITLANTAS'));
-    assert(!hasOtherExec, u.roleId, u.name, 'Eksekutif 1 TIDAK BISA melihat akun Eksekutif mana pun (selain dirinya)');
+    assert(!hasOtherExec, u.roleId, u.name, 'Eksekutif 3 TIDAK BISA melihat akun Eksekutif mana pun (selain dirinya)');
     assert(allInScope, u.roleId, u.name, 'Seluruh akun yang tampil berada di lingkup Aceh Ditlantas');
 
     // c. Sessions: Hanya sesi di ACEH DITLANTAS (1 sesi)
     const sessRes = await api('/api/outreach/sessions', u.id, u.roleId);
     const sessions = sessRes.data.data;
-    assert(sessions.length === 1 && sessions[0].id === 'TEST-SES-ACEH-01', u.roleId, u.name, 'Eksekutif 1 Ditlantas hanya melihat 1 sesi Ditlantas');
+    assert(sessions.length === 1 && sessions[0].id === 'TEST-SES-ACEH-01', u.roleId, u.name, 'Eksekutif 3 Ditlantas hanya melihat 1 sesi Ditlantas');
 
     // d. Detail by ID: Sesi Ditlantas -> 200, Sesi Lhokseumawe -> 403!
     const sDitlantas = await api('/api/outreach/sessions/TEST-SES-ACEH-01', u.id, u.roleId);
-    assert(sDitlantas.status === 200, u.roleId, u.name, 'Eksekutif 1 Ditlantas dapat akses sesi Ditlantas');
+    assert(sDitlantas.status === 200, u.roleId, u.name, 'Eksekutif 3 Ditlantas dapat akses sesi Ditlantas');
 
     const sLhokseumawe = await api('/api/outreach/sessions/TEST-SES-ACEH-02', u.id, u.roleId);
-    assert(sLhokseumawe.status === 403, u.roleId, u.name, 'Eksekutif 1 Ditlantas DITOLAK (403) akses sesi Lhokseumawe');
+    assert(sLhokseumawe.status === 403, u.roleId, u.name, 'Eksekutif 3 Ditlantas DITOLAK (403) akses sesi Lhokseumawe');
 
     // e. Query manipulation: coba minta ?polres=LHOKSEUMAWE -> 0 data
     const manipRes = await api('/api/outreach/sessions?polres=LHOKSEUMAWE', u.id, u.roleId);
@@ -338,22 +338,22 @@ async function runVerification() {
   }
 
   // =========================================================================
-  // 6. EKSEKUTIF 1 - ACEH LHOKSEUMAWE
+  // 6. EKSEKUTIF 3 - ACEH LHOKSEUMAWE
   // =========================================================================
-  console.log('\n--- UJI COBA 6: EKSEKUTIF 1 (ACEH LHOKSEUMAWE) ---');
+  console.log('\n--- UJI COBA 6: EKSEKUTIF 3 (ACEH LHOKSEUMAWE) ---');
   {
-    const u = users.eksekutif1Lhokseumawe;
+    const u = users.eksekutif3Lhokseumawe;
     // a. Sessions: Hanya sesi LHOKSEUMAWE (1 sesi)
     const sessRes = await api('/api/outreach/sessions', u.id, u.roleId);
     const sessions = sessRes.data.data;
-    assert(sessions.length === 1 && sessions[0].id === 'TEST-SES-ACEH-02', u.roleId, u.name, 'Eksekutif 1 Lhokseumawe hanya melihat 1 sesi Lhokseumawe');
+    assert(sessions.length === 1 && sessions[0].id === 'TEST-SES-ACEH-02', u.roleId, u.name, 'Eksekutif 3 Lhokseumawe hanya melihat 1 sesi Lhokseumawe');
 
     // b. Detail by ID: Sesi Lhokseumawe -> 200, Sesi Ditlantas -> 403!
     const sLhokseumawe = await api('/api/outreach/sessions/TEST-SES-ACEH-02', u.id, u.roleId);
-    assert(sLhokseumawe.status === 200, u.roleId, u.name, 'Eksekutif 1 Lhokseumawe dapat akses sesi Lhokseumawe');
+    assert(sLhokseumawe.status === 200, u.roleId, u.name, 'Eksekutif 3 Lhokseumawe dapat akses sesi Lhokseumawe');
 
     const sDitlantas = await api('/api/outreach/sessions/TEST-SES-ACEH-01', u.id, u.roleId);
-    assert(sDitlantas.status === 403, u.roleId, u.name, 'Eksekutif 1 Lhokseumawe DITOLAK (403) akses sesi Ditlantas');
+    assert(sDitlantas.status === 403, u.roleId, u.name, 'Eksekutif 3 Lhokseumawe DITOLAK (403) akses sesi Ditlantas');
   }
 
   // =========================================================================

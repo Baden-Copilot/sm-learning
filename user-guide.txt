@@ -35,10 +35,12 @@ B. EKSEKUTIF BERJENJANG (3 LEVEL AKSES)
    Sistem membatasi data yang dapat dilihat eksekutif secara otomatis berdasarkan
    level register saat login:
 
-   1. EKSEKUTIF 1: LEVEL POLRES (Kapolres per Wilayah)
+   1. EKSEKUTIF 1: LEVEL NASIONAL (Kapolri / Kakorlantas)
       - Role ID      : role-executive-1
-      - Format Login : Sesuai register akun di User Akses (level: polres).
-      - Lingkup Akses: Otomatis terkunci HANYA dapat melihat data di wilayah Polres miliknya.
+      - Username     : kapolri
+      - Password     : 123456
+      - Lingkup Akses: Melihat seluruh rekapitulasi data & kegiatan dari 34 Polda
+        di seluruh Indonesia. Bebas memfilter ke Polda/Polres mana pun.
 
    2. EKSEKUTIF 2: LEVEL POLDA (Kapolda per Wilayah — 34 Akun)
       - Role ID      : role-executive-2
@@ -48,12 +50,10 @@ B. EKSEKUTIF BERJENJANG (3 LEVEL AKSES)
       - Lingkup Akses: Otomatis terkunci HANYA dapat melihat data, performa trainer,
         dan kegiatan sosialisasi di wilayah Polda masing-masing (seluruh Polres di bawah Polda).
 
-   3. EKSEKUTIF 3: LEVEL NASIONAL (Kapolri / Kakorlantas)
+   3. EKSEKUTIF 3: LEVEL POLRES (Kapolres per Wilayah)
       - Role ID      : role-executive-3
-      - Username     : kapolri
-      - Password     : 123456
-      - Lingkup Akses: Melihat seluruh rekapitulasi data & kegiatan dari 34 Polda
-        di seluruh Indonesia. Bebas memfilter ke Polda/Polres mana pun.
+      - Format Login : Sesuai register akun di User Akses (level: polres).
+      - Lingkup Akses: Otomatis terkunci HANYA dapat melihat data di wilayah Polres miliknya.
 
 --------------------------------------------------------------------------------
 
