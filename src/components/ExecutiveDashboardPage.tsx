@@ -181,15 +181,27 @@ export function ExecutiveDashboardPage({
   };
 
   const resetFilters = () => {
-    setSelectedPolda('ALL');
-    setSelectedPolres('ALL');
+    const scope = analyticsData?.executiveScope;
+    if (scope?.isLockedToPolres && scope?.polda && scope?.polres) {
+      setSelectedPolda(scope.polda);
+      setSelectedPolres(scope.polres);
+    } else if (scope?.isLockedToPolda && scope?.polda) {
+      setSelectedPolda(scope.polda);
+      setSelectedPolres('ALL');
+    } else {
+      setSelectedPolda('ALL');
+      setSelectedPolres('ALL');
+    }
     setSelectedLevelFilter('ALL');
     setStartDate('');
     setEndDate('');
   };
 
+  const scope = analyticsData?.executiveScope;
+  const isPoldaFiltered = (scope?.isLockedToPolda || scope?.isLockedToPolres) ? false : selectedPolda !== 'ALL';
+  const isPolresFiltered = scope?.isLockedToPolres ? false : selectedPolres !== 'ALL';
   const hasActiveFilter =
-    selectedPolda !== 'ALL' || selectedPolres !== 'ALL' || selectedLevelFilter !== 'ALL' || Boolean(startDate) || Boolean(endDate);
+    isPoldaFiltered || isPolresFiltered || selectedLevelFilter !== 'ALL' || Boolean(startDate) || Boolean(endDate);
 
   const kpi = analyticsData;
 
@@ -334,7 +346,7 @@ export function ExecutiveDashboardPage({
               disabled={Boolean(kpi?.executiveScope?.isLockedToPolda || kpi?.executiveScope?.isLockedToPolres)}
               className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 disabled:bg-slate-100 disabled:cursor-not-allowed text-xs font-bold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500 cursor-pointer"
             >
-              {!kpi?.executiveScope?.isLockedToPolda && (
+              {!kpi?.executiveScope?.isLockedToPolda && !kpi?.executiveScope?.isLockedToPolres && (
                 <option value="ALL">Semua Provinsi (Nasional)</option>
               )}
               {poldaList.length > 0
@@ -357,7 +369,9 @@ export function ExecutiveDashboardPage({
               disabled={selectedPolda === 'ALL' || Boolean(kpi?.executiveScope?.isLockedToPolres)}
               className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-bold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500 cursor-pointer"
             >
-              <option value="ALL">Semua Kota / Kabupaten</option>
+              {!kpi?.executiveScope?.isLockedToPolres && (
+                <option value="ALL">Semua Kota / Kabupaten</option>
+              )}
               {polresList.map(p => (
                 <option key={`${p.poldaId}-${p.polresId}`} value={p.nama}>{p.nama}</option>
               ))}

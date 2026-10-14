@@ -147,6 +147,8 @@ export default function App() {
     activeRole.id === 'role-executive-1' ||
     activeRole.id === 'role-executive-2' ||
     activeRole.id === 'role-executive-3';
+
+  const isAdmin = activeRole.id === 'role-admin' || currentUser?.user?.username === 'superuser';
   /** Where "back to home" lands. A pimpinan has no Beranda — their home is the dashboard. */
   const homeTab = isExecutive ? 'executive' : 'beranda';
   // Every gate below is derived from the role's actual permissions. Hardcoding
@@ -297,6 +299,10 @@ export default function App() {
   // === REST User Management Handlers (Per-item efficient persistence) ===
 
   const handleCreateUserSingle = async (newUser: UserAccount): Promise<boolean> => {
+    if (!isAdmin) {
+      addToast('warning', 'Akses Ditolak', 'Hanya Super User / Admin yang dapat menambah akun.');
+      return false;
+    }
     try {
       const res = await fetch('/api/user-access/user', {
         method: 'POST',
@@ -318,6 +324,10 @@ export default function App() {
   };
 
   const handleUpdateUserSingle = async (updatedUser: UserAccount): Promise<boolean> => {
+    if (!isAdmin) {
+      addToast('warning', 'Akses Ditolak', 'Hanya Super User / Admin yang dapat mengubah data akun.');
+      return false;
+    }
     try {
       const res = await fetch(`/api/user-access/user/${encodeURIComponent(updatedUser.id)}`, {
         method: 'PUT',
@@ -339,6 +349,10 @@ export default function App() {
   };
 
   const handleDeleteUserSingle = async (userId: string): Promise<boolean> => {
+    if (!isAdmin) {
+      addToast('warning', 'Akses Ditolak', 'Hanya Super User / Admin yang dapat menghapus akun.');
+      return false;
+    }
     try {
       const res = await fetch(`/api/user-access/user/${encodeURIComponent(userId)}`, {
         method: 'DELETE',
@@ -357,7 +371,34 @@ export default function App() {
     }
   };
 
+  const handleDeleteUsersBulk = async (userIds: string[]): Promise<boolean> => {
+    if (!isAdmin) {
+      addToast('warning', 'Akses Ditolak', 'Hanya Super User / Admin yang dapat menghapus akun.');
+      return false;
+    }
+    try {
+      await Promise.all(
+        userIds.map(id =>
+          fetch(`/api/user-access/user/${encodeURIComponent(id)}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders(),
+          })
+        )
+      );
+      setUserAccounts(prev => prev.filter(u => !userIds.includes(u.id)));
+      addToast('success', 'Hapus Massal Berhasil', `${userIds.length} akun pengguna berhasil dihapus dari database.`);
+      return true;
+    } catch (err: any) {
+      addToast('warning', 'Gagal Hapus Massal', err.message || 'Terjadi kesalahan saat menghapus akun.');
+      return false;
+    }
+  };
+
   const handleSaveRoleSingle = async (role: Role): Promise<boolean> => {
+    if (!isAdmin) {
+      addToast('warning', 'Akses Ditolak', 'Hanya Super User / Admin yang dapat mengelola role.');
+      return false;
+    }
     try {
       const res = await fetch('/api/user-access/role', {
         method: 'POST',
@@ -382,6 +423,10 @@ export default function App() {
   };
 
   const handleDeleteRoleSingle = async (roleId: string): Promise<boolean> => {
+    if (!isAdmin) {
+      addToast('warning', 'Akses Ditolak', 'Hanya Super User / Admin yang dapat menghapus role.');
+      return false;
+    }
     try {
       const res = await fetch(`/api/user-access/role/${encodeURIComponent(roleId)}`, {
         method: 'DELETE',
@@ -655,6 +700,20 @@ export default function App() {
     }
   };
 
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    setCurrentUser(null);
+    setUserAccounts(DEFAULT_USERS);
+    setUserRoles(DEFAULT_ROLES);
+    setSelectedCourseDetail(null);
+    setActiveFocusMaterial(null);
+    setActiveQuizMaterial(null);
+    setActiveReportSession(null);
+    sessionStorage.clear();
+    localStorage.clear();
+    setCurrentTab('beranda');
+  };
+
   if (!isLoggedIn) {
     if (isInvalidRoute) {
       return (
@@ -817,12 +876,7 @@ export default function App() {
           materials={learnerMaterials}
           onSelectMaterial={(material) => handleOpenCourseDetail(material)}
           onOpenProfile={() => handleSelectTab('profile')}
-          onLogout={() => {
-            setIsLoggedIn(false);
-            setCurrentUser(null);
-            sessionStorage.removeItem('isLoggedIn');
-            sessionStorage.removeItem('currentUser');
-          }}
+          onLogout={handleLogout}
         />
 
         {/* Main Content Body */}
@@ -1033,9 +1087,12 @@ export default function App() {
               <UserAccessPage
                 users={userAccounts}
                 roles={userRoles}
+                currentRole={activeRole}
+                currentUser={currentUser}
                 onCreateUser={handleCreateUserSingle}
                 onUpdateUser={handleUpdateUserSingle}
                 onDeleteUser={handleDeleteUserSingle}
+                onDeleteUsersBulk={handleDeleteUsersBulk}
                 onSaveRole={handleSaveRoleSingle}
                 onDeleteRole={handleDeleteRoleSingle}
                 onUpdateUsers={handleUpdateUsers}
@@ -1054,12 +1111,7 @@ export default function App() {
             <ProfilePage
               currentUser={currentUser}
               currentRole={activeRole}
-              onLogout={() => {
-                setIsLoggedIn(false);
-                setCurrentUser(null);
-                sessionStorage.removeItem('isLoggedIn');
-                sessionStorage.removeItem('currentUser');
-              }}
+              onLogout={handleLogout}
               onUpdateCurrentUserFullName={(newName) => {
                 setCurrentUser((prev: any) => {
                   if (!prev) return prev;

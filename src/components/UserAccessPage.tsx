@@ -42,9 +42,12 @@ import { DEFAULT_34_POLDA, fetchPoldaList, fetchPolresByPolda, WilayahPoldaItem,
 interface UserAccessPageProps {
   users: UserAccount[];
   roles: Role[];
+  currentRole?: Role;
+  currentUser?: any;
   onCreateUser?: (user: UserAccount) => Promise<boolean>;
   onUpdateUser?: (user: UserAccount) => Promise<boolean>;
   onDeleteUser?: (userId: string) => Promise<boolean>;
+  onDeleteUsersBulk?: (userIds: string[]) => Promise<boolean>;
   onSaveRole?: (role: Role) => Promise<boolean>;
   onDeleteRole?: (roleId: string) => Promise<boolean>;
   onUpdateUsers: (users: UserAccount[]) => void;
@@ -64,19 +67,28 @@ const ACTION_LABELS: Record<PermissionAction, { label: string; icon: React.React
 export function UserAccessPage({
   users,
   roles,
+  currentRole,
+  currentUser,
   onCreateUser,
   onUpdateUser,
   onDeleteUser,
+  onDeleteUsersBulk,
   onSaveRole,
   onDeleteRole,
   onUpdateUsers,
   onUpdateRoles,
   materialsCount = 6,
 }: UserAccessPageProps) {
+  const isAdmin = useMemo(() => {
+    const roleId = currentRole?.id || currentUser?.user?.roleId || currentUser?.roleId;
+    return roleId === 'role-admin' || currentUser?.user?.username === 'superuser';
+  }, [currentRole, currentUser]);
+
   const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('ALL');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
 
   // User modal state
   const [showUserModal, setShowUserModal] = useState(false);
@@ -129,7 +141,12 @@ export function UserAccessPage({
   });
 
   // Delete confirmation
-  const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'user' | 'role'; id: string; name: string } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    type: 'user' | 'role' | 'bulk-users' | 'master' | 'bulk-master';
+    id: string;
+    name: string;
+    count?: number;
+  } | null>(null);
 
   // Master Kedinasan Tab State
   const [masterKedinasanType, setMasterKedinasanType] = useState<'instansi' | 'organisasi' | 'sub_organisasi' | 'satker'>('instansi');
@@ -139,6 +156,8 @@ export function UserAccessPage({
   const [masterForm, setMasterForm] = useState({ id: '', nama: '', parentId: '' });
   const [showMasterModal, setShowMasterModal] = useState(false);
   const [masterMsg, setMasterMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [selectedMasterIds, setSelectedMasterIds] = useState<string[]>([]);
+  const [masterSearchQuery, setMasterSearchQuery] = useState('');
 
   const loadMasterData = async () => {
     setIsMasterLoading(true);
@@ -182,8 +201,41 @@ export function UserAccessPage({
     }
   }, [activeTab, masterKedinasanType]);
 
+  const filteredMasterList = useMemo(() => {
+    if (!masterSearchQuery.trim()) return masterList;
+    const q = masterSearchQuery.toLowerCase();
+    return masterList.filter((item: any) =>
+      item.id?.toLowerCase().includes(q) ||
+      item.nama?.toLowerCase().includes(q) ||
+      (item.instansiId && String(item.instansiId).toLowerCase().includes(q)) ||
+      (item.organisasiId && String(item.organisasiId).toLowerCase().includes(q)) ||
+      (item.subOrgId && String(item.subOrgId).toLowerCase().includes(q))
+    );
+  }, [masterList, masterSearchQuery]);
+
+  const isAllMasterSelected = filteredMasterList.length > 0 && filteredMasterList.every(item => selectedMasterIds.includes(item.id));
+  const isSomeMasterSelected = filteredMasterList.some(item => selectedMasterIds.includes(item.id)) && !isAllMasterSelected;
+
+  const handleToggleSelectAllMaster = () => {
+    if (!isAdmin) return;
+    if (isAllMasterSelected) {
+      setSelectedMasterIds(prev => prev.filter(id => !filteredMasterList.some(item => item.id === id)));
+    } else {
+      const allNew = Array.from(new Set([...selectedMasterIds, ...filteredMasterList.map(item => item.id)]));
+      setSelectedMasterIds(allNew);
+    }
+  };
+
+  const handleToggleSelectMaster = (id: string) => {
+    if (!isAdmin) return;
+    setSelectedMasterIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
   const handleSaveMaster = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAdmin) return;
     if (!masterForm.id.trim() || !masterForm.nama.trim()) return;
 
     try {
@@ -211,27 +263,68 @@ export function UserAccessPage({
     setTimeout(() => setMasterMsg(null), 3500);
   };
 
-  const handleDeleteMaster = async (id: string) => {
-    if (!confirm(`Yakin ingin menghapus item master "${id}"?`)) return;
+  const executeDeleteMaster = async (id: string) => {
+    if (!isAdmin) {
+      setDeleteConfirm(null);
+      return;
+    }
+    setIsSubmitting(true);
     try {
-      const res = await fetch(`/api/master-kedinasan/${masterKedinasanType}/${id}`, {
+      const res = await fetch(`/api/master-kedinasan/${masterKedinasanType}/${encodeURIComponent(id)}`, {
         method: 'DELETE',
         headers: {
           'x-user-id': 'user-1',
           'x-role-id': 'role-admin'
         }
       });
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
       if (res.ok && json.success) {
-        setMasterMsg({ type: 'success', text: 'Item master berhasil dihapus.' });
-        loadMasterData();
+        setMasterMsg({ type: 'success', text: `Item master "${id}" berhasil dihapus.` });
+        setSelectedMasterIds(prev => prev.filter(x => x !== id));
+        setDeleteConfirm(null);
+        await loadMasterData();
       } else {
         setMasterMsg({ type: 'error', text: json.message || 'Gagal menghapus item master.' });
       }
     } catch {
       setMasterMsg({ type: 'error', text: 'Gagal terhubung ke server.' });
+    } finally {
+      setIsSubmitting(false);
+      setTimeout(() => setMasterMsg(null), 3500);
     }
-    setTimeout(() => setMasterMsg(null), 3500);
+  };
+
+  const handleBulkDeleteMaster = async () => {
+    if (!isAdmin || selectedMasterIds.length === 0) {
+      setDeleteConfirm(null);
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await Promise.all(
+        selectedMasterIds.map(id =>
+          fetch(`/api/master-kedinasan/${masterKedinasanType}/${encodeURIComponent(id)}`, {
+            method: 'DELETE',
+            headers: {
+              'x-user-id': 'user-1',
+              'x-role-id': 'role-admin'
+            }
+          })
+        )
+      );
+      setMasterMsg({
+        type: 'success',
+        text: `${selectedMasterIds.length} data master ${masterKedinasanType.toUpperCase().replace('_', ' ')} berhasil dihapus.`
+      });
+      setSelectedMasterIds([]);
+      setDeleteConfirm(null);
+      await loadMasterData();
+    } catch {
+      setMasterMsg({ type: 'error', text: 'Gagal menghapus beberapa data master kedinasan.' });
+    } finally {
+      setIsSubmitting(false);
+      setTimeout(() => setMasterMsg(null), 3500);
+    }
   };
 
   // System Audit Logs (in-session tracked)
@@ -249,6 +342,7 @@ export function UserAccessPage({
   const totalRoles = roles.length;
 
   const handleToggleUserStatus = async (user: UserAccount) => {
+    if (!isAdmin) return;
     const updatedUser: UserAccount = {
       ...user,
       isActive: !user.isActive
@@ -275,6 +369,7 @@ export function UserAccessPage({
     }
   };
   const openCreateUser = () => {
+    if (!isAdmin) return;
     setEditingUser(null);
     setUserForm({
       username: '',
@@ -295,6 +390,7 @@ export function UserAccessPage({
   };
 
   const openEditUser = (user: UserAccount) => {
+    if (!isAdmin) return;
     setEditingUser(user);
     setUserForm({
       username: user.username,
@@ -351,6 +447,7 @@ export function UserAccessPage({
   };
 
   const handleSaveUser = async () => {
+    if (!isAdmin) return;
     const trimmedUsername = userForm.username.trim();
     const trimmedFullName = userForm.fullName.trim();
     if (!trimmedUsername || !trimmedFullName || !userForm.roleId) return;
@@ -461,6 +558,10 @@ export function UserAccessPage({
   };
 
   const handleDeleteUser = async (id: string) => {
+    if (!isAdmin) {
+      setDeleteConfirm(null);
+      return;
+    }
     const target = users.find(u => u.id === id);
     if (onDeleteUser) {
       const success = await onDeleteUser(id);
@@ -483,8 +584,43 @@ export function UserAccessPage({
     setDeleteConfirm(null);
   };
 
+  const handleBulkDeleteUsers = async () => {
+    if (!isAdmin || selectedUserIds.length === 0) {
+      setDeleteConfirm(null);
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      if (onDeleteUsersBulk) {
+        const success = await onDeleteUsersBulk(selectedUserIds);
+        if (!success) return;
+      } else if (onDeleteUser) {
+        for (const id of selectedUserIds) {
+          await onDeleteUser(id);
+        }
+      } else {
+        onUpdateUsers(users.filter(u => !selectedUserIds.includes(u.id)));
+      }
+      setAuditLogs(prev => [
+        {
+          id: String(Date.now()),
+          time: 'Baru saja',
+          actor: 'Admin',
+          action: 'Hapus Massal Pengguna',
+          target: `${selectedUserIds.length} Akun Pengguna`
+        },
+        ...prev
+      ]);
+      setSelectedUserIds([]);
+    } finally {
+      setIsSubmitting(false);
+      setDeleteConfirm(null);
+    }
+  };
+
   // === ROLE CRUD ===
   const openCreateRole = () => {
+    if (!isAdmin) return;
     setEditingRole(null);
     setRoleForm({
       name: '',
@@ -495,6 +631,7 @@ export function UserAccessPage({
   };
 
   const openEditRole = (role: Role) => {
+    if (!isAdmin) return;
     setEditingRole(role);
     const perms = AVAILABLE_MENUS.map(m => {
       const existing = role.permissions.find(p => p.menuId === m.id);
@@ -527,6 +664,7 @@ export function UserAccessPage({
   };
 
   const handleSaveRole = async () => {
+    if (!isAdmin) return;
     if (!roleForm.name.trim()) return;
 
     setIsSubmitting(true);
@@ -589,6 +727,10 @@ export function UserAccessPage({
   };
 
   const handleDeleteRole = async (id: string) => {
+    if (!isAdmin) {
+      setDeleteConfirm(null);
+      return;
+    }
     const usersWithRole = users.filter(u => u.roleId === id);
     if (usersWithRole.length > 0) {
       alert('Tidak dapat menghapus role yang sedang digunakan oleh akun pengguna.');
@@ -629,6 +771,28 @@ export function UserAccessPage({
     });
   }, [users, roleFilter, searchQuery]);
 
+  // Bulk Selection Helpers
+  const isAllSelected = filteredUsers.length > 0 && filteredUsers.every(u => selectedUserIds.includes(u.id));
+  const isSomeSelected = selectedUserIds.length > 0 && !isAllSelected;
+
+  const handleToggleSelectAll = () => {
+    if (!isAdmin) return;
+    if (isAllSelected) {
+      const visibleIds = new Set(filteredUsers.map(u => u.id));
+      setSelectedUserIds(prev => prev.filter(id => !visibleIds.has(id)));
+    } else {
+      const newIds = new Set([...selectedUserIds, ...filteredUsers.map(u => u.id)]);
+      setSelectedUserIds(Array.from(newIds));
+    }
+  };
+
+  const handleToggleSelectUser = (userId: string) => {
+    if (!isAdmin) return;
+    setSelectedUserIds(prev =>
+      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+    );
+  };
+
   return (
     <div className="space-y-8 pb-20 w-full max-w-7xl mx-auto font-sans min-w-0">
       {/* 1. ADMIN WORKSPACE HEADER */}
@@ -650,7 +814,13 @@ export function UserAccessPage({
           <div className="flex items-center gap-3 shrink-0">
             <button
               onClick={openCreateUser}
-              className="bg-[#0a1d37] hover:bg-[#162c4e] text-white px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition-all cursor-pointer"
+              disabled={!isAdmin}
+              title={!isAdmin ? 'Aksi dibatasi: Hanya Super User / Admin yang dapat menambah akun user' : undefined}
+              className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition-all ${
+                !isAdmin
+                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
+                  : 'bg-[#0a1d37] hover:bg-[#162c4e] text-white cursor-pointer'
+              }`}
             >
               <UserPlus className="w-4 h-4" />
               <span>+ Tambah Akun User</span>
@@ -693,6 +863,16 @@ export function UserAccessPage({
           })}
         </div>
       </section>
+
+      {/* Read-Only Notice for Non-Admin */}
+      {!isAdmin && (
+        <div className="flex items-center gap-3 px-5 py-3.5 bg-amber-50 border border-amber-200/90 rounded-2xl text-amber-900 text-xs font-medium shadow-xs">
+          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+          <span>
+            <strong>Mode Hanya Lihat (Read-Only):</strong> Anda memiliki izin meninjau data konfigurasi peran dan akun pengguna. Tombol Tambah, Edit, dan Hapus dinonaktifkan khusus untuk akun dengan wewenang <strong>Super User / Admin</strong>.
+          </span>
+        </div>
+      )}
 
       {/* === TAB 1: SYSTEM OVERVIEW === */}
       {activeTab === 'overview' && (
@@ -839,68 +1019,176 @@ export function UserAccessPage({
 
             <button
               onClick={openCreateUser}
-              className="bg-[#0a1d37] hover:bg-[#162c4e] text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+              disabled={!isAdmin}
+              title={!isAdmin ? 'Aksi dibatasi: Hanya Super User / Admin yang dapat menambah user' : undefined}
+              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 ${
+                !isAdmin
+                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
+                  : 'bg-[#0a1d37] hover:bg-[#162c4e] text-white cursor-pointer'
+              }`}
             >
               <UserPlus className="w-3.5 h-3.5" />
               <span>Tambah User</span>
             </button>
           </div>
 
+          {/* Bulk Selection Action Bar */}
+          {selectedUserIds.length > 0 && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 animate-in fade-in slide-in-from-top-1">
+              <div className="flex items-center gap-2.5">
+                <span className="inline-flex items-center justify-center min-w-[1.5rem] h-6 px-1.5 rounded-full bg-red-600 text-white text-xs font-bold">
+                  {selectedUserIds.length}
+                </span>
+                <span className="text-xs sm:text-sm font-bold text-red-900">
+                  {selectedUserIds.length} akun pengguna dipilih untuk dihapus
+                </span>
+              </div>
+              <div className="flex items-center gap-2 self-end sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setSelectedUserIds([])}
+                  className="px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition cursor-pointer"
+                >
+                  Batal Pilih
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirm({
+                    type: 'bulk-users',
+                    id: 'bulk',
+                    name: `${selectedUserIds.length} Akun Pengguna Terpilih`,
+                    count: selectedUserIds.length
+                  })}
+                  disabled={isSubmitting || !isAdmin}
+                  title={!isAdmin ? 'Hanya Super User / Admin yang dapat menghapus akun' : undefined}
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-xs transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Hapus Terpilih ({selectedUserIds.length})</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Users Table & Mobile Card View */}
           <div className="md:hidden divide-y divide-slate-100">
-            {filteredUsers.map((user) => (
-              <div key={`mob-user-${user.id}`} className="py-3.5 space-y-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="font-bold text-sm text-slate-900">{user.fullName}</p>
-                    <p className="text-xs text-slate-500 font-mono">@{user.username}</p>
-                  </div>
-                  <button
-                    onClick={() => handleToggleUserStatus(user)}
-                    className={`px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer ${
-                      user.isActive
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        : 'bg-amber-50 text-amber-800 border border-amber-300 animate-pulse'
-                    }`}
-                  >
-                    {user.isActive ? 'Aktif' : 'Menunggu ACC / Nonaktif'}
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
-                  <span className="px-2.5 py-0.5 rounded text-[10px] font-extrabold bg-[#0a1d37] text-white">
-                    {getRoleName(user.roleId)}
+            {filteredUsers.length > 0 && (
+              <div className="flex items-center justify-between py-2.5 px-3 text-xs text-slate-700 bg-slate-50/80 rounded-xl mb-2">
+                <label className={`flex items-center gap-2.5 font-bold ${!isAdmin ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    ref={el => { if (el) el.indeterminate = isSomeSelected; }}
+                    onChange={handleToggleSelectAll}
+                    disabled={!isAdmin}
+                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                  <span>Pilih Semua Pengguna ({filteredUsers.length})</span>
+                </label>
+                {selectedUserIds.length > 0 && (
+                  <span className="text-[11px] text-red-600 font-extrabold">
+                    {selectedUserIds.length} terpilih
                   </span>
-                  <span className="text-[11px] text-slate-400 font-mono">
-                    {user.createdAt || '2026-01-01'}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-end gap-2 pt-1">
-                  <button
-                    onClick={() => openEditUser(user)}
-                    className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-semibold hover:bg-blue-100 flex items-center gap-1 cursor-pointer"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                    <span>Edit</span>
-                  </button>
-                  <button
-                    onClick={() => setDeleteConfirm({ type: 'user', id: user.id, name: user.fullName })}
-                    className="px-3 py-1.5 rounded-lg bg-red-50 text-red-700 text-xs font-semibold hover:bg-red-100 flex items-center gap-1 cursor-pointer"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Hapus</span>
-                  </button>
-                </div>
+                )}
               </div>
-            ))}
+            )}
+            {filteredUsers.map((user) => {
+              const isSelected = selectedUserIds.includes(user.id);
+              return (
+                <div
+                  key={`mob-user-${user.id}`}
+                  className={`py-3.5 px-3 rounded-2xl transition-colors space-y-2 ${
+                    isSelected ? 'bg-blue-50/60 border border-blue-200/80' : ''
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleToggleSelectUser(user.id)}
+                      disabled={!isAdmin}
+                      className="w-4 h-4 mt-1 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-bold text-sm text-slate-900">{user.fullName}</p>
+                          <p className="text-xs text-slate-500 font-mono">@{user.username}</p>
+                        </div>
+                        <button
+                          onClick={() => handleToggleUserStatus(user)}
+                          disabled={!isAdmin}
+                          title={!isAdmin ? 'Hanya Super User / Admin yang dapat mengubah status akun' : (user.isActive ? 'Klik untuk nonaktifkan akun' : 'Klik untuk menyetujui / aktifkan akun')}
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 transition-colors ${
+                            !isAdmin
+                              ? (user.isActive ? 'bg-slate-100 text-slate-500 border border-slate-200 cursor-not-allowed' : 'bg-amber-50 text-amber-600 border border-amber-200 cursor-not-allowed')
+                              : (user.isActive
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-pointer'
+                                : 'bg-amber-50 text-amber-800 border border-amber-300 animate-pulse cursor-pointer')
+                          }`}
+                        >
+                          {user.isActive ? 'Aktif' : 'Menunggu ACC / Nonaktif'}
+                        </button>
+                      </div>
+
+                      {(user.position || user.unit || user.polda) && (
+                        <p className="text-[10px] text-blue-700 font-medium mt-0.5">
+                          {[user.position, user.unit, user.polres || user.polda].filter(Boolean).join(' • ')}
+                        </p>
+                      )}
+
+                      <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
+                        <span className="px-2.5 py-0.5 rounded text-[10px] font-extrabold bg-[#0a1d37] text-white">
+                          {getRoleName(user.roleId)}
+                        </span>
+                        <span className="text-[11px] text-slate-400 font-mono">
+                          {user.createdAt || '2026-01-01'}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2 pt-1">
+                        <button
+                          onClick={() => openEditUser(user)}
+                          disabled={!isAdmin}
+                          title={!isAdmin ? 'Hanya Super User / Admin yang dapat mengedit user' : 'Edit User'}
+                          className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-semibold hover:bg-blue-100 flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-50"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                          <span>Edit</span>
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirm({ type: 'user', id: user.id, name: user.fullName })}
+                          disabled={!isAdmin}
+                          title={!isAdmin ? 'Hanya Super User / Admin yang dapat menghapus user' : 'Hapus User'}
+                          className="px-3 py-1.5 rounded-lg bg-red-50 text-red-700 text-xs font-semibold hover:bg-red-100 flex items-center gap-1 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-red-50"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Hapus</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           {/* Users Table (Desktop) */}
           <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-left text-xs min-w-[720px]">
+            <table className="w-full text-left text-xs min-w-[760px]">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-[10px] font-bold">
                 <tr>
+                  <th className="w-12 px-4 py-3 text-center">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      ref={el => { if (el) el.indeterminate = isSomeSelected; }}
+                      onChange={handleToggleSelectAll}
+                      disabled={!isAdmin}
+                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                      title={!isAdmin ? 'Aksi dibatasi: Hanya Super User / Admin yang dapat memilih akun' : 'Pilih Semua Akun'}
+                    />
+                  </th>
                   <th className="px-4 py-3">Nama & Username</th>
                   <th className="px-4 py-3">Role Akses</th>
                   <th className="px-4 py-3">Status</th>
@@ -909,59 +1197,81 @@ export function UserAccessPage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="px-4 py-3.5">
-                      <p className="font-bold text-slate-900">{user.fullName}</p>
-                      <p className="text-[11px] text-slate-500 font-mono">@{user.username}</p>
-                      {(user.position || user.unit || user.polda) && (
-                        <p className="text-[10px] text-blue-700 font-medium mt-0.5">
-                          {[user.position, user.unit, user.polres || user.polda].filter(Boolean).join(' • ')}
-                        </p>
-                      )}
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <span className="px-2.5 py-0.5 rounded text-[10px] font-extrabold bg-[#0a1d37] text-white">
-                        {getRoleName(user.roleId)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <button
-                        onClick={() => handleToggleUserStatus(user)}
-                        title={user.isActive ? 'Klik untuk nonaktifkan akun' : 'Klik untuk menyetujui / aktifkan akun'}
-                        className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold cursor-pointer transition flex items-center gap-1 ${
-                          user.isActive
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-red-50 hover:text-red-700 hover:border-red-200'
-                            : 'bg-amber-50 text-amber-800 border border-amber-300 hover:bg-emerald-100 hover:text-emerald-800 animate-pulse'
-                        }`}
-                      >
-                        <span className={`w-1.5 h-1.5 rounded-full ${user.isActive ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                        <span>{user.isActive ? 'Aktif' : 'Menunggu ACC / Nonaktif'}</span>
-                      </button>
-                    </td>
-                    <td className="px-4 py-3.5 text-slate-500">
-                      {user.createdAt || '2026-01-01'}
-                    </td>
-                    <td className="px-4 py-3.5 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
+                {filteredUsers.map((user) => {
+                  const isSelected = selectedUserIds.includes(user.id);
+                  return (
+                    <tr
+                      key={user.id}
+                      className={`transition-colors ${
+                        isSelected ? 'bg-blue-50/70 font-medium' : 'hover:bg-slate-50/80'
+                      }`}
+                    >
+                      <td className="w-12 px-4 py-3.5 text-center">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleToggleSelectUser(user.id)}
+                          disabled={!isAdmin}
+                          className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                        />
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <p className="font-bold text-slate-900">{user.fullName}</p>
+                        <p className="text-[11px] text-slate-500 font-mono">@{user.username}</p>
+                        {(user.position || user.unit || user.polda) && (
+                          <p className="text-[10px] text-blue-700 font-medium mt-0.5">
+                            {[user.position, user.unit, user.polres || user.polda].filter(Boolean).join(' • ')}
+                          </p>
+                        )}
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <span className="px-2.5 py-0.5 rounded text-[10px] font-extrabold bg-[#0a1d37] text-white">
+                          {getRoleName(user.roleId)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5">
                         <button
-                          onClick={() => openEditUser(user)}
-                          className="p-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors cursor-pointer"
-                          title="Edit User"
+                          onClick={() => handleToggleUserStatus(user)}
+                          disabled={!isAdmin}
+                          title={!isAdmin ? 'Hanya Super User / Admin yang dapat mengubah status akun' : (user.isActive ? 'Klik untuk nonaktifkan akun' : 'Klik untuk menyetujui / aktifkan akun')}
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold transition flex items-center gap-1 ${
+                            !isAdmin
+                              ? (user.isActive ? 'bg-slate-100 text-slate-500 border border-slate-200 cursor-not-allowed' : 'bg-amber-50 text-amber-600 border border-amber-200 cursor-not-allowed')
+                              : (user.isActive
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-red-50 hover:text-red-700 hover:border-red-200 cursor-pointer'
+                                : 'bg-amber-50 text-amber-800 border border-amber-300 hover:bg-emerald-100 hover:text-emerald-800 animate-pulse cursor-pointer')
+                          }`}
                         >
-                          <Pencil className="w-3.5 h-3.5" />
+                          <span className={`w-1.5 h-1.5 rounded-full ${user.isActive ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                          <span>{user.isActive ? 'Aktif' : 'Menunggu ACC / Nonaktif'}</span>
                         </button>
-                        <button
-                          onClick={() => setDeleteConfirm({ type: 'user', id: user.id, name: user.fullName })}
-                          className="p-1.5 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 transition-colors cursor-pointer"
-                          title="Hapus User"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-4 py-3.5 text-slate-500">
+                        {user.createdAt || '2026-01-01'}
+                      </td>
+                      <td className="px-4 py-3.5 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => openEditUser(user)}
+                            disabled={!isAdmin}
+                            className="p-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-50"
+                            title={!isAdmin ? 'Hanya Super User / Admin yang dapat mengedit user' : 'Edit User'}
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setDeleteConfirm({ type: 'user', id: user.id, name: user.fullName })}
+                            disabled={!isAdmin}
+                            className="p-1.5 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-red-50"
+                            title={!isAdmin ? 'Hanya Super User / Admin yang dapat menghapus user' : 'Hapus User'}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -977,7 +1287,13 @@ export function UserAccessPage({
             </p>
             <button
               onClick={openCreateRole}
-              className="bg-[#0a1d37] hover:bg-[#162c4e] text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+              disabled={!isAdmin}
+              title={!isAdmin ? 'Aksi dibatasi: Hanya Super User / Admin yang dapat menambah role' : undefined}
+              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 ${
+                !isAdmin
+                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
+                  : 'bg-[#0a1d37] hover:bg-[#162c4e] text-white cursor-pointer'
+              }`}
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Tambah Role Baru</span>
@@ -1001,7 +1317,9 @@ export function UserAccessPage({
                   <div className="flex items-center gap-2 shrink-0">
                     <button
                       onClick={() => openEditRole(role)}
-                      className="px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5"
+                      disabled={!isAdmin}
+                      title={!isAdmin ? 'Hanya Super User / Admin yang dapat mengedit matriks role' : 'Edit Matriks'}
+                      className="px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-50"
                     >
                       <Pencil className="w-3.5 h-3.5" />
                       <span>Edit Matriks</span>
@@ -1009,8 +1327,9 @@ export function UserAccessPage({
                     {role.id !== 'role-admin' && (
                       <button
                         onClick={() => setDeleteConfirm({ type: 'role', id: role.id, name: role.name })}
-                        className="p-1.5 rounded-xl bg-red-50 text-red-700 hover:bg-red-100 transition-colors cursor-pointer"
-                        title="Hapus Role"
+                        disabled={!isAdmin}
+                        title={!isAdmin ? 'Hanya Super User / Admin yang dapat menghapus role' : 'Hapus Role'}
+                        className="p-1.5 rounded-xl bg-red-50 text-red-700 hover:bg-red-100 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-red-50"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -1092,10 +1411,17 @@ export function UserAccessPage({
 
             <button
               onClick={() => {
+                if (!isAdmin) return;
                 setMasterForm({ id: '', nama: '', parentId: '' });
                 setShowMasterModal(true);
               }}
-              className="bg-[#0a1d37] hover:bg-[#162c4e] text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer self-start sm:self-auto"
+              disabled={!isAdmin}
+              title={!isAdmin ? 'Aksi dibatasi: Hanya Super User / Admin yang dapat menambah data master' : undefined}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition self-start sm:self-auto ${
+                !isAdmin
+                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300'
+                  : 'bg-[#0a1d37] hover:bg-[#162c4e] text-white cursor-pointer'
+              }`}
             >
               <Plus className="w-4 h-4" />
               <span>Tambah Master Baru</span>
@@ -1113,27 +1439,90 @@ export function UserAccessPage({
             </div>
           )}
 
-          {/* Sub Tab Entitas Master */}
-          <div className="flex items-center gap-2 border-b border-slate-100 pb-3 overflow-x-auto">
-            {[
-              { type: 'instansi', label: '1. Instansi (K/L)' },
-              { type: 'organisasi', label: '2. Organisasi (Ditjen / Deputi)' },
-              { type: 'sub_organisasi', label: '3. Sub-Organisasi (Kanwil / Dit)' },
-              { type: 'satker', label: '4. Satker (Satuan Kerja Lapangan)' },
-            ].map((sub) => (
-              <button
-                key={sub.type}
-                onClick={() => setMasterKedinasanType(sub.type as any)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                  masterKedinasanType === sub.type
-                    ? 'bg-blue-900 text-white shadow-xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {sub.label}
-              </button>
-            ))}
+          {/* Sub Tab Entitas Master & Pencarian */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
+              {[
+                { type: 'instansi', label: '1. Instansi (K/L)' },
+                { type: 'organisasi', label: '2. Organisasi (Ditjen / Deputi)' },
+                { type: 'sub_organisasi', label: '3. Sub-Organisasi (Kanwil / Dit)' },
+                { type: 'satker', label: '4. Satker (Satuan Kerja Lapangan)' },
+              ].map((sub) => (
+                <button
+                  key={sub.type}
+                  onClick={() => {
+                    setMasterKedinasanType(sub.type as any);
+                    setSelectedMasterIds([]);
+                    setMasterSearchQuery('');
+                  }}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+                    masterKedinasanType === sub.type
+                      ? 'bg-blue-900 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {sub.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Pencarian Master Data */}
+            <div className="relative w-full md:w-64">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder={`Cari master ${masterKedinasanType}...`}
+                value={masterSearchQuery}
+                onChange={e => setMasterSearchQuery(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+              />
+              {masterSearchQuery && (
+                <button
+                  onClick={() => setMasterSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
           </div>
+
+          {/* BULK SELECTION ACTION BAR MASTER */}
+          {selectedMasterIds.length > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-blue-50/90 border border-blue-200 rounded-2xl shadow-xs animate-in fade-in duration-150">
+              <div className="flex items-center gap-2.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse" />
+                <p className="text-xs font-bold text-blue-950">
+                  {selectedMasterIds.length} item master dipilih
+                </p>
+                <button
+                  onClick={() => setSelectedMasterIds([])}
+                  className="text-[11px] font-semibold text-blue-700 hover:text-blue-900 underline ml-1 cursor-pointer"
+                >
+                  Batal Pilihan
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    if (!isAdmin) return;
+                    setDeleteConfirm({
+                      type: 'bulk-master',
+                      id: '',
+                      name: `${selectedMasterIds.length} item master`,
+                      count: selectedMasterIds.length
+                    });
+                  }}
+                  disabled={!isAdmin}
+                  title={!isAdmin ? 'Aksi dibatasi: Hanya Super User / Admin yang dapat menghapus data master' : undefined}
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-700 transition flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Hapus {selectedMasterIds.length} Terpilih</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           {isMasterLoading ? (
             <div className="py-12 text-center text-slate-400 text-xs">Memuat data master...</div>
@@ -1142,6 +1531,19 @@ export function UserAccessPage({
               <table className="w-full text-left text-xs min-w-[540px]">
                 <thead className="bg-slate-50 text-slate-600 uppercase text-[10px] font-bold">
                   <tr>
+                    <th className="w-12 px-4 py-3 text-center">
+                      <input
+                        type="checkbox"
+                        checked={isAllMasterSelected}
+                        ref={el => {
+                          if (el) el.indeterminate = isSomeMasterSelected;
+                        }}
+                        onChange={handleToggleSelectAllMaster}
+                        disabled={!isAdmin}
+                        className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                        title={!isAdmin ? 'Aksi dibatasi: Hanya Super User / Admin yang dapat memilih master data' : (isAllMasterSelected ? 'Batalkan semua pilihan' : 'Pilih semua master')}
+                      />
+                    </th>
                     <th className="px-4 py-3">Kode / ID Entitas</th>
                     <th className="px-4 py-3">Nama Resmi Entitas</th>
                     {masterKedinasanType !== 'instansi' && (
@@ -1151,30 +1553,51 @@ export function UserAccessPage({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {masterList.map((item: any) => (
-                    <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="px-4 py-3 font-mono text-slate-500 font-semibold">{item.id}</td>
-                      <td className="px-4 py-3 font-bold text-slate-900">{item.nama}</td>
-                      {masterKedinasanType !== 'instansi' && (
-                        <td className="px-4 py-3 font-mono text-blue-700 font-medium">
-                          {item.instansiId || item.organisasiId || item.subOrgId || '-'}
+                  {filteredMasterList.map((item: any) => {
+                    const isSelected = selectedMasterIds.includes(item.id);
+                    return (
+                      <tr
+                        key={item.id}
+                        className={`transition-colors ${
+                          isSelected ? 'bg-blue-50/70 font-medium' : 'hover:bg-slate-50/80'
+                        }`}
+                      >
+                        <td className="w-12 px-4 py-3 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleSelectMaster(item.id)}
+                            disabled={!isAdmin}
+                            className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                          />
                         </td>
-                      )}
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={() => handleDeleteMaster(item.id)}
-                          className="p-1.5 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 transition-colors cursor-pointer"
-                          title="Hapus Master"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {masterList.length === 0 && (
+                        <td className="px-4 py-3 font-mono text-slate-500 font-semibold">{item.id}</td>
+                        <td className="px-4 py-3 font-bold text-slate-900">{item.nama}</td>
+                        {masterKedinasanType !== 'instansi' && (
+                          <td className="px-4 py-3 font-mono text-blue-700 font-medium">
+                            {item.instansiId || item.organisasiId || item.subOrgId || '-'}
+                          </td>
+                        )}
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            onClick={() => {
+                              if (!isAdmin) return;
+                              setDeleteConfirm({ type: 'master', id: item.id, name: item.nama || item.id });
+                            }}
+                            disabled={!isAdmin}
+                            className="p-1.5 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-red-50"
+                            title={!isAdmin ? 'Aksi dibatasi: Hanya Super User / Admin yang dapat menghapus master' : 'Hapus Master'}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {filteredMasterList.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="py-8 text-center text-slate-400">
-                        Belum ada data pada entitas ini.
+                      <td colSpan={masterKedinasanType !== 'instansi' ? 5 : 4} className="py-8 text-center text-slate-400">
+                        {masterSearchQuery ? 'Tidak ada data master yang cocok dengan pencarian.' : 'Belum ada data pada entitas ini.'}
                       </td>
                     </tr>
                   )}
@@ -1256,7 +1679,8 @@ export function UserAccessPage({
                 </button>
                 <button
                   type="submit"
-                  className="bg-[#0a1d37] hover:bg-[#162c4e] text-white px-5 py-2 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer"
+                  disabled={!isAdmin}
+                  className="bg-[#0a1d37] hover:bg-[#162c4e] text-white px-5 py-2 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Simpan Master
                 </button>
@@ -1513,8 +1937,8 @@ export function UserAccessPage({
               </button>
               <button
                 onClick={handleSaveUser}
-                disabled={isSubmitting}
-                className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-[#0a1d37] hover:bg-[#162c4e] disabled:opacity-50 transition-colors cursor-pointer shadow-xs"
+                disabled={isSubmitting || !isAdmin}
+                className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-[#0a1d37] hover:bg-[#162c4e] disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer shadow-xs"
               >
                 {isSubmitting ? 'Menyimpan...' : 'Simpan Akun'}
               </button>
@@ -1616,8 +2040,8 @@ export function UserAccessPage({
               </button>
               <button
                 onClick={handleSaveRole}
-                disabled={isSubmitting}
-                className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-[#0a1d37] hover:bg-[#162c4e] disabled:opacity-50 transition-colors cursor-pointer shadow-xs"
+                disabled={isSubmitting || !isAdmin}
+                className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-[#0a1d37] hover:bg-[#162c4e] disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer shadow-xs"
               >
                 {isSubmitting ? 'Menyimpan...' : 'Simpan Matriks Role'}
               </button>
@@ -1633,11 +2057,35 @@ export function UserAccessPage({
             <div className="flex items-center gap-3 text-red-600">
               <AlertTriangle className="w-6 h-6 shrink-0" />
               <h3 className="font-bold text-sm text-slate-900">
-                Hapus {deleteConfirm.type === 'user' ? 'Akun Pengguna' : 'Role'}?
+                {deleteConfirm.type === 'bulk-users'
+                  ? `Hapus ${deleteConfirm.count || selectedUserIds.length} Akun Pengguna?`
+                  : deleteConfirm.type === 'bulk-master'
+                  ? `Hapus ${deleteConfirm.count || selectedMasterIds.length} Data Master?`
+                  : deleteConfirm.type === 'user'
+                  ? 'Hapus Akun Pengguna?'
+                  : deleteConfirm.type === 'master'
+                  ? 'Hapus Data Master Kedinasan?'
+                  : 'Hapus Role?'}
               </h3>
             </div>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Anda akan menghapus <strong>"{deleteConfirm.name}"</strong> secara permanen dari sistem tata kelola SM-Learning.
+              {deleteConfirm.type === 'bulk-users' ? (
+                <>
+                  Anda akan menghapus <strong>{deleteConfirm.count || selectedUserIds.length} akun pengguna terpilih</strong> secara massal. Tindakan ini permanen dan tidak dapat dibatalkan.
+                </>
+              ) : deleteConfirm.type === 'bulk-master' ? (
+                <>
+                  Anda akan menghapus <strong>{deleteConfirm.count || selectedMasterIds.length} data master {masterKedinasanType.toUpperCase().replace('_', ' ')}</strong> secara massal. Tindakan ini permanen dan tidak dapat dibatalkan.
+                </>
+              ) : deleteConfirm.type === 'master' ? (
+                <>
+                  Anda akan menghapus item master <strong>"{deleteConfirm.name}"</strong> secara permanen dari basis data kedinasan.
+                </>
+              ) : (
+                <>
+                  Anda akan menghapus <strong>"{deleteConfirm.name}"</strong> secara permanen dari sistem tata kelola SM-Learning.
+                </>
+              )}
             </p>
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 shrink-0">
               <button
@@ -1648,15 +2096,23 @@ export function UserAccessPage({
               </button>
               <button
                 onClick={() => {
-                  if (deleteConfirm.type === 'user') {
+                  if (!isAdmin) return;
+                  if (deleteConfirm.type === 'bulk-users') {
+                    handleBulkDeleteUsers();
+                  } else if (deleteConfirm.type === 'bulk-master') {
+                    handleBulkDeleteMaster();
+                  } else if (deleteConfirm.type === 'user') {
                     handleDeleteUser(deleteConfirm.id);
+                  } else if (deleteConfirm.type === 'master') {
+                    executeDeleteMaster(deleteConfirm.id);
                   } else {
                     handleDeleteRole(deleteConfirm.id);
                   }
                 }}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-700 transition-colors cursor-pointer shadow-xs"
+                disabled={isSubmitting || !isAdmin}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer shadow-xs"
               >
-                Hapus Permanen
+                {isSubmitting ? 'Menghapus...' : 'Hapus Permanen'}
               </button>
             </div>
           </div>

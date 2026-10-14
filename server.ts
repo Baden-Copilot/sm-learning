@@ -53,6 +53,18 @@ import {
   saveAiChatMessage,
 } from './src/db';
 import { buildAiSystemInstruction } from './src/services/aiContextService';
+import {
+  getScope,
+  applyScopeToSessions,
+  filterUsersByScope,
+  canManageUserAccount,
+  isRecordInScope,
+  filterPoldaListByScope,
+  filterPolresListByScope,
+  getEffectiveTerritoryFilter,
+  isPoldaMatch,
+  isPolresMatch
+} from './src/services/scopeService';
 
 // Module-level pointer to materials (synced with db cache)
 let materialsStore: MaterialItem[] = readMaterialsData();
@@ -647,16 +659,28 @@ async function startServer() {
     });
   });
 
-  // Master Data Wilayah (Polda & Polres dari data_polda & data_polres)
-  app.get('/api/wilayah/polda', (_req, res) => {
+  // Master Data Wilayah (Polda & Polres dari data_polda & data_polres dengan Scope Enforcement)
+  app.get('/api/wilayah/polda', (req, res) => {
+    const caller = resolveCaller(req);
     const poldas = getPoldaList();
-    res.json({ success: true, data: poldas });
+    if (!caller) {
+      return res.json({ success: true, data: poldas });
+    }
+    const scope = getScope(caller.user);
+    const filtered = filterPoldaListByScope(poldas, scope);
+    res.json({ success: true, data: filtered });
   });
 
   app.get('/api/wilayah/polres', (req, res) => {
+    const caller = resolveCaller(req);
     const poldaId = req.query.poldaId ? String(req.query.poldaId) : undefined;
     const polres = getPolresList(poldaId);
-    res.json({ success: true, data: polres });
+    if (!caller) {
+      return res.json({ success: true, data: polres });
+    }
+    const scope = getScope(caller.user);
+    const filtered = filterPolresListByScope(polres, scope, poldaId);
+    res.json({ success: true, data: filtered });
   });
 
   // Master Data Kedinasan (Instansi, Organisasi, Sub Org, Satker)
@@ -1089,8 +1113,10 @@ async function startServer() {
     });
   });
 
-  // Stats summary
-  app.get('/api/stats', (_req, res) => {
+  // Stats summary (Scoped)
+  app.get('/api/stats', (req, res) => {
+    const caller = resolveCaller(req);
+    const scope = caller ? getScope(caller.user) : null;
     const totalMaterials = materialsStore.length;
     const totalViews = materialsStore.reduce((acc, curr) => acc + curr.views, 0);
     const totalDownloads = materialsStore.reduce((acc, curr) => acc + (curr.downloads || 0), 0);
@@ -1101,13 +1127,19 @@ async function startServer() {
       'SMA': materialsStore.filter(m => m.level === 'SMA').length
     };
 
+    let sessions = readOutreachSessions();
+    if (scope && !scope.isAll && scope.level !== 'nasional') {
+      sessions = applyScopeToSessions(sessions, scope);
+    }
+
     res.json({
       success: true,
       data: {
         totalMaterials,
         totalViews,
         totalDownloads,
-        countsByLevel
+        countsByLevel,
+        totalSessions: sessions.length
       }
     });
   });
@@ -1231,10 +1263,13 @@ async function startServer() {
   });
 
   // Get all users & roles (Requires view permission on user-akses or role-admin)
-  app.get('/api/user-access/data', verifyAuthAndRole('user-akses', 'view'), (_req, res) => {
+  app.get('/api/user-access/data', verifyAuthAndRole('user-akses', 'view'), (req, res) => {
+    const caller = resolveCaller(req);
+    const scope = getScope(caller?.user);
     const data = readUserData();
+    const scopedUsers = filterUsersByScope(data.users, scope);
     // Sanitize user passwords before sending to client
-    const sanitizedUsers = data.users.map((u: any) => {
+    const sanitizedUsers = scopedUsers.map((u: any) => {
       const { password: _, ...rest } = u;
       return rest;
     });
@@ -1245,11 +1280,21 @@ async function startServer() {
 
   // Create single user
   app.post('/api/user-access/user', verifyAuthAndRole('user-akses', 'add'), async (req, res) => {
+    const caller = resolveCaller(req);
+    const scope = getScope(caller?.user);
     const u = req.body;
     if (!u.username || !u.fullName || !u.roleId) {
       return res.status(400).json({
         success: false,
         message: 'Username, nama lengkap, dan role wajib diisi.'
+      });
+    }
+
+    const check = canManageUserAccount(scope, u);
+    if (!check.allowed) {
+      return res.status(403).json({
+        success: false,
+        message: check.reason || 'Akses ditolak. Anda tidak memiliki wewenang membuat akun di luar hierarki atau wilayah Anda.'
       });
     }
 
@@ -1301,6 +1346,8 @@ async function startServer() {
   // Update single user
   app.put('/api/user-access/user/:id', verifyAuthAndRole('user-akses', 'edit'), async (req, res) => {
     const { id } = req.params;
+    const caller = resolveCaller(req);
+    const scope = getScope(caller?.user);
     const u = req.body;
     if (!u.username || !u.fullName || !u.roleId) {
       return res.status(400).json({
@@ -1309,9 +1356,25 @@ async function startServer() {
       });
     }
 
-    const trimmedUsername = String(u.username).trim();
     const data = readUserData();
-    const isDuplicate = data.users.some((existing: any) => existing.id !== id && existing.username.toLowerCase() === trimmedUsername.toLowerCase());
+    const existing = data.users.find((x: any) => x.id === id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan.' });
+    }
+
+    if (!scope.isAll) {
+      const canSee = filterUsersByScope([existing], scope).length > 0;
+      if (!canSee) {
+        return res.status(403).json({ success: false, message: 'Akses ditolak. Akun pengguna berada di luar wewenang Anda.' });
+      }
+      const check = canManageUserAccount(scope, u, existing);
+      if (!check.allowed) {
+        return res.status(403).json({ success: false, message: check.reason || 'Akses ditolak. Tidak dapat mengubah akun ke luar hierarki atau wilayah Anda.' });
+      }
+    }
+
+    const trimmedUsername = String(u.username).trim();
+    const isDuplicate = data.users.some((x: any) => x.id !== id && x.username.toLowerCase() === trimmedUsername.toLowerCase());
     if (isDuplicate) {
       return res.status(400).json({
         success: false,
@@ -1338,6 +1401,25 @@ async function startServer() {
   // Delete single user
   app.delete('/api/user-access/user/:id', verifyAuthAndRole('user-akses', 'delete'), async (req, res) => {
     const { id } = req.params;
+    const caller = resolveCaller(req);
+    const scope = getScope(caller?.user);
+    const data = readUserData();
+    const existing = data.users.find((x: any) => x.id === id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Pengguna tidak ditemukan.' });
+    }
+
+    if (!scope.isAll) {
+      const canSee = filterUsersByScope([existing], scope).length > 0;
+      if (!canSee) {
+        return res.status(403).json({ success: false, message: 'Akses ditolak. Akun pengguna berada di luar wewenang Anda.' });
+      }
+      const check = canManageUserAccount(scope, existing, existing);
+      if (!check.allowed) {
+        return res.status(403).json({ success: false, message: check.reason || 'Akses ditolak. Tidak dapat menghapus akun di luar hierarki atau wilayah Anda.' });
+      }
+    }
+
     try {
       await deleteSingleUser(id);
       res.json({ success: true, message: 'Akun pengguna berhasil dihapus.' });
@@ -1871,21 +1953,23 @@ async function startServer() {
     });
   });
 
-  // List all outreach sessions (with optional trainer/status filter)
+  // List all outreach sessions (with territorial scope enforcement)
   app.get('/api/outreach/sessions', (req, res) => {
     // Session records carry the trainer's identity, unit, and the live access
     // code for the room. Anonymous audiences reach a session through
     // /api/public/session/join with a code they were given, never through this
     // list.
-    if (!resolveCaller(req)) {
+    const caller = resolveCaller(req);
+    if (!caller) {
       return res.status(403).json({ success: false, message: 'Akses ditolak. Silakan login terlebih dahulu.' });
     }
-    const { trainerId, status } = req.query;
+    const scope = getScope(caller.user);
+    const { trainerId, status, polda, polres } = req.query;
     let sessions = readOutreachSessions();
 
-    if (trainerId) {
-      sessions = sessions.filter((s: any) => s.trainerId === String(trainerId));
-    }
+    // Enforce territorial and role scope terpusat
+    sessions = applyScopeToSessions(sessions, scope, { trainerId, polda, polres });
+
     if (status) {
       sessions = sessions.filter((s: any) => s.status === String(status));
     }
@@ -1915,7 +1999,9 @@ async function startServer() {
 
   // Create new outreach session (Trainer / Admin)
   app.post('/api/outreach/sessions', verifyAuthAndRole('trainer-outreach', 'add'), (req, res) => {
-    const userId = (req.headers['x-user-id'] as string) || 'user-2';
+    const caller = resolveCaller(req);
+    const scope = getScope(caller?.user);
+    const userId = (req.headers['x-user-id'] as string) || caller?.id || 'user-2';
     const {
       materialId,
       activityName,
@@ -1937,6 +2023,22 @@ async function startServer() {
       });
     }
 
+    // Validasi wewenang wilayah kegiatan
+    if (!scope.isAll && scope.level !== 'nasional') {
+      if (!isPoldaMatch(polda, scope.polda, undefined, scope.poldaId)) {
+        return res.status(403).json({
+          success: false,
+          message: `Akses ditolak. Anda hanya dapat menyelenggarakan kegiatan di wilayah Polda ${scope.polda}.`
+        });
+      }
+      if (scope.level === 'polres' && !isPolresMatch(polres, scope.polres, undefined, scope.polresId)) {
+        return res.status(403).json({
+          success: false,
+          message: `Akses ditolak. Anda hanya dapat menyelenggarakan kegiatan di wilayah Polres ${scope.polres}.`
+        });
+      }
+    }
+
     const material = materialsStore.find(m => m.id === materialId);
     if (!material) {
       return res.status(404).json({ success: false, message: 'Materi tidak ditemukan dalam katalog.' });
@@ -1952,15 +2054,19 @@ async function startServer() {
     const sessionId = `SES-${new Date().getFullYear()}-${String(timestamp).slice(-6)}`;
     const publicAccessUrl = `/public/session/${accessCode}`;
 
+    const assignedTrainerId = (scope.isAll || scope.level === 'nasional') && req.body.trainerId ? req.body.trainerId : userId;
+    const assignedTrainer = userData.users.find((u: any) => u.id === assignedTrainerId) || trainer;
+    const assignedTrainerName = req.body.trainerName || assignedTrainer?.fullName || trainerName;
+
     const newSession = {
-      id: sessionId,
+      id: req.body.id || sessionId,
       materialId,
       materialTitle: material.title,
-      trainerId: userId,
-      trainerName,
+      trainerId: assignedTrainerId,
+      trainerName: assignedTrainerName,
       // Snapshot trainer kedinasan for historical consistency
-      trainerPosition: trainer?.position || '',
-      trainerUnit: trainer?.unit || '',
+      trainerPosition: assignedTrainer?.position || '',
+      trainerUnit: assignedTrainer?.unit || '',
       activityName,
       polda,
       polres,
@@ -1968,7 +2074,7 @@ async function startServer() {
       date,
       startTime,
       status: 'active',
-      publicAccessCode: accessCode,
+      publicAccessCode: req.body.publicAccessCode || accessCode,
       publicAccessUrl,
       targetParticipants: targetParticipants ? Number(targetParticipants) : 0,
       audienceType: audienceType || 'Umum',
@@ -1988,14 +2094,46 @@ async function startServer() {
     });
   });
 
+  // Delete single session
+  app.delete('/api/outreach/sessions/:id', verifyAuthAndRole('trainer-outreach', 'delete'), (req, res) => {
+    const { id } = req.params;
+    const caller = resolveCaller(req);
+    const scope = getScope(caller?.user);
+    const sessions = readOutreachSessions();
+    const existing = sessions.find((s: any) => s.id === id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Sesi kegiatan tidak ditemukan.' });
+    }
+    if (!scope.isAll && scope.level !== 'nasional') {
+      if (!isRecordInScope(existing, scope)) {
+        return res.status(403).json({ success: false, message: 'Akses ditolak. Sesi kegiatan berada di luar wewenang Anda.' });
+      }
+    }
+    const updated = sessions.filter((s: any) => s.id !== id);
+    writeOutreachSessions(updated);
+    res.json({ success: true, message: 'Sesi kegiatan berhasil dihapus.' });
+  });
+
   // Get single session detail & live real metrics
   app.get('/api/outreach/sessions/:id', (req, res) => {
     const { id } = req.params;
+    const caller = resolveCaller(req);
     const sessions = readOutreachSessions();
     const session = sessions.find((s: any) => s.id === id || s.publicAccessCode === id);
 
     if (!session) {
       return res.status(404).json({ success: false, message: 'Sesi kegiatan pemaparan tidak ditemukan.' });
+    }
+
+    // Enforce territorial scope by ID
+    if (caller) {
+      const scope = getScope(caller.user);
+      if (!isRecordInScope(session, scope)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Akses ditolak. Sesi kegiatan berada di luar wilayah wewenang Anda.'
+        });
+      }
     }
 
     const rawParticipants = readSessionParticipants().filter((p: any) => p.sessionId === session.id);
@@ -2417,6 +2555,19 @@ async function startServer() {
    */
   app.get('/api/outreach/sessions/:sessionId/certificates/batch-print', (req, res) => {
     const { sessionId } = req.params;
+    const caller = resolveCaller(req);
+    if (!caller) {
+      return res.status(403).send('Akses ditolak. Silakan login terlebih dahulu.');
+    }
+    const session = readOutreachSessions().find((s: any) => s.id === sessionId);
+    if (!session) {
+      return res.status(404).send('Kegiatan tidak ditemukan.');
+    }
+    const scope = getScope(caller.user);
+    if (!isRecordInScope(session, scope)) {
+      return res.status(403).send('Akses ditolak. Anda tidak memiliki wewenang mencetak sertifikat di luar wilayah Anda.');
+    }
+
     const records = readLearningRecords();
     const certs = records.certificates.filter((c: any) => c.sessionId === sessionId && c.isValid !== false);
 
@@ -2593,41 +2744,13 @@ ${CERTIFICATE_SHARED_CSS}
       return res.status(403).json({ success: false, message: 'Akses ditolak. Silakan login terlebih dahulu.' });
     }
 
-    const callerUser = caller.user || {};
-    const callerRole = callerUser.roleId;
-    const callerExecLevel = callerUser.executiveLevel;
-
-    let { polda, polres, trainerId, materialId } = req.query;
+    const scope = getScope(caller.user);
+    const { polda, polres, trainerId, materialId } = req.query;
     let reports = readOutreachReports();
 
-    // Enforce territorial scope for Regional Executives & Trainers
-    if (callerRole === 'role-executive-1' || (callerRole === 'role-executive' && callerExecLevel === 'polres')) {
-      if (callerUser.polres) polres = callerUser.polres;
-      if (callerUser.polda) polda = callerUser.polda;
-    } else if (callerRole === 'role-executive-2' || (callerRole === 'role-executive' && callerExecLevel === 'polda')) {
-      if (callerUser.polda) polda = callerUser.polda;
-    } else if (callerRole === 'role-trainer') {
-      // Trainer only sees their own or their polres/polda reports
-      if (callerUser.polda) polda = callerUser.polda;
-    }
+    // Enforce territorial and role scope terpusat
+    reports = applyScopeToSessions(reports, scope, { polda, polres, trainerId });
 
-    if (polda && String(polda) !== 'ALL') {
-      const targetPolda = String(polda).toLowerCase();
-      reports = reports.filter((r: any) =>
-        (r.polda && r.polda.toLowerCase() === targetPolda) ||
-        (r.poldaId && callerUser.poldaId && r.poldaId === callerUser.poldaId)
-      );
-    }
-    if (polres && String(polres) !== 'ALL') {
-      const targetPolres = String(polres).toLowerCase();
-      reports = reports.filter((r: any) =>
-        (r.polres && r.polres.toLowerCase() === targetPolres) ||
-        (r.polresId && callerUser.polresId && r.polresId === callerUser.polresId)
-      );
-    }
-    if (trainerId && String(trainerId) !== 'ALL') {
-      reports = reports.filter((r: any) => r.trainerId === String(trainerId));
-    }
     if (materialId && String(materialId) !== 'ALL') {
       reports = reports.filter((r: any) => r.materialId === String(materialId));
     }
@@ -2644,22 +2767,18 @@ ${CERTIFICATE_SHARED_CSS}
     if (!caller) {
       return res.status(403).json({ success: false, message: 'Akses ditolak. Silakan login terlebih dahulu.' });
     }
-    // The account's stored role decides what may be seen. Reading x-role-id here
-    // would let a trainer send role-admin and open anyone's activity.
-    const roleId = caller.user.roleId;
-    const userId = caller.id;
+    const scope = getScope(caller.user);
 
     const session = readOutreachSessions().find((s: any) => s.id === sessionId);
     if (!session) {
       return res.status(404).json({ success: false, message: 'Kegiatan tidak ditemukan.' });
     }
 
-    // A trainer may only open their own activity; pimpinan and admin see all.
-    const isSupervisor = roleId === 'role-admin' || roleId === 'role-executive' || roleId.startsWith('role-executive-');
-    if (!isSupervisor && session.trainerId !== userId) {
+    // Enforce territorial and role scope on activity session
+    if (!isRecordInScope(session, scope)) {
       return res.status(403).json({
         success: false,
-        message: 'Akses ditolak. Anda hanya dapat melihat hasil kegiatan yang Anda selenggarakan.'
+        message: 'Akses ditolak. Kegiatan berada di luar wilayah wewenang Anda.'
       });
     }
 
@@ -2765,26 +2884,17 @@ ${CERTIFICATE_SHARED_CSS}
   // === EXECUTIVE ANALYTICS (REAL COMPUTED DATA ONLY) ===
   app.get('/api/executive/analytics', verifyAuthAndRole('executive', 'view'), (req, res) => {
     const caller = resolveCaller(req);
+    const scope = getScope(caller?.user);
     const callerUser = caller?.user || {};
-    const callerRole = callerUser.roleId;
-    const callerExecLevel = callerUser.executiveLevel as 'nasional' | 'polda' | 'polres' | undefined;
 
     // Master 34 Polda kewilayahan resmi
     const poldaMaster = getPoldaList().filter(p => p.isWilayah);
     const POLDA_REFERENCE = poldaMaster.map(p => p.nama);
 
-    // Tentukan lingkup wilayah efektif (enforce scope eksekutif)
-    let effectivePolda: string | undefined = req.query.polda ? String(req.query.polda) : undefined;
-    let effectivePolres: string | undefined = req.query.polres ? String(req.query.polres) : undefined;
-
-    // Eksekutif level Polda / Polres terkunci ke wilayahnya sendiri
-    if (callerRole === 'role-executive-1' || (callerRole === 'role-executive' && callerExecLevel === 'polres')) {
-      if (callerUser.polda) effectivePolda = callerUser.polda;
-      if (callerUser.polres) effectivePolres = callerUser.polres;
-    } else if (callerRole === 'role-executive-2' || (callerRole === 'role-executive' && callerExecLevel === 'polda')) {
-      if (callerUser.polda) effectivePolda = callerUser.polda;
-    }
-
+    // Tentukan lingkup wilayah efektif (enforce scope terpusat)
+    const territory = getEffectiveTerritoryFilter(scope, req.query);
+    const effectivePolda = territory.polda;
+    const effectivePolres = territory.polres;
     const { trainerId, level, startDate, endDate } = req.query;
 
     let materials = [...materialsStore];
@@ -2795,6 +2905,10 @@ ${CERTIFICATE_SHARED_CSS}
     let records = readLearningRecords();
     let userData = readUserData();
 
+    // Enforce territorial and role scope terpusat pada sessions & reports
+    sessions = applyScopeToSessions(sessions, scope, { polda: effectivePolda, polres: effectivePolres, trainerId });
+    reports = applyScopeToSessions(reports, scope, { polda: effectivePolda, polres: effectivePolres, trainerId });
+
     // Level filter: narrow the material set first, then keep only the sessions that
     // presented one of those materials.
     if (level && String(level) !== 'ALL') {
@@ -2802,34 +2916,6 @@ ${CERTIFICATE_SHARED_CSS}
       const levelMaterialIds = new Set(materials.map(m => m.id));
       sessions = sessions.filter((s: any) => levelMaterialIds.has(s.materialId));
       reports = reports.filter((r: any) => levelMaterialIds.has(r.materialId));
-    }
-
-    // Filter by Polda & Polres (case-insensitive + id matching)
-    if (effectivePolda && String(effectivePolda) !== 'ALL') {
-      const targetPolda = String(effectivePolda).toLowerCase();
-      sessions = sessions.filter((s: any) =>
-        (s.polda && s.polda.toLowerCase() === targetPolda) ||
-        (s.poldaId && callerUser.poldaId && s.poldaId === callerUser.poldaId)
-      );
-      reports = reports.filter((r: any) =>
-        (r.polda && r.polda.toLowerCase() === targetPolda) ||
-        (r.poldaId && callerUser.poldaId && r.poldaId === callerUser.poldaId)
-      );
-    }
-    if (effectivePolres && String(effectivePolres) !== 'ALL') {
-      const targetPolres = String(effectivePolres).toLowerCase();
-      sessions = sessions.filter((s: any) =>
-        (s.polres && s.polres.toLowerCase() === targetPolres) ||
-        (s.polresId && callerUser.polresId && s.polresId === callerUser.polresId)
-      );
-      reports = reports.filter((r: any) =>
-        (r.polres && r.polres.toLowerCase() === targetPolres) ||
-        (r.polresId && callerUser.polresId && r.polresId === callerUser.polresId)
-      );
-    }
-    if (trainerId && String(trainerId) !== 'ALL') {
-      sessions = sessions.filter((s: any) => s.trainerId === String(trainerId));
-      reports = reports.filter((r: any) => r.trainerId === String(trainerId));
     }
 
     // Date range on the activity date
@@ -2852,7 +2938,16 @@ ${CERTIFICATE_SHARED_CSS}
     const totalMaterials = materials.length;
     const totalPublicMaterials = materials.filter(m => (m.publishStatus || 'published') === 'published' && m.publicAccess !== 'restricted').length;
 
-    const trainerUsers = userData.users.filter((u: any) => u.roleId === 'role-trainer');
+    // Filter trainerUsers berdasarkan scope wilayah pengguna
+    let trainerUsers = userData.users.filter((u: any) => u.roleId === 'role-trainer');
+    if (scope.level === 'polda' || (effectivePolda && effectivePolda !== 'ALL')) {
+      const targetPolda = scope.level === 'polda' ? scope.polda : effectivePolda;
+      trainerUsers = trainerUsers.filter((u: any) => isPoldaMatch(u.polda, targetPolda));
+    }
+    if (scope.level === 'polres' || (effectivePolres && effectivePolres !== 'ALL')) {
+      const targetPolres = scope.level === 'polres' ? scope.polres : effectivePolres;
+      trainerUsers = trainerUsers.filter((u: any) => isPolresMatch(u.polres, targetPolres));
+    }
     const totalTrainers = trainerUsers.length;
 
     const totalSessions = sessions.length;
@@ -3209,7 +3304,10 @@ ${CERTIFICATE_SHARED_CSS}
     // Regions on the books that ran nothing in this window — the blank spots on
     // the map, which no ranking of active units would ever reveal.
     const activePoldaSet = new Set(poldaKeys);
-    const inactivePolda = POLDA_REFERENCE.filter(p => !activePoldaSet.has(p));
+    const scopedPoldaReference = (scope.isAll || scope.level === 'nasional')
+      ? POLDA_REFERENCE
+      : POLDA_REFERENCE.filter(p => isPoldaMatch(p, scope.polda));
+    const inactivePolda = scopedPoldaReference.filter(p => !activePoldaSet.has(p));
 
     res.json({
       success: true,
@@ -3243,13 +3341,13 @@ ${CERTIFICATE_SHARED_CSS}
         kpiWeights: KPI_WEIGHTS,
         generatedAt: new Date().toISOString(),
         executiveScope: {
-          level: callerExecLevel || (callerRole === 'role-admin' ? 'nasional' : (callerRole === 'role-executive-1' ? 'polres' : callerRole === 'role-executive-2' ? 'polda' : 'nasional')),
-          polda: callerUser.polda || null,
-          polres: callerUser.polres || null,
-          poldaId: callerUser.poldaId || null,
-          polresId: callerUser.polresId || null,
-          isLockedToPolda: callerRole === 'role-executive-2' || (callerRole === 'role-executive' && callerExecLevel === 'polda'),
-          isLockedToPolres: callerRole === 'role-executive-1' || (callerRole === 'role-executive' && callerExecLevel === 'polres'),
+          level: scope.level,
+          polda: scope.polda || null,
+          polres: scope.polres || null,
+          poldaId: scope.poldaId || null,
+          polresId: scope.polresId || null,
+          isLockedToPolda: scope.level === 'polda',
+          isLockedToPolres: scope.level === 'polres',
         },
         appliedFilters: {
           polda: effectivePolda || 'ALL',
