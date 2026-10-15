@@ -3725,6 +3725,7 @@ ${CERTIFICATE_SHARED_CSS}
 
       // 5. Panggil Engine Alesha AI (Primary) dengan Fallback ke Google Gemini
       let replyText = '';
+      let msgSource: any = null;
       const aleshaBaseUrl = process.env.ALESHA_API_URL || 'http://127.0.0.1:8000';
       let aleshaSuccess = false;
 
@@ -3762,6 +3763,9 @@ ${CERTIFICATE_SHARED_CSS}
           if (aleshaData.success && aleshaData.reply) {
             replyText = aleshaData.reply;
             aleshaSuccess = true;
+            if (aleshaData.source) {
+              msgSource = aleshaData.source;
+            }
             console.log(`[AI Chat] Alesha AI Engine successfully generated reply (${replyText.length} chars)`);
           }
         } else {
@@ -3806,7 +3810,7 @@ ${CERTIFICATE_SHARED_CSS}
 
       // 6. Simpan respons asisten
       const assistantMsgId = `msg-a-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-      const savedAssistantMsg = await saveAiChatMessage(assistantMsgId, activeSessionId, caller.id, 'assistant', replyText);
+      const savedAssistantMsg = await saveAiChatMessage(assistantMsgId, activeSessionId, caller.id, 'assistant', replyText, msgSource);
 
       // Update judul sesi jika masih berupa judul default
       if (session && session.title === 'Percakapan Baru') {
@@ -3818,7 +3822,10 @@ ${CERTIFICATE_SHARED_CSS}
         success: true,
         sessionId: activeSessionId,
         userMessage: savedUserMsg,
-        assistantMessage: savedAssistantMsg,
+        assistantMessage: {
+          ...savedAssistantMsg,
+          source: msgSource
+        },
       });
     } catch (err: any) {
       console.error('[AI Chat] Send error:', err);

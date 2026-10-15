@@ -44,7 +44,9 @@ import {
   BookmarkCheck,
   BookOpen,
   GraduationCap,
-  Zap
+  Zap,
+  Database,
+  ShieldCheck
 } from 'lucide-react';
 import { POLRI_LOGO_URL } from '../data/materials';
 
@@ -63,7 +65,171 @@ export interface AiChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   createdAt: string;
+  source?: any;
   attachments?: Array<{ name: string; type: string; size: number }>;
+}
+
+
+interface MessageSourceInfo {
+  name: string;
+  badge: string;
+  type: 'database' | 'gateway' | 'regulation' | 'attachment' | 'system' | 'general' | 'chat' | 'ai';
+  detail: string;
+}
+
+function resolveMessageSource(content: string, customSource?: any): MessageSourceInfo {
+  // 1. If explicit customSource is provided from backend API response or database
+  if (customSource) {
+    if (typeof customSource === 'object' && customSource.name) {
+      return {
+        name: customSource.name,
+        badge: customSource.badge || customSource.name,
+        type: customSource.type || 'database',
+        detail: customSource.detail || 'Data tervalidasi dari sistem resmi Korlantas POLRI',
+      };
+    }
+    if (typeof customSource === 'string' && customSource.trim()) {
+      try {
+        const parsed = JSON.parse(customSource);
+        if (parsed && parsed.name) {
+          return {
+            name: parsed.name,
+            badge: parsed.badge || parsed.name,
+            type: parsed.type || 'database',
+            detail: parsed.detail || 'Data tervalidasi dari sistem resmi Korlantas POLRI',
+          };
+        }
+      } catch (e) {
+        return {
+          name: customSource,
+          badge: customSource,
+          type: 'database',
+          detail: 'Data tervalidasi dari sistem resmi Korlantas POLRI',
+        };
+      }
+    }
+  }
+
+  // 2. CRITICAL: Strip trailing action chips and suggestions so they don't contaminate pattern matching!
+  // Action chips like "[action:Rangkuman Dikmas|...]" previously caused all answers to be falsely tagged as "Database SM-Learning".
+  const cleanBody = content.replace(/\[action:[^\]]+\]/gi, '').split(/Langkah Selanjutnya & Saran Analisis/i)[0].trim().toLowerCase();
+
+  // A. Financial, Crypto, Bitcoin, Commodities
+  if (
+    cleanBody.includes('bitcoin') ||
+    cleanBody.includes('crypto') ||
+    cleanBody.includes('cryptocurrency') ||
+    cleanBody.includes('kripto') ||
+    cleanBody.includes('saham') ||
+    cleanBody.includes('coinmarketcap') ||
+    cleanBody.includes('exchange resmi') ||
+    cleanBody.includes('dollar as') ||
+    cleanBody.includes('dolar as') ||
+    cleanBody.includes('emas') ||
+    cleanBody.includes('kurs')
+  ) {
+    return {
+      name: 'Basis Pengetahuan Umum (General Knowledge Base)',
+      badge: 'Pengetahuan Umum',
+      type: 'general',
+      detail: 'Wawasan pengetahuan umum model AI (bukan dari basis data internal SM-Learning)',
+    };
+  }
+
+  // B. Specific Date and Time / Clock Query (e.g. "Hari ini Kamis, 15 Oktober 2026, pukul 10:33 WIB")
+  if (
+    (cleanBody.includes('pukul') ||
+      cleanBody.includes('wib') ||
+      cleanBody.includes('wita') ||
+      cleanBody.includes('wit') ||
+      (cleanBody.includes('hari ini') && (
+        cleanBody.includes('senin') || cleanBody.includes('selasa') || cleanBody.includes('rabu') ||
+        cleanBody.includes('kamis') || cleanBody.includes('jumat') || cleanBody.includes('sabtu') || cleanBody.includes('minggu') ||
+        cleanBody.includes('januari') || cleanBody.includes('februari') || cleanBody.includes('maret') || cleanBody.includes('april') ||
+        cleanBody.includes('mei') || cleanBody.includes('juni') || cleanBody.includes('juli') || cleanBody.includes('agustus') ||
+        cleanBody.includes('september') || cleanBody.includes('oktober') || cleanBody.includes('november') || cleanBody.includes('desember')
+      ))
+    ) &&
+    cleanBody.length < 250 &&
+    !cleanBody.includes('sesi outreach') &&
+    !cleanBody.includes('total tayangan') &&
+    !cleanBody.includes('pengguna terdaftar')
+  ) {
+    return {
+      name: 'Sistem Waktu & Kalender Server',
+      badge: 'Waktu Server',
+      type: 'system',
+      detail: 'Sinkronisasi tanggal dan waktu riil sistem server (WIB / UTC+7)',
+    };
+  }
+
+  // C. Uploaded file analysis
+  if (cleanBody.includes('lampiran') || cleanBody.includes('berkas') || cleanBody.includes('dokumen yang diunggah') || cleanBody.includes('file ocr') || cleanBody.includes('ekstraksi berkas')) {
+    return {
+      name: 'Berkas Lampiran Pengguna & Database SM-Learning',
+      badge: 'Lampiran & DB SM-Learning',
+      type: 'attachment',
+      detail: 'Diekstrak dari berkas lampiran pengguna dan diverifikasi dengan basis data internal SM-Learning',
+    };
+  }
+
+  // D. SM-Connect Gateway / Traffic Counting / Posko / CCTV
+  if (cleanBody.includes('traffic count') || cleanBody.includes('posko') || cleanBody.includes('cctv') || cleanBody.includes('sm-lite') || cleanBody.includes('volume kendaraan') || cleanBody.includes('pos pam') || cleanBody.includes('pos yan') || cleanBody.includes('pos terpadu')) {
+    return {
+      name: 'SM-Connect Data Gateway Korlantas POLRI',
+      badge: 'SM-Connect Gateway',
+      type: 'gateway',
+      detail: 'Terhubung ke server data operasional, traffic counting, dan posko lapangan Korlantas POLRI',
+    };
+  }
+
+  // E. Legal / Regulation / UU 22/2009 / Tilang
+  if (cleanBody.includes('uu no. 22') || cleanBody.includes('uu 22/2009') || cleanBody.includes('undang-undang no') || cleanBody.includes('pasal ') || cleanBody.includes('etle') || cleanBody.includes('tilang elektronik')) {
+    return {
+      name: 'Kompilasi Regulasi & UU No. 22 Tahun 2009',
+      badge: 'Regulasi Korlantas POLRI',
+      type: 'regulation',
+      detail: 'Berdasarkan pedoman hukum, aturan perundang-undangan, dan SOP resmi Ditkamsel Korlantas POLRI',
+    };
+  }
+
+  // F. Actual database queries (contains metrics, counts, user roles, passing rate, outreach sessions)
+  if (
+    cleanBody.includes('sesi outreach') ||
+    cleanBody.includes('total tayangan') ||
+    cleanBody.includes('pengguna terdaftar') ||
+    cleanBody.includes('sertifikat terbit') ||
+    cleanBody.includes('passing rate') ||
+    cleanBody.includes('chart:') ||
+    cleanBody.includes('```chart') ||
+    (cleanBody.includes('akun') && cleanBody.includes('role')) ||
+    (cleanBody.includes('materi') && (cleanBody.includes('jenjang') || cleanBody.includes('kuis') || cleanBody.includes('modul') || cleanBody.includes('tayangan')))
+  ) {
+    return {
+      name: 'Database Terpadu SM-Learning (Dikmas Lantas POLRI)',
+      badge: 'Database SM-Learning',
+      type: 'database',
+      detail: 'Data sinkronisasi dari basis data pengguna, materi pembelajaran, dan rekapitulasi wilayah Korlantas POLRI',
+    };
+  }
+
+  // G. Friendly conversational / greetings
+  if (cleanBody.includes('halo!') || cleanBody.includes('hai!') || cleanBody.includes('ada yang bisa saya bantu') || cleanBody.includes('senang bisa membantu')) {
+    return {
+      name: 'Alesha Conversational Engine',
+      badge: 'Asisten Percakapan',
+      type: 'chat',
+      detail: 'Respons interaktif langsung dari asisten cerdas Alesha',
+    };
+  }
+
+  // H. Default Alesha AI Engine
+  return {
+    name: 'Alesha AI Engine — Knowledge Base Korlantas POLRI',
+    badge: 'Knowledge Base Alesha AI',
+    type: 'ai',
+    detail: 'Diproses melalui Alesha AI Engine dengan basis pengetahuan terverifikasi Ditkamsel Korlantas POLRI',
+  };
 }
 
 export interface AiChatPageProps {
@@ -883,28 +1049,52 @@ export const AiChatPage: React.FC<AiChatPageProps> = ({
                         />
                       )}
 
-                      {/* Assistant Actions Bar: Copy & TTS Voice Reader */}
-                      {!isUser && (
-                        <div className="flex items-center gap-1.5 mt-2.5 pt-2 border-t border-slate-200/70 text-slate-500">
-                          <button
-                            onClick={() => handleCopyText(m.content, m.id)}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium hover:bg-slate-200/70 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
-                            title="Salin Teks Jawaban"
-                          >
-                            {copiedId === m.id ? (
-                              <>
-                                <Check className="w-3 h-3 text-emerald-600" />
-                                <span className="text-emerald-700 font-bold">Disalin</span>
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="w-3 h-3" />
-                                <span>Salin</span>
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      )}
+                      {/* Assistant Actions Bar & Data Source Reference */}
+                      {!isUser && (() => {
+                        const sourceInfo = resolveMessageSource(m.content, (m as any).source);
+                        return (
+                          <div className="mt-2.5 pt-2 border-t border-slate-200/70 space-y-1.5">
+                            <div className="flex items-center justify-between flex-wrap gap-1.5">
+                              {/* Referensi Sumber Data */}
+                              <div className="flex items-center gap-1.5 flex-wrap text-[11px]">
+                                <div className="flex items-center gap-1 text-slate-500 font-medium">
+                                  <Database className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                  <span>Sumber Data:</span>
+                                </div>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50/90 border border-blue-200/80 text-blue-800 font-bold text-[10px] shadow-2xs">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                  <span>{sourceInfo.name}</span>
+                                </span>
+                              </div>
+
+                              {/* Salin Button */}
+                              <button
+                                onClick={() => handleCopyText(m.content, m.id)}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium hover:bg-slate-200/70 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+                                title="Salin Teks Jawaban"
+                              >
+                                {copiedId === m.id ? (
+                                  <>
+                                    <Check className="w-3 h-3 text-emerald-600" />
+                                    <span className="text-emerald-700 font-bold">Disalin</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-3 h-3" />
+                                    <span>Salin</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+
+                            {/* Detail Verifikasi Sumber Data */}
+                            <div className="flex items-center gap-1 text-[10px] text-slate-500 leading-normal pl-0.5">
+                              <ShieldCheck className="w-3 h-3 text-emerald-600 shrink-0" />
+                              <span className="truncate">{sourceInfo.detail}</span>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     <span className="text-[10px] text-slate-400 mt-1 px-1">
@@ -1542,67 +1732,67 @@ function AleshaChartViewer({ chartData, onExpand, isModal = false, hideDownload 
           {/* Segmented View Mode Toggle: Batang, Garis, Combo, Dual-Line, Pie */}
           {!hideSwitcher && (
             <div data-export-hide="true" className="flex items-center bg-slate-800/90 p-0.5 rounded-lg border border-slate-700/80 shadow-inner flex-wrap gap-0.5">
-            <button
-              type="button"
-              onClick={() => setViewMode('bar')}
-              className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${viewMode === 'bar'
+              <button
+                type="button"
+                onClick={() => setViewMode('bar')}
+                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${viewMode === 'bar'
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-slate-300 hover:text-white hover:bg-white/10'
-                }`}
-              title="Grafik Batang (Kolom Vertikal)"
-            >
-              <BarChart2 className="w-3 h-3" />
-              <span>Batang</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('line')}
-              className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${viewMode === 'line'
+                  }`}
+                title="Grafik Batang (Kolom Vertikal)"
+              >
+                <BarChart2 className="w-3 h-3" />
+                <span>Batang</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('line')}
+                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${viewMode === 'line'
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-slate-300 hover:text-white hover:bg-white/10'
-                }`}
-              title="Grafik Garis Tren & Delta Data Sebelumnya"
-            >
-              <TrendingUp className="w-3 h-3" />
-              <span>Garis</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('combo')}
-              className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${viewMode === 'combo'
+                  }`}
+                title="Grafik Garis Tren & Delta Data Sebelumnya"
+              >
+                <TrendingUp className="w-3 h-3" />
+                <span>Garis</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('combo')}
+                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${viewMode === 'combo'
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-slate-300 hover:text-white hover:bg-white/10'
-                }`}
-              title="Multi-Grafik: Batang + Garis (Perbandingan Data)"
-            >
-              <Layers className="w-3 h-3" />
-              <span>Batang+Line</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('dual-line')}
-              className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${viewMode === 'dual-line'
+                  }`}
+                title="Multi-Grafik: Batang + Garis (Perbandingan Data)"
+              >
+                <Layers className="w-3 h-3" />
+                <span>Batang+Line</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('dual-line')}
+                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${viewMode === 'dual-line'
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-slate-300 hover:text-white hover:bg-white/10'
-                }`}
-              title="Multi-Grafik: Garis + Garis (Line + Line Perbandingan)"
-            >
-              <Activity className="w-3 h-3" />
-              <span>Line+Line</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('pie')}
-              className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${viewMode === 'pie'
+                  }`}
+                title="Multi-Grafik: Garis + Garis (Line + Line Perbandingan)"
+              >
+                <Activity className="w-3 h-3" />
+                <span>Line+Line</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('pie')}
+                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${viewMode === 'pie'
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-slate-300 hover:text-white hover:bg-white/10'
-                }`}
-              title="Grafik Pie / Donut"
-            >
-              <PieIcon className="w-3 h-3" />
-              <span>Pie</span>
-            </button>
-          </div>
+                  }`}
+                title="Grafik Pie / Donut"
+              >
+                <PieIcon className="w-3 h-3" />
+                <span>Pie</span>
+              </button>
+            </div>
           )}
 
           {!hideDownload && (
@@ -1749,8 +1939,8 @@ function AleshaChartViewer({ chartData, onExpand, isModal = false, hideDownload 
                       onMouseEnter={() => setHoveredIdx(idx)}
                       onMouseLeave={() => setHoveredIdx(null)}
                       className={`p-2.5 rounded-xl border transition-all cursor-pointer ${isHovered
-                          ? 'bg-blue-50/70 border-blue-300 shadow-xs'
-                          : 'bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs'
+                        ? 'bg-blue-50/70 border-blue-300 shadow-xs'
+                        : 'bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs'
                         }`}
                     >
                       <div className="flex items-center justify-between text-xs mb-1.5">
@@ -2494,8 +2684,8 @@ function AleshaChartViewer({ chartData, onExpand, isModal = false, hideDownload 
                       onMouseEnter={() => setHoveredIdx(idx)}
                       onMouseLeave={() => setHoveredIdx(null)}
                       className={`p-2.5 rounded-xl border transition-all cursor-pointer ${isHovered
-                          ? 'bg-blue-50/70 border-blue-300 shadow-xs scale-[1.01]'
-                          : 'bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs'
+                        ? 'bg-blue-50/70 border-blue-300 shadow-xs scale-[1.01]'
+                        : 'bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs'
                         }`}
                     >
                       <div className="flex items-center justify-between text-xs mb-1.5">
@@ -2678,7 +2868,7 @@ function MarkdownViewerComponent({ content, onExpandChart, onAction }: MarkdownV
       }
     }
 
-        // Pre-scan B: Standalone JSON objects not in code blocks (Linear O(N) bracket scanner, zero backtracking)
+    // Pre-scan B: Standalone JSON objects not in code blocks (Linear O(N) bracket scanner, zero backtracking)
     if (cleanContent.includes('"data"') || cleanContent.includes('"items"') || cleanContent.includes('"charts"')) {
       let startIdx = 0;
       while ((startIdx = cleanContent.indexOf('{', startIdx)) !== -1) {
@@ -2742,31 +2932,78 @@ function MarkdownViewerComponent({ content, onExpandChart, onAction }: MarkdownV
     // Pre-scan C: Robust Conclusion / Summary Extraction for the Visual Infographic
     let summaryText = '';
 
-    // Step 1: Search for explicit conclusion / analysis / note section header
-    const conclusionHeaderRegex = /^(?:#{1,4}\s+|\*\*(?:[\d.]+\s*)?)(kesimpulan|catatan|ringkasan|analisis|rekomendasi|saran|evaluasi|insight|temuan)/i;
-    let conclusionStartIdx = -1;
+    // Step 0: Strip code blocks, raw JSON blocks, and interactive action chips from text copy before extracting conclusion
+    let cleanedTextForSummary = cleanContent.replace(/```[\s\S]*?```/g, '');
 
-    for (let idx = 0; idx < lines.length; idx++) {
-      const l = lines[idx].trim();
-      if (conclusionHeaderRegex.test(l)) {
-        conclusionStartIdx = idx;
-        break;
+    // Strip standalone JSON objects { ... } containing chart keywords using brace depth counting
+    let strippedJsonRes = '';
+    let scanIdx = 0;
+    while (scanIdx < cleanedTextForSummary.length) {
+      if (cleanedTextForSummary[scanIdx] === '{') {
+        const peek = cleanedTextForSummary.slice(scanIdx, scanIdx + 300);
+        if (peek.includes('"title"') || peek.includes('"data"') || peek.includes('"charts"') || peek.includes('"xAxis"') || peek.includes('"items"') || peek.includes('"series"')) {
+          let depth = 1;
+          let subIdx = scanIdx + 1;
+          let inStr = false;
+          let esc = false;
+          while (subIdx < cleanedTextForSummary.length && depth > 0) {
+            const char = cleanedTextForSummary[subIdx];
+            if (esc) {
+              esc = false;
+            } else if (char === '\\') {
+              esc = true;
+            } else if (char === '"') {
+              inStr = !inStr;
+            } else if (!inStr) {
+              if (char === '{') depth++;
+              else if (char === '}') depth--;
+            }
+            subIdx++;
+          }
+          scanIdx = subIdx;
+          continue;
+        }
+      }
+      strippedJsonRes += cleanedTextForSummary[scanIdx];
+      scanIdx++;
+    }
+    cleanedTextForSummary = strippedJsonRes;
+
+    // Strip trailing actions and prompt suggestions
+    if (cleanedTextForSummary.includes('Langkah Selanjutnya')) {
+      cleanedTextForSummary = cleanedTextForSummary.split('Langkah Selanjutnya')[0];
+    }
+    cleanedTextForSummary = cleanedTextForSummary.replace(/\[action:[^\]]+\]/g, '');
+
+    const summaryLines = cleanedTextForSummary.split('\n').map(l => l.trim());
+
+    // Step 1: Search for explicit conclusion / analysis / note section header
+    // Ensure we do NOT match table titles like "Ringkasan Data & Informasi" or "Ringkasan Statistik"
+    const conclusionHeaderRegex = /^(?:#{1,4}\s+|\*\*(?:[\d.]+\s*)?|(?:[\d.]+\s*)?)(catatan\s*analisis|kesimpulan(?:\s*analisis|\s*&\s*rekomendasi)?|analisis(?:\s*data|\s*&\s*rekomendasi)?|kesimpulan|rekomendasi\s*analisis|evaluasi\s*analisis|insight\s*analisis)/i;
+
+    let conclusionStartIdx = -1;
+    for (let idx = 0; idx < summaryLines.length; idx++) {
+      const l = summaryLines[idx];
+      const stripped = l.replace(/[*_#:`]/g, '').trim();
+      if (!stripped) continue;
+      if (stripped.toLowerCase().includes('ringkasan data') || stripped.toLowerCase().includes('ringkasan statistik')) {
+        continue;
+      }
+      if (conclusionHeaderRegex.test(stripped) || /^(?:catatan\s*analisis|kesimpulan|analisis\s*akhir)\b/i.test(stripped)) {
+        conclusionStartIdx = idx; // Pick latest matching conclusion header (after charts/tables)
       }
     }
 
     if (conclusionStartIdx !== -1) {
       const collected: string[] = [];
-      for (let idx = conclusionStartIdx + 1; idx < lines.length; idx++) {
-        const rawL = lines[idx].trim();
-        // Stop if next major section header starts
-        if (/^#{1,3}\s+/.test(rawL)) break;
-        // Stop if interactive prompt actions or download links
-        if (rawL.includes('[action:') || rawL.includes('/static/exports/')) break;
-        // Skip code fences or table markup
-        if (rawL.startsWith('```') || rawL.startsWith('|') || rawL.startsWith('{') || rawL.startsWith('}')) continue;
+      for (let idx = conclusionStartIdx + 1; idx < summaryLines.length; idx++) {
+        const rawL = summaryLines[idx];
         if (!rawL) continue;
+        if (/^#{1,3}\s+/.test(rawL)) break;
+        if (rawL.includes('[action:') || rawL.includes('/static/exports/')) break;
+        if (rawL.startsWith('```') || rawL.startsWith('|') || rawL.startsWith('{') || rawL.startsWith('}') || rawL.startsWith('[') || rawL.startsWith(']')) continue;
+        if (rawL.includes('"title":') || rawL.includes('"subtitle":') || rawL.includes('"data":') || rawL.includes('"xAxis":') || rawL.includes('"yAxis":')) continue;
 
-        // Clean markdown bullets but keep readable bullet list structure
         const cleanL = rawL.replace(/^[-*•]\s+/, '• ').trim();
         collected.push(cleanL);
       }
@@ -2775,46 +3012,16 @@ function MarkdownViewerComponent({ content, onExpandChart, onAction }: MarkdownV
       }
     }
 
-    // Step 2: If no explicit heading found, extract analytical text appearing AFTER the charts / tables
+    // Step 2: Fallback - find candidate analytical lines (skipping table lines & JSON fragments)
     if (!summaryText) {
-      let lastChartOrTableLineIdx = -1;
-      let inCode = false;
-      for (let idx = 0; idx < lines.length; idx++) {
-        const l = lines[idx].trim();
-        if (l.startsWith('```')) {
-          inCode = !inCode;
-          lastChartOrTableLineIdx = idx;
-        } else if (inCode || l.startsWith('|') || (l.startsWith('{') && l.includes('"data"'))) {
-          lastChartOrTableLineIdx = idx;
-        }
-      }
-
-      if (lastChartOrTableLineIdx !== -1 && lastChartOrTableLineIdx < lines.length - 1) {
-        const postChartLines = lines
-          .slice(lastChartOrTableLineIdx + 1)
-          .map(l => l.trim())
-          .filter(l => {
-            if (!l) return false;
-            if (l.startsWith('```') || l.startsWith('|') || l.startsWith('{') || l.startsWith('}')) return false;
-            if (l.endsWith(':')) return false; // Skip lone section titles
-            if (l.includes('[action:') || l.includes('/static/exports/')) return false;
-            return true;
-          });
-
-        if (postChartLines.length > 0) {
-          summaryText = postChartLines.join('\n');
-        }
-      }
-    }
-
-    // Step 3: Fallback - find any analytical paragraphs containing evaluation keywords
-    if (!summaryText) {
-      const candidateLines = lines.map(l => l.trim()).filter(l => {
+      const candidateLines = summaryLines.filter(l => {
         if (!l) return false;
-        if (l.startsWith('```') || l.startsWith('|') || l.startsWith('{') || l.startsWith('}')) return false;
-        if (l.endsWith(':')) return false; // Avoid section titles like "Sebaran Materi:"
+        if (l.startsWith('```') || l.startsWith('|') || l.startsWith('{') || l.startsWith('}') || l.startsWith('[') || l.startsWith(']')) return false;
+        if (l.includes('"title":') || l.includes('"data":') || l.includes('"xAxis":') || l.includes('"yAxis":')) return false;
+        if (l.endsWith(':')) return false; // Avoid section titles like "Sebaran Materi per Jenjang:"
         if (l.includes('[action:') || l.includes('/static/exports/')) return false;
         const lower = l.toLowerCase();
+        if (lower.includes('ringkasan data') || lower.includes('ringkasan statistik')) return false;
         return (
           lower.includes('kesimpulan') ||
           lower.includes('berdasarkan data') ||

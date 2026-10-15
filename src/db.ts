@@ -2752,6 +2752,7 @@ export interface AiChatMessageRow {
   userId: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
+  source?: string | null;
   createdAt: string;
 }
 
@@ -2829,18 +2830,35 @@ export async function deleteAllAiChatSessions(userId: string): Promise<void> {
 
 export async function getAiChatMessages(sessionId: string, userId: string): Promise<AiChatMessageRow[]> {
   const p = getPool();
-  const [rows]: any = await p.query(
-    'SELECT id, session_id, user_id, role, content, created_at FROM ai_chat_messages WHERE session_id = ? AND user_id = ? ORDER BY created_at ASC',
-    [sessionId, userId]
-  );
-  return rows.map((r: any) => ({
-    id: r.id,
-    sessionId: r.session_id,
-    userId: r.user_id,
-    role: r.role,
-    content: r.content,
-    createdAt: r.created_at,
-  }));
+  try {
+    const [rows]: any = await p.query(
+      'SELECT id, session_id, user_id, role, content, source, created_at FROM ai_chat_messages WHERE session_id = ? AND user_id = ? ORDER BY created_at ASC',
+      [sessionId, userId]
+    );
+    return rows.map((r: any) => ({
+      id: r.id,
+      sessionId: r.session_id,
+      userId: r.user_id,
+      role: r.role,
+      content: r.content,
+      source: r.source || null,
+      createdAt: r.created_at,
+    }));
+  } catch (err) {
+    const [rows]: any = await p.query(
+      'SELECT id, session_id, user_id, role, content, created_at FROM ai_chat_messages WHERE session_id = ? AND user_id = ? ORDER BY created_at ASC',
+      [sessionId, userId]
+    );
+    return rows.map((r: any) => ({
+      id: r.id,
+      sessionId: r.session_id,
+      userId: r.user_id,
+      role: r.role,
+      content: r.content,
+      source: null,
+      createdAt: r.created_at,
+    }));
+  }
 }
 
 export async function saveAiChatMessage(
@@ -2848,14 +2866,23 @@ export async function saveAiChatMessage(
   sessionId: string,
   userId: string,
   role: 'user' | 'assistant' | 'system',
-  content: string
+  content: string,
+  source?: any
 ): Promise<AiChatMessageRow> {
   const p = getPool();
   const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
-  await p.query(
-    'INSERT INTO ai_chat_messages (id, session_id, user_id, role, content, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-    [id, sessionId, userId, role, content, now]
-  );
+  const sourceStr = source ? (typeof source === 'string' ? source : JSON.stringify(source)) : null;
+  try {
+    await p.query(
+      'INSERT INTO ai_chat_messages (id, session_id, user_id, role, content, source, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [id, sessionId, userId, role, content, sourceStr, now]
+    );
+  } catch (err) {
+    await p.query(
+      'INSERT INTO ai_chat_messages (id, session_id, user_id, role, content, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+      [id, sessionId, userId, role, content, now]
+    );
+  }
   await touchAiChatSession(sessionId, userId);
-  return { id, sessionId, userId, role, content, createdAt: now };
+  return { id, sessionId, userId, role, content, source: sourceStr, createdAt: now };
 }
